@@ -1,12 +1,12 @@
 """
 Beyond Madeira — Car Rental Voucher API
-Runs on Google Cloud Run. Accepts POST with booking data, returns base64 PDF.
 """
 
 import os
 import io
 import base64
-from flask import Flask, request, jsonify
+import uuid
+from flask import Flask, request, jsonify, send_file
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -18,7 +18,8 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 
 app = Flask(__name__)
 
-# ── CORES ─────────────────────────────────────────────────────────────────────
+PDF_STORE = {}
+
 OCEAN    = colors.HexColor("#0A616B")
 INK      = colors.HexColor("#111827")
 INK_MED  = colors.HexColor("#374151")
@@ -32,7 +33,46 @@ AMBER_LT = colors.HexColor("#FEF3C7")
 AMBER_BD = colors.HexColor("#D97706")
 
 P = 9; GAP = 0.45*cm; R = 6
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo_clean.png")
 
+def tx(text, sz=8, bold=False, color=INK, align=TA_LEFT, italic=False, lead=None):
+    fn = 'Helvetica-Bold' if bold else 'Helvetica-
+cat > ~/voucher-api/main.py << 'PYEOF'
+"""
+Beyond Madeira — Car Rental Voucher API
+"""
+
+import os
+import io
+import base64
+import uuid
+from flask import Flask, request, jsonify, send_file
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm, mm
+from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame,
+    Paragraph, Spacer, Table, TableStyle, HRFlowable, Image as RLImage, Flowable)
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+
+app = Flask(__name__)
+
+PDF_STORE = {}
+
+OCEAN    = colors.HexColor("#0A616B")
+INK      = colors.HexColor("#111827")
+INK_MED  = colors.HexColor("#374151")
+INK_S    = colors.HexColor("#6B7280")
+INK_XS   = colors.HexColor("#9CA3AF")
+RULE     = colors.HexColor("#D1D5DB")
+BG       = colors.HexColor("#F8FAFC")
+WHITE    = colors.white
+AMBER    = colors.HexColor("#92400E")
+AMBER_LT = colors.HexColor("#FEF3C7")
+AMBER_BD = colors.HexColor("#D97706")
+
+P = 9; GAP = 0.45*cm; R = 6
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo_clean.png")
 
 def tx(text, sz=8, bold=False, color=INK, align=TA_LEFT, italic=False, lead=None):
@@ -90,7 +130,6 @@ def gerar_voucher_bytes(d):
     buf = io.BytesIO()
     doc = Doc(buf, pagesize=A4, rightMargin=MR, leftMargin=ML, topMargin=MT, bottomMargin=MB)
     s = []
-
     logo = RLImage(LOGO_PATH, width=2.7*cm, height=1.55*cm)
     rh = Table([
         [tx("CAR RENTAL VOUCHER", 7, bold=True, color=INK_S, align=TA_RIGHT)],
@@ -105,20 +144,17 @@ def gerar_voucher_bytes(d):
         ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0)]))
     s.append(hdr); s.append(Spacer(1, 0.3*cm))
     s.append(HRFlowable(width="100%", thickness=1.5, color=OCEAN, spaceAfter=0.35*cm))
-
     s.append(card([
         [lbl("BOOKING REFERENCE"), lbl("TOTAL AMOUNT")],
         [tx(d["referencia"], 19, bold=True, color=OCEAN), tx(d["total"], 19, bold=True, color=INK)],
         [tx("Issued by Beyond Madeira · RNAVT 13020", 6.5, color=INK_XS, italic=True), tx(" ", 6.5)],
     ], [W2, W2], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
     s.append(Spacer(1, GAP))
-
     s.append(card([
         [lbl("VEHICLE"), lbl("RENTAL COMPANY")],
         [tx(d["veiculo"], 9, bold=True, color=INK), tx(d["empresa"], 9, bold=True, color=OCEAN)],
     ], [W6, W4], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
     s.append(Spacer(1, GAP))
-
     s.append(card([
         [lbl("CLIENT"), lbl("PHONE"), lbl("EMAIL")],
         [tx(d["cliente"], 9, bold=True, color=INK),
@@ -126,7 +162,6 @@ def gerar_voucher_bytes(d):
          tx(d["email"], 8.5, color=INK)],
     ], [W3, W3, W3], [('LINEAFTER',(0,0),(0,-1),0.5,RULE),('LINEAFTER',(1,0),(1,-1),0.5,RULE)]))
     s.append(Spacer(1, GAP))
-
     s.append(card([
         [lbl("PICK-UP"),                                      lbl("DROP-OFF")],
         [tx(d["pickup_data"], 12, bold=True, color=INK),      tx(d["dropoff_data"], 12, bold=True, color=INK)],
@@ -134,10 +169,9 @@ def gerar_voucher_bytes(d):
         [tx(d["pickup_local"], 8, color=INK_S),               tx(d["dropoff_local"], 8, color=INK_S)],
     ], [W2, W2], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
     s.append(Spacer(1, GAP))
-
     extras_inner = Table([[
         tx("EXTRAS", 7, bold=True, color=AMBER),
-        tx("Extra driver, child seat, GPS and other add-ons are available and paid directly at pick-up.", 8, color=AMBER),
+        tx(d.get("extras", "Extra driver, child seat, GPS and other add-ons are available and paid directly at pick-up."), 8, color=AMBER),
     ]], colWidths=[WL, WR])
     extras_inner.setStyle(TableStyle([
         ('BACKGROUND',(0,0),(-1,-1), colors.transparent),
@@ -148,17 +182,14 @@ def gerar_voucher_bytes(d):
     ]))
     s.append(RoundedCard(extras_inner, radius=R, bg=AMBER_LT, border_color=AMBER_BD))
     s.append(Spacer(1, GAP))
-
     s.append(card([
         [tx("CANCELLATION POLICY", 7, bold=True, color=OCEAN),
          tx("Free cancellation up to <b>24 hours before</b> pick-up. Late cancellations or no-shows may incur a fee.", 8, color=INK_MED)],
     ], [WL, WR], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
     s.append(Spacer(1, 0.35*cm))
-
     s.append(tx("* Insurance coverage, terms and conditions are governed solely by the rental company's own contract.",
         7, color=INK_XS, italic=True))
     s.append(Spacer(1, 0.25*cm))
-
     s.append(HRFlowable(width="100%", thickness=0.5, color=RULE, spaceAfter=0.15*cm))
     s.append(tx(
         "Beyond Madeira (RNAVT 13020) acts exclusively as a booking intermediary pursuant to Decreto-Lei n.o 61/2011. "
@@ -166,7 +197,6 @@ def gerar_voucher_bytes(d):
         "accidents, or disputes. All rental terms are governed by the contract issued by the rental company at pick-up. "
         "Personal data processed under GDPR for booking fulfilment only.",
         6.5, color=INK_XS, italic=True, lead=9.5))
-
     doc.build(s)
     buf.seek(0)
     return buf.read()
@@ -178,7 +208,6 @@ def gerar_voucher_endpoint():
         d = request.get_json()
         if not d:
             return jsonify({"error": "JSON body required"}), 400
-
         required = ["referencia", "total", "veiculo", "empresa", "cliente",
                     "telefone", "email", "pickup_data", "pickup_hora",
                     "pickup_local", "dropoff_data", "dropoff_hora", "dropoff_local"]
@@ -188,17 +217,35 @@ def gerar_voucher_endpoint():
 
         pdf_bytes = gerar_voucher_bytes(d)
         pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-
         filename = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ', '_')}.pdf"
+
+        token = str(uuid.uuid4())
+        PDF_STORE[token] = {"bytes": pdf_bytes, "filename": filename}
+
+        base_url = request.host_url.rstrip("/")
+        pdf_url = f"{base_url}/download/{token}"
 
         return jsonify({
             "success": True,
             "filename": filename,
-            "pdf_base64": pdf_b64
+            "pdf_base64": pdf_b64,
+            "pdf_url": pdf_url
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/download/<token>", methods=["GET"])
+def download_pdf(token):
+    entry = PDF_STORE.get(token)
+    if not entry:
+        return jsonify({"error": "Not found or expired"}), 404
+    return send_file(
+        io.BytesIO(entry["bytes"]),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=entry["filename"]
+    )
 
 
 @app.route("/", methods=["GET"])
