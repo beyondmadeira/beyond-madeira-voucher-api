@@ -186,6 +186,23 @@ def gerar_voucher_endpoint():
         if missing:
             return jsonify({"error": f"Campos em falta: {missing}"}), 400
 
+        from datetime import datetime
+        def fmt_date(s):
+            try:
+                dt = datetime.fromisoformat(s.replace('Z','+00:00'))
+                return dt.strftime('%-d %b %Y')
+            except:
+                return s
+        def fmt_time(s):
+            try:
+                dt = datetime.fromisoformat(s.replace('Z','+00:00'))
+                return dt.strftime('%H:%M')
+            except:
+                return s
+        d['pickup_hora'] = fmt_time(d.get('pickup_data',''))
+        d['dropoff_hora'] = fmt_time(d.get('dropoff_data',''))
+        d['pickup_data'] = fmt_date(d.get('pickup_data',''))
+        d['dropoff_data'] = fmt_date(d.get('dropoff_data',''))
         pdf_bytes = gerar_voucher_bytes(d)
         pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
