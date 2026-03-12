@@ -115,7 +115,7 @@ def gerar_voucher_bytes(d):
 
     s.append(card([
         [lbl("VEHICLE"), lbl("RENTAL COMPANY")],
-        [tx(d["veiculo"], 9, bold=True, color=INK), tx(d["empresa"], 9, bold=True, color=OCEAN)],
+       [tx(d["veiculo"] + " or similar", 9, bold=True, color=INK), tx(d["empresa"], 9, bold=True, color=OCEAN)],
     ], [W6, W4], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
     s.append(Spacer(1, GAP))
 
