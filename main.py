@@ -1,17 +1,33 @@
 """
 Beyond Madeira - Voucher API
-POST /gerar-voucher           -> Car Rental PDF
-POST /gerar-voucher-atividade -> Activity PDF
-GET  /                        -> Health check
+POST /gerar-voucher              -> Car Rental PDF
+POST /gerar-voucher-atividade    -> Activity PDF
+GET  /airtable/rc                -> List RC reservations
+PATCH /airtable/rc/<id>          -> Update RC reservation
+GET  /airtable/at                -> List AT reservations
+PATCH /airtable/at/<id>          -> Update AT reservation
+GET  /airtable/sitemap           -> List Sitemap records
+PATCH /airtable/sitemap/<id>     -> Update Sitemap record
+GET  /airtable/biblioteca        -> List FAQ/Biblioteca records
+PATCH /airtable/biblioteca/<id>  -> Update Biblioteca record
+GET  /airtable/guia              -> List Madeira Guide records
+PATCH /airtable/guia/<id>        -> Update Guia record
+GET  /                           -> Health check
 """
 
-import os, re, base64
+import os, re, base64, requests as req_lib
 from flask import Flask, request, jsonify
 from weasyprint import HTML
 
 app = Flask(__name__)
 API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 BASE_DIR = os.path.dirname(__file__)
+
+# Airtable
+AT_TOKEN        = os.environ.get("AIRTABLE_TOKEN", "")
+BASE_RESERVAS   = "appR8ZKP5ygR8o8Q0"
+BASE_CONHECIMENTO = "appKhPwEBxolWaO9r"
+AT_HEADERS      = lambda: {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
 
 
 # =========================================================================
@@ -203,6 +219,33 @@ def fmt_time(s):
         return s
 
 
+def airtable_list(base_id, table_name, max_records=200):
+    """Fetch all records from an Airtable table."""
+    url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
+    records = []
+    offset = None
+    while True:
+        params = {"maxRecords": max_records}
+        if offset:
+            params["offset"] = offset
+        r = req_lib.get(url, headers=AT_HEADERS(), params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        records.extend(data.get("records", []))
+        offset = data.get("offset")
+        if not offset:
+            break
+    return records
+
+
+def airtable_patch(base_id, table_name, record_id, fields):
+    """Patch a single Airtable record."""
+    url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}/{record_id}"
+    r = req_lib.patch(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
 # =========================================================================
 # RENT CAR
 # =========================================================================
@@ -287,25 +330,20 @@ def build_at_html(d):
     with open(os.path.join(BASE_DIR, "voucher_at_template.html")) as f:
         tmpl = f.read()
 
-    # Auto-detect activity rules from name
     rule = detect_activity(d.get("atividade", ""))
 
-    # Auto-fill operator contacts
     operador = d.get("operador", "")
     if not d.get("operador_telefone") and operador in OPERATOR_CONTACTS:
         d["operador_telefone"], d["operador_email"] = OPERATOR_CONTACTS[operador]
     d.setdefault("operador_telefone", "")
     d.setdefault("operador_email", "")
 
-    # Auto-fill payment method from rule if not provided
     if rule and not d.get("pagamento"):
         d["pagamento"] = rule["payment"]
 
-    # Auto-fill pickup mode from rule if not provided
     if rule and not d.get("pickup_mode"):
         d["pickup_mode"] = rule["pickup"]
 
-    # Build tips block from rule
     tips_html = ""
     if rule and rule.get("tips"):
         tips_lines = [TIPS_TEXT[t] for t in rule["tips"] if t in TIPS_TEXT]
@@ -313,7 +351,6 @@ def build_at_html(d):
             tips_lines.insert(0, f"<strong>{rule['note']}</strong>")
         if tips_lines:
             tips_html = '<div class="special-req"><div class="sr-label">What to Bring &amp; Useful Tips</div><div class="sr-text">' + "<br>".join(f"&#183; {t}" for t in tips_lines) + "</div></div>"
-    # Allow override from request
     if d.get("pedido_especial"):
         tips_html += f'<div class="special-req"><div class="sr-label">Special Requests</div><div class="sr-text">{d["pedido_especial"]}</div></div>'
     d["special_requests_html"] = tips_html
@@ -321,7 +358,6 @@ def build_at_html(d):
     status    = d.get("status", "confirmed").lower()
     pagamento = d.get("pagamento", "cash").lower()
 
-    # Status
     if status == "paid":
         d["status_label"] = "Paid \u2713"
         d["status_class"] = "paid"
@@ -343,11 +379,9 @@ def build_at_html(d):
         else:
             d["price_note"] = "Cash on the day"
 
-    # Start time style
     hora = d.get("hora", "TBC")
     d["start_time_class"] = "tbc" if hora == "TBC" else "accent"
 
-    # Payment alert
     total = d.get("total", "")
     if status == "awaiting":
         stripe_link = d.get("stripe_link", "")
@@ -361,7 +395,6 @@ def build_at_html(d):
     else:
         d["payment_alert_html"] = ""
 
-    # Payment method
     if status == "confirmed":
         pm_map = {
             "cash":      ("Payment: Cash Only",    "To be paid in cash on the day of the activity."),
@@ -374,7 +407,6 @@ def build_at_html(d):
     else:
         d["payment_method_html"] = ""
 
-    # Pickup block
     pickup_mode = d.get("pickup_mode", "none")
     pickup_loc  = d.get("pickup_local", "")
     hotel_det   = d.get("hotel_detail", "")
@@ -392,7 +424,6 @@ def build_at_html(d):
     else:
         d["pickup_html"] = ""
 
-    # Invoice rows
     items = d.get("items", [])
     if not items:
         items = [{"nome": d.get("atividade",""), "detalhe": f"{d.get('data','')} &middot; {d.get('hora','TBC')}", "qty": d.get("pax",""), "unit": d.get("preco_unit",""), "sub": d.get("total","")}]
@@ -432,11 +463,264 @@ def gerar_voucher_atividade():
 
 
 # =========================================================================
+# AIRTABLE — RESERVAS (RC + AT)  base: appR8ZKP5ygR8o8Q0
+# =========================================================================
+
+@app.route("/airtable/rc", methods=["GET"])
+def get_rc():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Rent Car")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "ref":         f.get("Referência", f.get("Referencia", "")),
+                "nome":        f.get("Nome do Cliente", ""),
+                "tel":         f.get("Telefone", ""),
+                "email":       f.get("Email", ""),
+                "idade":       f.get("Idade", ""),
+                "parceiro":    f.get("Parceiro", ""),
+                "carro":       f.get("Veículo", f.get("Veiculo", "")),
+                "estado":      f.get("Estado da Reserva", ""),
+                "pagamento":   f.get("Pagamento", ""),
+                "pdt":         f.get("Data Pick-up", ""),
+                "ploc":        f.get("Local Pick-up", ""),
+                "pvoo":        f.get("Voo Pick-up", ""),
+                "pdet":        f.get("Detalhe Pick-up", ""),
+                "ddt":         f.get("Data Drop-off", ""),
+                "dloc":        f.get("Local Drop-off", ""),
+                "dvoo":        f.get("Voo Drop-off", ""),
+                "ddet":        f.get("Detalhe Drop-off", ""),
+                "total":       f.get("Total", 0),
+                "com":         f.get("Comissão", f.get("Comissao", 0)),
+                "dur":         f.get("Duração", f.get("Duracao", 0)),
+                "ext":         f.get("Extras", ""),
+                "obs":         f.get("Observações", f.get("Observacoes", "")),
+                "refp":        f.get("Referência Parceiro", ""),
+                "eEnv":        f.get("Email Enviado", False),
+                "rEnv":        f.get("Review Enviado", False),
+                "dataFeita":   f.get("Data Feita", f.get("Created Time", "")),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/rc/<record_id>", methods=["PATCH"])
+def patch_rc(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_RESERVAS, "Rent Car", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/at", methods=["GET"])
+def get_at():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Atividades")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "ref":         f.get("Referência", f.get("Referencia", "")),
+                "nome":        f.get("Nome do Cliente", ""),
+                "tel":         f.get("Telefone", ""),
+                "email":       f.get("Email", ""),
+                "atv":         f.get("Atividade", ""),
+                "cat":         f.get("Categoria", ""),
+                "par":         f.get("Parceiro", ""),
+                "pess":        f.get("Nº Pessoas", f.get("Pessoas", "")),
+                "data":        f.get("Data", ""),
+                "hora":        f.get("Hora", ""),
+                "total":       f.get("Total", 0),
+                "com":         f.get("Comissão", f.get("Comissao", 0)),
+                "estado":      f.get("Estado da Reserva", ""),
+                "pagamento":   f.get("Pagamento", ""),
+                "obs":         f.get("Observações", f.get("Observacoes", "")),
+                "local":       f.get("Local", ""),
+                "eEnv":        f.get("Email Enviado", False),
+                "rEnv":        f.get("Review Enviado", False),
+                "dataFeita":   f.get("Data Feita", f.get("Created Time", "")),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/at/<record_id>", methods=["PATCH"])
+def patch_at(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_RESERVAS, "Atividades", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================================================================
+# AIRTABLE — CONHECIMENTO  base: appKhPwEBxolWaO9r
+# =========================================================================
+
+@app.route("/airtable/sitemap", methods=["GET"])
+def get_sitemap():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Sitemap")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":        rec["id"],
+                "nome":      f.get("Nome de Página", f.get("Nome de Pagina", "")),
+                "estado":    f.get("Estado", ""),
+                "categoria": f.get("Categoria Principal", ""),
+                "url":       f.get("URL", ""),
+                "cat":       f.get("Categoria", ""),
+                "conteudo":  f.get("Conteúdo", f.get("Conteudo", "")),
+                "modified":  f.get("Last Modified", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/sitemap/<record_id>", methods=["PATCH"])
+def patch_sitemap(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_CONHECIMENTO, "Sitemap", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/biblioteca", methods=["GET"])
+def get_biblioteca():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Biblioteca")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":       rec["id"],
+                "titulo":   f.get("Answer Title", ""),
+                "gatilho":  f.get("Trigger / Customer Question", ""),
+                "resposta": f.get("Answer", ""),
+                "categoria":f.get("Category", ""),
+                "estado":   f.get("Status", ""),
+                "obs":      f.get("Observação", f.get("Observacao", "")),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/biblioteca/<record_id>", methods=["PATCH"])
+def patch_biblioteca(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_CONHECIMENTO, "Biblioteca", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/guia", methods=["GET"])
+def get_guia():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Madeira Guide")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "titulo":      f.get("Nome", ""),
+                "categoria":   f.get("Categoria", ""),
+                "descricao":   f.get("Descrição", f.get("Descricao", "")),
+                "localizacao": f.get("Localização", f.get("Localizacao", "")),
+                "estado":      f.get("Estado", ""),
+                "prioridade":  f.get("Prioridade", ""),
+                "tags":        f.get("Tags", ""),
+                "notas":       f.get("Notas Internas", ""),
+                "recomendado": f.get("Recomendado?", False),
+                "preco":       f.get("Preço Nível", f.get("Preco Nivel", "")),
+                "horario":     f.get("Horário", f.get("Horario", "")),
+                "distancia":   f.get("Distância", f.get("Distancia", "")),
+                "dificuldade": f.get("Dificuldade", ""),
+                "website":     f.get("Website", ""),
+                "contacto":    f.get("Contacto", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/guia/<record_id>", methods=["PATCH"])
+def patch_guia(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_CONHECIMENTO, "Madeira Guide", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================================================================
 # HEALTH
 # =========================================================================
 @app.route("/", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "Beyond Madeira Voucher API", "endpoints": ["/gerar-voucher", "/gerar-voucher-atividade"]})
+    return jsonify({
+        "status": "ok",
+        "service": "Beyond Madeira Voucher API",
+        "endpoints": [
+            "/gerar-voucher",
+            "/gerar-voucher-atividade",
+            "/airtable/rc",
+            "/airtable/at",
+            "/airtable/sitemap",
+            "/airtable/biblioteca",
+            "/airtable/guia",
+        ]
+    })
 
 
 if __name__ == "__main__":
