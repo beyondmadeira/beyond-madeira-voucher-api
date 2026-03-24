@@ -14,6 +14,14 @@ app = Flask(__name__)
 API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 BASE_DIR = os.path.dirname(__file__)
 
+# ── PARTNER CONTACTS ──────────────────────────────────────────────────────────
+RC_PARTNERS = {
+    "Point Car":         ("+351 968 888 026", "booking@pointcarrental.pt"),
+    "Atlantic Rent Car": ("+351 962 403 756", "reservations@atlanticrentacar.pt"),
+    "RentCar Madeira":   ("+351 936 716 627", "booking@rentcarmadeira.com"),
+    "AB4rent":           ("+351 961 932 738", "info@ab4rent.com"),
+}
+
 
 def logo_b64():
     with open(os.path.join(BASE_DIR, "logo_clean.png"), "rb") as f:
@@ -75,6 +83,10 @@ def build_rc_html(d):
     d["pickup_extra"]  = pu_extra
     d["dropoff_extra"] = do_extra
     d.setdefault("extras", "None")
+    # Auto-fill partner contacts if not provided
+    empresa = d.get("empresa", "")
+    if not d.get("empresa_telefone") and empresa in RC_PARTNERS:
+        d["empresa_telefone"], d["empresa_email"] = RC_PARTNERS[empresa]
     d.setdefault("empresa_telefone", "")
     d.setdefault("empresa_email", "")
 
