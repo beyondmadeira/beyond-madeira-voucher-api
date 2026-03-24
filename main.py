@@ -12,6 +12,9 @@ GET  /airtable/biblioteca        -> List FAQ/Biblioteca records
 PATCH /airtable/biblioteca/<id>  -> Update Biblioteca record
 GET  /airtable/guia              -> List Madeira Guide records
 PATCH /airtable/guia/<id>        -> Update Guia record
+POST /gerar-extrato-parceiro      -> Partner commission statement PDF
+POST /gerar-extratos-mes          -> All partner statements for a month
+GET  /airtable/extrato-parceiros  -> List Extrato Parceiros records
 GET  /                           -> Health check
 """
 
@@ -1288,15 +1291,558 @@ def patch_tarefa(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 # =========================================================================
-# HEALTH
+# EXTRATO PARCEIROS
+# Regras exactas:
+#   AT: Data da Atividade — de dia 1 a último dia do mês, excluir Cancelado
+#   RC: Data do Drop Off  — de dia 1 a último dia do mês, excluir Cancelado
 # =========================================================================
-@app.route("/cache/clear", methods=["POST"])
-def clear_cache():
+
+TAB_EXTRATO = "tblVsIz5Ubsy8x0JE"
+TAB_AT_ID   = "tblla0uOKTcyboVXU"
+TAB_RC_ID   = "tblGc8HoEYOA5uG5Q"
+
+MESES_PT = {1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",
+            7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro"}
+MESES_IDX = {v:k for k,v in MESES_PT.items()}
+
+ALIASES_PARC = {
+    "jungle lost":"junglelost","surreal":"surrealmadeira","surreal madeira":"surrealmadeira",
+    "be local":"belocal","trail 4 fun":"trail4fun","trail4fun":"trail4fun",
+    "warriors adventure":"warriorsadventure","warriors":"warriorsadventure",
+    "green devil":"greendevil","101 routes":"101routes","madeira tours":"madeiratourspt",
+    "madeira discovery":"madeiradiscovery","icon travel":"icontravel",
+    "wildermadeira":"wildermadeira","wilder madeira":"wildermadeira",
+    "lido tours":"lidotours","madeira explorers":"madeiraexplorers",
+    "vmt":"vmt","seaborn":"seaborn","nau santa maria":"nausantamaria",
+    "epicmadeira":"epicmadeira","epic madeira":"epicmadeira",
+    "quad xperience":"quadxperience","damwalk":"damwalk",
+    "free spirit":"freespirit","bearded":"bearded",
+    "mak":"mak","amsterdam rent car":"amsterdamrentcar",
+    "atlantic rent car":"atlanticrentcar","pointcar":"pointcar",
+    "point car":"pointcar","ab4rent":"ab4rent","rent car madeira":"rentcarmadeira",
+}
+
+def slug_norm_p(s):
+    s2 = re.sub(r"[^a-z0-9]", "", str(s).lower().strip())
+    key = str(s).lower().strip()
+    return ALIASES_PARC.get(key, s2)
+
+def eur_val(v):
+    try: return float(str(v or 0).replace("€","").replace(",",".").strip() or 0)
+    except: return 0.0
+
+def get_text_f(v):
+    if not v: return ""
+    if isinstance(v, list):
+        first = v[0] if v else ""
+        if isinstance(first, dict): return first.get("name", str(first))
+        return str(first)
+    if isinstance(v, dict): return v.get("name", str(v))
+    return str(v)
+
+def fget_f(rf, *keys):
+    """Get field value, trying multiple key names."""
+    for k in keys:
+        val = rf.get(k)
+        if val not in (None, ""): return val
+    # Try stripped keys
+    rf_s = {k.strip(): v for k,v in rf.items()}
+    for k in keys:
+        val = rf_s.get(k.strip())
+        if val not in (None, ""): return val
+    return None
+
+def parse_date_ext(s):
+    """Parse Airtable date string.
+    Handles formats:
+      - d/m/yyyy HH:mm  (Airtable PT format — most common)
+      - yyyy-mm-dd      (ISO date)
+      - yyyy-mm-ddTHH:mm:ss.000Z (ISO datetime)
+    Ignores typo dates (year outside 2010-2035).
+    """
+    from datetime import datetime
+    if not s: return None
+    s = str(s).strip()
+    # Strip time component — both ISO (T) and space separator
+    s = s.split("T")[0].split(" ")[0]
+    for fmt_ in ("%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y"):
+        try:
+            dt = datetime.strptime(s, fmt_)
+            # Sanity check: reject obvious typos (e.g. year 20285, 0225)
+            if not (2010 <= dt.year <= 2035):
+                return None
+            return dt
+        except:
+            pass
+    return None
+
+NORM_RULES = [
+    (["private","west"],"Private West Tour"),(["private","east"],"Private East Tour"),
+    (["private","jeep"],"Private Jeep Tour"),(["private","mini","van"],"Private Mini Van"),
+    (["private","levada"],"Private Levada Walk"),(["private","walk"],"Private Guided Walk"),
+    (["private","tour"],"Private Tour"),(["west"],"West Tour"),(["east"],"East Tour"),
+    (["mini","van"],"Mini Van Tour"),(["25","fountain"],"25 Fountains"),(["rabaçal"],"25 Fountains"),
+    (["jeep"],"Jeep Safari"),(["safari"],"Jeep Safari"),
+    (["canyoning","beginner"],"Canyoning Beginner"),(["canyoning","intermediate"],"Canyoning Intermediate"),
+    (["canyoning"],"Canyoning"),(["buggy"],"Buggy Experience"),(["sunrise"],"Sunrise Tour"),
+    (["pico"],"Pico Arieiro"),(["levada","alecrim"],"Levada do Alecrim"),
+    (["levada","rei"],"Levada do Rei"),(["levada"],"Levada Walk"),
+    (["caldeirão"],"Caldeirão Verde"),(["whale"],"Whale & Dolphin"),
+    (["boat"],"Boat Tour"),(["e-bike"],"E-Bike Experience"),(["quad"],"Quad Experience"),
+    (["surf"],"Surf Lesson"),(["scuba"],"Scuba Diving"),(["fishing"],"Fishing"),
+    (["coasteering"],"Coasteering"),(["fanal"],"Fanal Walk"),
+]
+def norm_act(raw):
+    raw = get_text_f(raw)
+    if not raw: return "—"
+    low = raw.lower()
+    for kws, name in NORM_RULES:
+        if all(k in low for k in kws): return name
+    return raw.strip()[:30]
+
+def airtable_list_table(base_id, table_id, formula=None):
+    """List by table ID for precision."""
+    url = f"https://api.airtable.com/v0/{base_id}/{table_id}"
+    params = {"pageSize": 100}
+    if formula: params["filterByFormula"] = formula
+    records = []
+    while True:
+        r = req_lib.get(url, headers=AT_HEADERS(), params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        records.extend(data.get("records", []))
+        offset = data.get("offset")
+        if not offset: break
+        params["offset"] = offset
+    return records
+
+def airtable_upload_attachment(base_id, record_id, field_name, pdf_bytes, filename):
+    """Upload PDF attachment to Airtable record."""
+    b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+    field_enc = req_lib.utils.quote(field_name, safe="")
+    url = f"https://content.airtable.com/v0/{base_id}/{record_id}/{field_enc}/uploadAttachment"
+    headers = {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
+    r = req_lib.post(url, headers=headers,
+        json={"filename": filename, "contentType": "application/pdf", "file": b64}, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
+    """
+    Get all reservations for a partner in a given month.
+    AT: filter by Data da Atividade
+    RC: filter by Data do Drop Off
+    Both: exclude Cancelado
+    Returns list of dicts ready for PDF.
+    """
+    from datetime import datetime, date
+    import calendar
+
+    sn_parc = slug_norm_p(parceiro)
+    # First and last day of month
+    first_day = date(ano, mes_num, 1)
+    last_day  = date(ano, mes_num, calendar.monthrange(ano, mes_num)[1])
+
+    fonte = airtable_list_table(BASE_RESERVAS, TAB_RC_ID if is_rc else TAB_AT_ID)
+
+    rows = []
+    for rec in fonte:
+        rf = rec.get("fields", {})
+
+        # Match partner name
+        pname = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
+        if slug_norm_p(pname) != sn_parc:
+            continue
+
+        # Date filter — strict: must be within month
+        if is_rc:
+            # RC: Data do Drop Off (exact field name confirmed)
+            date_raw = fget_f(rf, "Data do Drop Off")
+        else:
+            # AT: Data da Atividade (exact field name confirmed)
+            date_raw = fget_f(rf, "Data da Atividade")
+
+        dt = parse_date_ext(date_raw)
+        if not dt:
+            continue
+        dt_date = dt.date() if hasattr(dt, "date") else dt
+        if not (first_day <= dt_date <= last_day):
+            continue
+
+        # Estado — exclude Cancelado
+        if is_rc:
+            estado = get_text_f(fget_f(rf, "Estado de Reserva") or "")
+        else:
+            estado = get_text_f(fget_f(rf, "Estado da Reserva") or "")
+
+        if estado in ("Cancelado", "Cancelada"):
+            status = "Cancelado"
+        elif estado == "Devemos":
+            status = "Devemos"
+        elif estado == "Pago":
+            status = "Pago"
+        else:
+            status = "Por Pagar"
+
+        # Values — exact field names confirmed
+        if is_rc:
+            total  = eur_val(fget_f(rf, "Valor da Reserva (€)") or 0)
+            comm   = eur_val(fget_f(rf, "Comissão") or 0)
+            client = get_text_f(fget_f(rf, "Nome do cliente") or "")
+            act    = get_text_f(fget_f(rf, "Modelo de Carro") or "")
+            pax    = str(fget_f(rf, "Duração") or "").strip()
+        else:
+            total  = eur_val(fget_f(rf, "Preço Total") or 0)
+            comm   = eur_val(fget_f(rf, "Comissão") or 0)
+            client = get_text_f(fget_f(rf, "Nome do Cliente") or "")
+            act    = norm_act(fget_f(rf, "Atividade") or "")
+            pax    = str(fget_f(rf, "Nº Pessoas") or "").strip()
+
+        rows.append({
+            "date":   dt.strftime("%d/%m"),
+            "client": client,
+            "act":    act,
+            "pax":    pax,
+            "total":  total,
+            "comm":   comm,
+            "status": status,
+        })
+
+    # Sort by date
+    rows.sort(key=lambda x: x["date"])
+    return rows
+
+
+def calc_totais(rows):
+    """Calculate financial totals from rows."""
+    n       = len(rows)
+    n_can   = sum(1 for r in rows if r["status"] == "Cancelado")
+    rows_v  = [r for r in rows if r["status"] != "Cancelado"]
+    n_norm  = sum(1 for r in rows_v if r["status"] != "Devemos")
+    n_dev   = sum(1 for r in rows_v if r["status"] == "Devemos")
+    gt      = sum(r["total"] for r in rows_v)
+    gc      = sum(r["comm"]  for r in rows_v)
+    comiss  = sum(r["comm"]  for r in rows_v if r["status"] != "Devemos")
+    credito = sum(r["total"] - r["comm"] for r in rows_v if r["status"] == "Devemos")
+    total_fim = comiss - credito
+    return dict(n=n, n_can=n_can, n_norm=n_norm, n_dev=n_dev,
+                gt=gt, gc=gc, comiss=comiss, credito=credito, total_fim=total_fim)
+
+
+def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots):
+    from datetime import datetime
+    today = datetime.now().strftime("%d/%m/%Y")
+    t = tots
+
+    rows_html = ""
+    for i, r in enumerate(rows):
+        bg = "#F9FAFB" if i % 2 == 0 else "#FFFFFF"
+        sc = {"Pago":"#166534","Por Pagar":"#111827","Devemos":"#991B1B","Cancelado":"#6B7280"}.get(r["status"],"#6B7280")
+        strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
+        pax = str(r.get("pax") or "—").replace(" Pessoas","").replace(" Pessoa","").strip()
+        rows_html += f"""<tr style="background:{bg}">
+          <td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>
+          <td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or "—")[:32]}</td>
+          <td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or "—")[:28]}</td>
+          <td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>
+          <td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">€ {abs(r["total"]):,.2f}</td>
+          <td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">€ {abs(r["comm"]):,.2f}</td>
+          <td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td>
+        </tr>"""
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page {{ size: A4; margin: 1.8cm 1.8cm 1.6cm 1.8cm; }}
+  * {{ margin:0;padding:0;box-sizing:border-box; }}
+  body {{ font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }}
+  .top-bar {{ position:fixed;top:-1.8cm;left:-1.8cm;right:-1.8cm;height:5mm;background:#0A616B; }}
+  .footer {{ position:fixed;bottom:-1.6cm;left:-1.8cm;right:-1.8cm;border-top:0.5pt solid #E5E7EB;
+             padding:4pt 1.8cm;display:flex;justify-content:space-between;align-items:center; }}
+  .footer span {{ font-size:6.5pt;color:#6B7280; }}
+  table.main {{ width:100%;border-collapse:collapse; }}
+  .dt th {{ font-size:7.5pt;font-weight:700;color:#6B7280;padding:7px 8px;
+             border-bottom:1pt solid #9CA3AF;text-align:left;background:#fff; }}
+  .dt tfoot td {{ border-top:1pt solid #9CA3AF;font-weight:700;background:#F3F4F6; }}
+  .dt {{ margin-bottom:20pt;width:100%;border-collapse:collapse; }}
+</style>
+</head><body>
+<div class="top-bar"></div>
+
+<table class="main" style="margin-bottom:14pt"><tr>
+  <td style="width:45%;vertical-align:top;padding-top:8pt">
+    <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">
+      Largo da Saúde 1, 9000-221 Funchal<br>
+      RNAVT 13020 · NIPC 518 827 119<br>
+      info@beyondmadeira.com · +351 939 566 415
+    </div>
+  </td>
+  <td style="text-align:right;vertical-align:top">
+    <div style="font-size:9pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt">Extrato de Comissões</div>
+    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{mes_nome} {ano}</div>
+    <div style="font-size:8pt;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.5pt;margin-top:6pt">PARA</div>
+    <div style="font-size:14pt;font-weight:700;color:#0A616B;margin-top:2pt">{parceiro}</div>
+    <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:4pt">Ref. {ref} · Emitido a {today}</div>
+  </td>
+</tr></table>
+
+<hr style="border:none;border-top:1pt solid #111827;margin:0 0 14pt 0">
+
+<div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Detalhe das Reservas</div>
+<table class="dt">
+  <thead><tr>
+    <th style="width:44pt">Data</th>
+    <th style="width:110pt">Cliente</th>
+    <th>Atividade / Carro</th>
+    <th style="width:28pt;text-align:center">Pax</th>
+    <th style="width:58pt;text-align:right">Total</th>
+    <th style="width:62pt;text-align:right">Comissão</th>
+    <th style="width:54pt;text-align:center">Estado</th>
+  </tr></thead>
+  <tbody>{rows_html}</tbody>
+  <tfoot><tr>
+    <td colspan="4" style="padding:7px 8px"></td>
+    <td style="padding:7px 8px;font-size:9pt;color:#111827;text-align:right">€ {abs(t["gt"]):,.2f}</td>
+    <td style="padding:7px 8px;font-size:9pt;color:#0A616B;text-align:right">€ {abs(t["gc"]):,.2f}</td>
+    <td style="padding:7px 8px;font-size:7.5pt;color:#6B7280;text-align:center">TOTAL</td>
+  </tr></tfoot>
+</table>
+
+<table class="main"><tr>
+  <td style="width:52%;vertical-align:top;padding-right:16pt">
+    <div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Resumo Financeiro</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr style="background:#fff;border-bottom:0.5pt solid #E5E7EB">
+        <td style="padding:10px 8px">
+          <div style="font-weight:700;font-size:9pt">Total faturado</div>
+          <div style="font-size:7pt;color:#9CA3AF">{t["n"]} reservas · {t["n_can"]} canceladas</div>
+        </td>
+        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">€ {abs(t["gt"]):,.2f}</td>
+      </tr>
+      <tr style="background:#F3F4F6;border-bottom:0.5pt solid #E5E7EB">
+        <td style="padding:10px 8px">
+          <div style="font-weight:700;font-size:9pt">Comissões a pagar</div>
+          <div style="font-size:7pt;color:#9CA3AF">{t["n_norm"]} reservas — cliente pagou ao parceiro</div>
+        </td>
+        <td style="text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:10px 8px">€ {abs(t["comiss"]):,.2f}</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:10px 8px">
+          <div style="font-weight:700;font-size:9pt">Crédito a descontar</div>
+          <div style="font-size:7pt;color:#9CA3AF">{t["n_dev"]} reservas — cliente pagou à Beyond</div>
+        </td>
+        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">− € {abs(t["credito"]):,.2f}</td>
+      </tr>
+    </table>
+    <div style="background:#0A616B;border-radius:6pt;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8pt">
+      <span style="font-size:10pt;font-weight:700;color:white">TOTAL A RECEBER</span>
+      <span style="font-size:16pt;font-weight:700;color:white">€ {abs(t["total_fim"]):,.2f}</span>
+    </div>
+  </td>
+  <td style="width:48%;vertical-align:top">
+    <div style="background:#0A616B;border-radius:10pt;padding:16px 18px;color:white">
+      <div style="font-size:7pt;font-weight:700;color:#A7F3D0;margin-bottom:12pt">DADOS PARA PAGAMENTO</div>
+      <div style="margin-bottom:10pt">
+        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">Banco</div>
+        <div style="font-size:9pt">Santander</div>
+      </div>
+      <div style="margin-bottom:10pt">
+        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">IBAN</div>
+        <div style="font-size:8.5pt;font-weight:700">PT50 0018 0003 6587 1568 0201 8</div>
+      </div>
+      <div style="margin-bottom:10pt">
+        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">Titular</div>
+        <div style="font-size:9pt">Milton Quintal Lda</div>
+      </div>
+      <div>
+        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">Referência</div>
+        <div style="font-size:9pt">{ref}</div>
+      </div>
+    </div>
+  </td>
+</tr></table>
+
+<hr style="border:none;border-top:0.5pt solid #E5E7EB;margin-top:20pt">
+<div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:6pt">Em caso de dúvida ou discrepância, contacte-nos antes de efetuar qualquer transferência. Obrigado pela parceria.</div>
+
+<div class="footer">
+  <span>Beyond Madeira · RNAVT 13020 · NIPC 518 827 119 · +351 939 566 415</span>
+  <span>Ref. {ref}</span>
+</div>
+</body></html>"""
+
+
+@app.route("/gerar-extrato-parceiro", methods=["POST"])
+def gerar_extrato_parceiro():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
-    cache_clear()
-    return jsonify({"success": True, "message": "Cache cleared"})
+    try:
+        from datetime import datetime
+        d = request.get_json() or {}
+        parceiro  = d.get("parceiro", "").strip()
+        mes_str   = d.get("mes", "").strip()     # "Março 2026"
+        tipo      = d.get("tipo", "").strip()    # "Rent Car" ou outro
+        record_id = d.get("record_id", "").strip()
+        do_upload = d.get("upload", True)
+
+        if not parceiro or not mes_str:
+            return jsonify({"error": "parceiro e mes obrigatórios"}), 400
+
+        parts = mes_str.split(" ")
+        if len(parts) != 2 or not parts[1].isdigit():
+            return jsonify({"error": "mes deve ser 'Mês Ano' ex: Março 2026"}), 400
+
+        mes_nome = parts[0]
+        ano      = int(parts[1])
+        mes_num  = MESES_IDX.get(mes_nome)
+        if not mes_num:
+            return jsonify({"error": f"Mês inválido: {mes_nome}"}), 400
+
+        is_rc = tipo.lower() in ("rent car", "rc", "rentcar")
+
+        # Get reservations with 100% correct date/field rules
+        rows = get_reservas_parceiro(parceiro, mes_num, ano, is_rc)
+        tots = calc_totais(rows)
+
+        sl    = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
+        ref   = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
+        fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
+
+        html_str  = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
+        pdf_bytes = HTML(string=html_str).write_pdf()
+        b64       = base64.b64encode(pdf_bytes).decode()
+
+        # Upload to Airtable
+        uploaded = False
+        if do_upload and record_id and record_id.startswith("rec"):
+            try:
+                airtable_upload_attachment(BASE_RESERVAS, record_id, "Extrato Beyond", pdf_bytes, fname)
+                airtable_patch(BASE_RESERVAS, TAB_EXTRATO, record_id, {
+                    "Valor do mês (€)": round(tots["comiss"], 2),
+                    "Confirmado pela Beyond Madeira?": True,
+                })
+                cache_clear("extrato")
+                uploaded = True
+            except Exception as ue:
+                uploaded = False  # Don't fail — still return PDF
+
+        return jsonify({
+            "success":     True,
+            "filename":    fname,
+            "pdf_base64":  b64,
+            "ref":         ref,
+            "parceiro":    parceiro,
+            "mes":         mes_str,
+            "is_rc":       is_rc,
+            "n_reservas":  tots["n"],
+            "n_canceladas":tots["n_can"],
+            "comissoes":   round(tots["comiss"], 2),
+            "credito":     round(tots["credito"], 2),
+            "total_fim":   round(tots["total_fim"], 2),
+            "uploaded":    uploaded,
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/gerar-extratos-mes", methods=["POST"])
+def gerar_extratos_mes():
+    """Generate all partner statements for a given month."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d = request.get_json() or {}
+        mes_str = d.get("mes", "").strip()
+        if not mes_str:
+            return jsonify({"error": "mes obrigatório"}), 400
+
+        formula = f'{{Mês}} = "{mes_str}"'
+        registos = airtable_list_table(BASE_RESERVAS, TAB_EXTRATO, formula=formula)
+        if not registos:
+            return jsonify({"success": True, "results": [],
+                            "message": f"Nenhum parceiro em {mes_str}"})
+
+        results = []
+        for reg in registos:
+            f   = reg.get("fields", {})
+            par = get_text_f(f.get("Parceiro", ""))
+            tip = get_text_f(f.get("Tipo", ""))
+            if not par: continue
+            try:
+                mes_parts = mes_str.split(" ")
+                mes_num   = MESES_IDX.get(mes_parts[0])
+                ano       = int(mes_parts[1])
+                is_rc     = tip.lower() in ("rent car",)
+                rows      = get_reservas_parceiro(par, mes_num, ano, is_rc)
+                tots      = calc_totais(rows)
+                sl        = re.sub(r"[^a-zA-Z0-9]", "", par)
+                ref       = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
+                fname     = f"BeyondMadeira_{sl}_{mes_parts[0]}{ano}.pdf"
+                html_str  = build_extrato_html(par, rows, ref, mes_parts[0], ano, tots)
+                pdf_bytes = HTML(string=html_str).write_pdf()
+                uploaded  = False
+                if reg["id"].startswith("rec") and tots["comiss"] > 0:
+                    try:
+                        airtable_upload_attachment(BASE_RESERVAS, reg["id"], "Extrato Beyond", pdf_bytes, fname)
+                        airtable_patch(BASE_RESERVAS, TAB_EXTRATO, reg["id"], {
+                            "Valor do mês (€)": round(tots["comiss"], 2),
+                            "Confirmado pela Beyond Madeira?": True,
+                        })
+                        uploaded = True
+                    except: pass
+                results.append({"parceiro": par, "success": True, "tipo": tip,
+                                 "total_fim": round(tots["total_fim"], 2),
+                                 "comissoes": round(tots["comiss"], 2),
+                                 "n_reservas": tots["n"] - tots["n_can"],
+                                 "uploaded": uploaded})
+            except Exception as e:
+                results.append({"parceiro": par, "success": False, "error": str(e)})
+
+        total_geral = sum(r.get("comissoes", 0) for r in results if r.get("success"))
+        return jsonify({"success": True, "mes": mes_str,
+                        "n_parceiros": len(results),
+                        "total_geral": round(total_geral, 2),
+                        "results": results})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/airtable/extrato-parceiros", methods=["GET"])
+def get_extrato_parceiros():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        mes = request.args.get("mes", "")
+        formula = f'{{Mês}} = "{mes}"' if mes else None
+        records = airtable_list_table(BASE_RESERVAS, TAB_EXTRATO, formula=formula)
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":                rec["id"],
+                "parceiro":          get_text_f(f.get("Parceiro", "")),
+                "mes":               f.get("Mês", ""),
+                "tipo":              get_text_f(f.get("Tipo", "")),
+                "valor":             eur_val(f.get("Valor do mês (€)", 0)),
+                "ajustes":           eur_val(f.get("Ajustes / Atrasos (€)", 0)),
+                "total":             eur_val(f.get("Total a Receber (€)", 0)),
+                "confirmadoParceiro":f.get("Confirmado pelo parceiro?") == "checked",
+                "mailEnviado":       f.get("Mail enviado / pedido?") == "checked",
+                "recebido":          f.get("Recebido?") == "checked",
+                "confirmadoBeyond":  bool(f.get("Confirmado pela Beyond Madeira?", False)),
+                "dataRecebimento":   f.get("Data de Recebimento", ""),
+                "obs":               f.get("Observações - Faltou Reservas no papel? E na capa?", ""),
+                "categoria":         get_text_f(f.get("Categoria Parceiro", "")),
+                "comissaoCalc":      eur_val(f.get("Comissão Calculada (€)", 0)),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 @app.route("/", methods=["GET"])
