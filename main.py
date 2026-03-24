@@ -221,13 +221,13 @@ def fmt_time(s):
         return s
 
 
-def airtable_list(base_id, table_name, max_records=200):
+def airtable_list(base_id, table_name, max_records=1000):
     """Fetch all records from an Airtable table."""
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
     records = []
     offset = None
     while True:
-        params = {"maxRecords": max_records}
+        params = {"pageSize": 100}
         if offset:
             params["offset"] = offset
         r = req_lib.get(url, headers=AT_HEADERS(), params=params, timeout=15)
@@ -484,18 +484,18 @@ def get_rc():
                 "tel":         f.get("Número de Telemovel", f.get("Telefone", "")),
                 "email":       f.get("Email do cliente", f.get("Email", "")),
                 "idade":       f.get("Idade", ""),
-                "parceiro":    f.get("Parceiro", ""),
+                "parceiro":    f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
                 "carro":       f.get("Modelo de Carro", f.get("Veículo", f.get("Veiculo", ""))),
-                "estado":      f.get("Estado da Reserva", ""),
+                "estado":      f.get("Estado do Reserva", f.get("Estado da Reserva", "")),
                 "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
-                "pdt":         f.get("Data Pick-up", ""),
-                "ploc":        f.get("Local Pick-up", ""),
+                "pdt":         f.get("Data da Pick-up", f.get("Data Pick-up", "")),
+                "ploc":        f.get("Localização Pick-up", f.get("Local Pick-up", "")),
                 "pvoo":        f.get("Voo Pick-up", ""),
-                "pdet":        f.get("Detalhe Pick-up", ""),
-                "ddt":         f.get("Data Drop-off", ""),
-                "dloc":        f.get("Local Drop-off", ""),
+                "pdet":        f.get("Detalhes Pick Up", f.get("Detalhe Pick-up", "")),
+                "ddt":         f.get("Data do Drop Off", f.get("Data Drop-off", "")),
+                "dloc":        f.get("Localização Drop-off", f.get("Local Drop-off", "")),
                 "dvoo":        f.get("Voo Drop-off", ""),
-                "ddet":        f.get("Detalhe Drop-off", ""),
+                "ddet":        f.get("Detalhes Drop Off", f.get("Detalhe Drop-off", "")),
                 "total":       f.get("Valor da Reserva (€)", f.get("Total", 0)),
                 "com":         f.get("Comissão", f.get("Comissao", 0)),
                 "dur":         f.get("Duração", f.get("Duracao", 0)),
@@ -504,7 +504,7 @@ def get_rc():
                 "refp":        f.get("Referência Parceiro", ""),
                 "eEnv":        f.get("Email Enviado", False),
                 "rEnv":        f.get("Review Enviado", False),
-                "dataFeita":   f.get("Data Feita", f.get("Created Time", "")),
+                "dataFeita":   f.get("Data Feita a Reserva", f.get("Data Feita", f.get("Created Time", ""))),
             })
         return jsonify({"success": True, "records": out})
     except Exception as e:
@@ -537,25 +537,25 @@ def get_at():
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
-                "ref":         f.get("Referência", f.get("Referencia", "")),
+                "ref":         f.get("Referência", f.get("Referencia", str(rec.get("id","")))),
                 "nome":        f.get("Nome do Cliente", ""),
                 "tel":         f.get("Contacto Telefonico", f.get("Telefone", "")),
                 "email":       f.get("Email Clientes", f.get("Email", "")),
                 "atv":         f.get("Atividade", ""),
                 "cat":         f.get("Categoria", ""),
-                "par":         f.get("Parceiro", ""),
+                "par":         f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
                 "pess":        f.get("Nº Pessoas", f.get("Pessoas", "")),
-                "data":        f.get("Data", ""),
+                "data":        f.get("Data da Atividade", f.get("Data", "")),
                 "hora":        f.get("Hora", ""),
-                "total":       f.get("Valor da Reserva (€)", f.get("Total", 0)),
+                "total":       f.get("Preço Total", f.get("Valor da Reserva (€)", f.get("Total", 0))),
                 "com":         f.get("Comissão", f.get("Comissao", 0)),
                 "estado":      f.get("Estado da Reserva", ""),
                 "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
-                "obs":         f.get("Observações", f.get("Observacoes", "")),
-                "local":       f.get("Local", ""),
+                "obs":         f.get("Observação", f.get("Observacoes", "")),
+                "local":       f.get("Pick-up local", f.get("Local", "")),
                 "eEnv":        f.get("Email Enviado", False),
-                "rEnv":        f.get("Review Enviado", False),
-                "dataFeita":   f.get("Data Feita", f.get("Created Time", "")),
+                "rEnv":        f.get("Review Pedida", f.get("Review Enviado", False)),
+                "dataFeita":   f.get("Created", f.get("Data Feita", f.get("Created Time", ""))),
             })
         return jsonify({"success": True, "records": out})
     except Exception as e:
