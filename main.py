@@ -52,6 +52,7 @@ BASE_DIR = os.path.dirname(__file__)
 AT_TOKEN        = os.environ.get("AIRTABLE_TOKEN", "")
 BASE_RESERVAS   = "appR8ZKP5ygR8o8Q0"
 BASE_CONHECIMENTO = "appKhPwEBxolWaO9r"
+BASE_FINANCEIRO   = "appOrdG5Fsr7N0RmH"
 AT_HEADERS      = lambda: {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
 
 
@@ -269,6 +270,51 @@ def airtable_patch(base_id, table_name, record_id, fields):
     r = req_lib.patch(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
     r.raise_for_status()
     return r.json()
+
+
+def airtable_create(base_id, table_name, fields):
+    """Create a single Airtable record."""
+    url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
+    r = req_lib.post(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+@app.route("/airtable/rc", methods=["POST"])
+def create_rc():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_create(BASE_RESERVAS, "Rent Car", fields)
+        cache_clear("rc")
+        # Return a simplified record with the new ID
+        rec_id = result.get("id", "")
+        rec_fields = result.get("fields", {})
+        return jsonify({"success": True, "record": {"id": rec_id, "fields": rec_fields}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/at", methods=["POST"])
+def create_at():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_create(BASE_RESERVAS, "Atividades", fields)
+        cache_clear("at")
+        rec_id = result.get("id", "")
+        rec_fields = result.get("fields", {})
+        return jsonify({"success": True, "record": {"id": rec_id, "fields": rec_fields}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # =========================================================================
@@ -506,31 +552,31 @@ def get_rc():
             out.append({
                 "id":          rec["id"],
                 "ref":         f.get("Referência", f.get("Referencia", "")),
-                "nome":        f.get("Nome do cliente", f.get("Nome do Cliente", "")),
-                "tel":         f.get("Número de Telemovel", f.get("Telefone", "")),
-                "email":       f.get("Email do cliente", f.get("Email", "")),
+                "nome":        f.get("Nome do cliente", ""),
+                "tel":         f.get("Número de Telemovel", ""),
+                "email":       f.get("Email do cliente", ""),
                 "idade":       f.get("Idade", ""),
-                "parceiro":    f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
-                "carro":       f.get("Modelo de Carro", f.get("Veículo", f.get("Veiculo", ""))),
-                "estado":      f.get("Estado do Reserva", f.get("Estado da Reserva", "")),
-                "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
-                "pdt":         f.get("Data da Pick-up", f.get("Data Pick-up", "")),
+                "parceiro":    f.get("Fornecedor/Parceiro", ""),
+                "carro":       f.get("Modelo de Carro", ""),
+                "estado":      f.get("Estado de Reserva", ""),
+                "pagamento":   "",  # RC has no payment status field
+                "pdt":         f.get("Data da Pick-up", ""),
                 "ploc":        f.get("Localização Pick-up", f.get("Local Pick-up", "")),
-                "pvoo":        f.get("Voo Pick-up", ""),
-                "pdet":        f.get("Detalhes Pick Up", f.get("Detalhe Pick-up", "")),
-                "ddt":         f.get("Data do Drop Off", f.get("Data Drop-off", "")),
+                "pvoo":        "",  # RC has no flight field
+                "pdet":        f.get("Detalhes Pick Up", ""),
+                "ddt":         f.get("Data do Drop Off", ""),
                 "dloc":        f.get("Localização Drop-off", f.get("Local Drop-off", "")),
-                "dvoo":        f.get("Voo Drop-off", ""),
-                "ddet":        f.get("Detalhes Drop Off", f.get("Detalhe Drop-off", "")),
-                "total":       f.get("Valor da Reserva (€)", f.get("Total", 0)),
-                "com":         f.get("Comissão", f.get("Comissao", 0)),
-                "dur":         f.get("Duração", f.get("Duracao", 0)),
+                "dvoo":        "",  # RC has no flight field
+                "ddet":        f.get("Detalhes Drop Off", ""),
+                "total":       f.get("Valor da Reserva (€)", 0),
+                "com":         f.get("Comissão", 0),
+                "dur":         f.get("Duração", 0),
                 "ext":         f.get("Extras", ""),
-                "obs":         f.get("Observações", f.get("Observacoes", "")),
+                "obs":         f.get("Observações", ""),
                 "refp":        f.get("Referência Parceiro", ""),
                 "eEnv":        f.get("Email Enviado", False),
                 "rEnv":        f.get("Review Enviado", False),
-                "dataFeita":   f.get("Data Feita a Reserva", f.get("Data Feita", f.get("Created Time", ""))),
+                "dataFeita":   f.get("Data Feita a Reserva", ""),
             })
         cache_set("rc", out)
         return jsonify({"success": True, "records": out})
@@ -568,25 +614,28 @@ def get_at():
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
-                "ref":         f.get("Referência", f.get("Referencia", str(rec.get("id","")))),
+                "ref":         f.get("Referência", rec["id"]),
                 "nome":        f.get("Nome do Cliente", ""),
-                "tel":         f.get("Contacto Telefonico", f.get("Telefone", "")),
-                "email":       f.get("Email Clientes", f.get("Email", "")),
+                "tel":         f.get("Contacto Telefonico", ""),
+                "email":       f.get("Email Clientes", ""),
                 "atv":         f.get("Atividade", ""),
                 "cat":         f.get("Categoria", ""),
-                "par":         f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
-                "pess":        f.get("Nº Pessoas", f.get("Pessoas", "")),
-                "data":        f.get("Data da Atividade", f.get("Data", "")),
-                "hora":        f.get("Hora", ""),
-                "total":       f.get("Preço Total", f.get("Valor da Reserva (€)", f.get("Total", 0))),
-                "com":         f.get("Comissão", f.get("Comissao", 0)),
-                "estado":      f.get("Estado da Reserva", ""),
-                "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
-                "obs":         f.get("Observação", f.get("Observacoes", "")),
-                "local":       f.get("Pick-up local", f.get("Local", "")),
+                "par":         f.get("Fornecedor/Parceiro", ""),
+                "pess":        f.get("Nº Pessoas", ""),
+                "data":        f.get("Data da Atividade", ""),
+                "hora":        (f.get("Data da Atividade","") or "").split("T")[1][:5] if "T" in (f.get("Data da Atividade","") or "") else "",
+                "total":       f.get("Preço Total", 0),
+                "com":         f.get("Comissão", 0),
+                "estado_res":  f.get("Estado da Reserva", ""),
+                "pagamento":   f.get("Estado de Pagamento", ""),
+                "obs":         f.get("Observação", ""),
+                "local":       f.get("Pick-up local", ""),
+                "stripe":      f.get("Stripe Link", ""),
+                "idiomas":     f.get("Idiomas", ""),
                 "eEnv":        f.get("Email Enviado", False),
-                "rEnv":        f.get("Review Pedida", f.get("Review Enviado", False)),
-                "dataFeita":   f.get("Created", f.get("Data Feita", f.get("Created Time", ""))),
+                "tyEnv":       f.get("Thank You Enviado", False),
+                "rEnv":        f.get("Review Pedida", False),
+                "dataFeita":   f.get("Created", ""),
             })
         cache_set("at", out)
         return jsonify({"success": True, "records": out})
@@ -738,6 +787,507 @@ def patch_guia(record_id):
         return jsonify({"error": str(e)}), 500
 
 
+
+# =========================================================================
+# AIRTABLE — FINANCEIRO  base: appOrdG5Fsr7N0RmH
+# Tabelas: Registos Diários, Resumos Mensais, Despesas Fixas,
+#          Despesas Variáveis, Objetivos & Crescimento, Caixa Mensal
+# =========================================================================
+
+@app.route("/airtable/diario", methods=["GET"])
+def get_diario():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        cached = cache_get("diario")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
+        records = airtable_list(BASE_FINANCEIRO, "Registos Diários")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":       rec["id"],
+                "data":     f.get("Data", ""),
+                "fat":      f.get("Faturação Diária", 0),
+                "fat_rc":   f.get("Faturação RC", 0),
+                "fat_at":   f.get("Faturação AT", 0),
+                "mes":      f.get("Resumo Mensal", ""),
+                "notas":    f.get("Notas do Dia", ""),
+                "resp":     f.get("Responsável", ""),
+            })
+        cache_set("diario", out)
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/diario", methods=["POST"])
+def create_diario():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_create(BASE_FINANCEIRO, "Registos Diários", fields)
+        cache_clear("diario")
+        return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/diario/<record_id>", methods=["PATCH"])
+def patch_diario(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_FINANCEIRO, "Registos Diários", record_id, fields)
+        cache_clear("diario")
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/resumos-mensais", methods=["GET"])
+def get_resumos_mensais():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        cached = cache_get("resumos_mensais")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
+        records = airtable_list(BASE_FINANCEIRO, "Resumos Mensais")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "mes":         f.get("Resumo Mensal", rec["id"]),
+                "fat":         f.get("Total de Faturação Mensal (€)", 0),
+                "fat_rc":      f.get("Faturação RC", 0),
+                "fat_at":      f.get("Faturação AT", 0),
+                "lucro":       f.get("Lucro Mensal (Automático)", 0),
+                "caixa":       f.get("Caixa Final (€)", 0),
+                "receita":     f.get("Receita Realizada", 0),
+                "obj":         f.get("Objetivo Mensal (€)", 0),
+                "diff_obj":    f.get("Diferença vs Objetivo", 0),
+                "desp_fixas":  f.get("Total de Despesas Fixas (€)", 0),
+                "desp_var":    f.get("Total de Despesas Variáveis (€)", 0),
+                "desp_total":  f.get("Total de Despesas (€)", 0),
+                "media_diaria":f.get("Média Diária de Faturação (€)", 0),
+                "dias_fat":    f.get("N.º de Dias com Faturação", 0),
+                "nres_rc":     f.get("Nº Reservas RC", 0),
+                "nres_at":     f.get("Nº Reservas AT", 0),
+                "status":      f.get("Status do Mês", ""),
+                "notas":       f.get("Notas do Mês", ""),
+            })
+        cache_set("resumos_mensais", out)
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/despesas-fixas", methods=["GET"])
+def get_despesas_fixas():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_FINANCEIRO, "Despesas Fixas")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "categoria":   f.get("Categoria", ""),
+                "valor":       f.get("Valor Mensal", 0),
+                "mes":         f.get("Resumo Mensal(s)", ""),
+                "fornecedor":  f.get("Fornecedor", ""),
+                "nif":         f.get("NIF Fornecedor", ""),
+                "metodo":      f.get("Método Pagamento", ""),
+                "recorrente":  f.get("Recorrente?", False),
+                "pago":        f.get("Pago?", False),
+                "notas":       f.get("Notas", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/despesas-variaveis", methods=["GET"])
+def get_despesas_variaveis():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_FINANCEIRO, "Despesas Variáveis")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "categoria":   f.get("Categoria", ""),
+                "valor":       f.get("Valor", 0),
+                "tipo":        f.get("Tipo Despesa", ""),
+                "fornecedor":  f.get("Fornecedor", ""),
+                "nif":         f.get("NIF Fornecedor", ""),
+                "metodo":      f.get("Método Pagamento", ""),
+                "pago":        f.get("Pago?", False),
+                "notas":       f.get("Notas", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/objetivos", methods=["GET"])
+def get_objetivos():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_FINANCEIRO, "Objetivos & Crescimento")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":              rec["id"],
+                "mes":             f.get("Objetivos", rec["id"]),
+                "obj_fat":         f.get("🎯 Objetivo Faturação (€)", 0),
+                "res_fat":         f.get("Resultado Faturação (€)", 0),
+                "dif_fat":         f.get("📊 Diferença Faturação (€)", 0),
+                "obj_lucro":       f.get("🎯 Objetivo Lucro (€)", 0),
+                "res_lucro":       f.get("Resultado Lucro (€)", 0),
+                "obj_reviews":     f.get("🎯 Objetivo Reviews", 0),
+                "res_reviews":     f.get("Resultado Reviews", 0),
+                "obj_ig":          f.get("🎯 Objetivo Instagram", 0),
+                "res_ig":          f.get("Resultado Instagram", 0),
+                "obj_fb":          f.get("🎯 Objetivo Facebook", 0),
+                "res_fb":          f.get("Resultado Facebook", 0),
+                "obj_tiktok":      f.get("🎯 Objetivo Tiktok", 0),
+                "res_tiktok":      f.get("Resultado Tiktok", 0),
+                "obj_views":       f.get("🎯 Objetivo Website Views", 0),
+                "res_views":       f.get("Resultado Website Views", 0),
+                "obj_users":       f.get("🎯 Objetivo Utilizadores Ativos", 0),
+                "res_users":       f.get("Resultado Utilizadores Ativos", 0),
+                "status":          f.get("Status Geral", ""),
+                "acoes":           f.get("Ações do Mês", ""),
+                "notas":           f.get("Notas", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/caixa-mensal", methods=["GET"])
+def get_caixa_mensal():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_FINANCEIRO, "Caixa Mensal")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "mes":         f.get("Caixa Mensal", rec["id"]),
+                "saldo_dinheiro": f.get("Saldo Dinheiro (€)", 0),
+                "saldo_banco": f.get("Saldo Banco (€)", 0),
+                "saldo_total": f.get("Saldo Total (€)", 0),
+                "fat_mes":     f.get("Faturação do Mês (€)", 0),
+                "desp_mes":    f.get("Despesas do Mês (€)", 0),
+                "lucro":       f.get("Lucro Calculado (€)", 0),
+                "diferenca":   f.get("Diferença vs Caixa Real (€)", 0),
+                "notas":       f.get("Notas", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/parceiros", methods=["GET"])
+def get_parceiros():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        cached = cache_get("parceiros")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
+        records = airtable_list(BASE_RESERVAS, "Parceiros")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":                   rec["id"],
+                "nome":                 f.get("Nome", f.get("Name", rec["id"])),
+                "categoria":            f.get("Categoria", ""),
+                "tel":                  f.get("Contacto Telefone", ""),
+                "email":                f.get("Email", ""),
+                "website":              f.get("Website", ""),
+                "morada":               f.get("Morada Office", ""),
+                "meeting_point":        f.get("Meeting Point", ""),
+                "comissao_tipo":        f.get("Comissão Tipo", ""),
+                "comissao_valor":       f.get("Comissão Valor", 0),
+                "comissao_notas":       f.get("Comissão Notas", ""),
+                "instrucoes_aeroporto": f.get("Instruções Aeroporto", ""),
+                "instrucoes_hotel":     f.get("Instruções Hotel", ""),
+                "instrucoes_office":    f.get("Instruções Office", ""),
+                "atividades":           f.get("Atividades / Passeios", ""),
+                "logo_url":             f.get("Logo URL", ""),
+                "notas":                f.get("Notas Internas", ""),
+                "ativo":                f.get("Ativo?", True),
+            })
+        cache_set("parceiros", out)
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/parceiros/<record_id>", methods=["PATCH"])
+def patch_parceiros(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_RESERVAS, "Parceiros", record_id, fields)
+        cache_clear("parceiros")
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/clientes", methods=["GET"])
+def get_clientes():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        cached = cache_get("clientes")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
+        records = airtable_list(BASE_RESERVAS, "Clientes")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":               rec["id"],
+                "email":            f.get("Email", ""),
+                "tel":              f.get("Telefone", ""),
+                "n_rc":             f.get("N RC", 0),
+                "n_at":             f.get("N AT", 0),
+                "total_rc":         f.get("Total Gasto RC", 0),
+                "total_at":         f.get("Total Gasto AT", 0),
+                "total":            f.get("Total Gasto", 0),
+                "n_total":          f.get("N Total Reservas", 0),
+                "primeira_reserva": f.get("Primeira Reserva", ""),
+                "ultima_reserva":   f.get("Ultima Reserva", ""),
+                "pais":             f.get("País", ""),
+                "notas":            f.get("Notas", ""),
+                "vip":              f.get("VIP?", False),
+            })
+        cache_set("clientes", out)
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/reviews", methods=["GET"])
+def get_reviews():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Reviews")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":         rec["id"],
+                "nome":       f.get("Nome Cliente", ""),
+                "email":      f.get("Email Cliente", ""),
+                "nota":       f.get("Nota (1-5)", 0),
+                "texto":      f.get("Texto Review", ""),
+                "data":       f.get("Data", ""),
+                "reserva":    f.get("Reserva Relacionada", ""),
+                "tipo":       f.get("Tipo Reserva", ""),
+                "respondido": f.get("Respondido?", False),
+                "resposta":   f.get("Resposta", ""),
+                "link":       f.get("Link Review", ""),
+                "notas":      f.get("Notas Internas", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/reviews/<record_id>", methods=["PATCH"])
+def patch_reviews(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_patch(BASE_RESERVAS, "Reviews", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/disponibilidade", methods=["GET"])
+def get_disponibilidade():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Disponibilidade")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":          rec["id"],
+                "carro":       f.get("Carro", ""),
+                "data_inicio": f.get("Data Início", ""),
+                "data_fim":    f.get("Data Fim", ""),
+                "motivo":      f.get("Motivo", ""),
+                "alternativa": f.get("Alternativa Sugerida", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/disponibilidade", methods=["POST"])
+def create_disponibilidade():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_create(BASE_RESERVAS, "Disponibilidade", fields)
+        return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/disponibilidade/<record_id>", methods=["PATCH"])
+def patch_disponibilidade(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_patch(BASE_RESERVAS, "Disponibilidade", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/frota", methods=["GET"])
+def get_frota():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Carros")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":            rec["id"],
+                "carro":         f.get("Carro", ""),
+                "tipo":          f.get("Tipo", ""),
+                "preco_baixa_12":  f.get("Preço Baixa 1-2d", 0),
+                "preco_baixa_36":  f.get("Preço Baixa 3-6d", 0),
+                "preco_baixa_7p":  f.get("Preço Baixa 7d+", 0),
+                "preco_alta_12":   f.get("Preço Alta 1-2d", 0),
+                "preco_alta_36":   f.get("Preço Alta 3-6d", 0),
+                "preco_alta_7p":   f.get("Preço Alta 7d+", 0),
+                "epoca_baixa_ini": f.get("Época Baixa Início", ""),
+                "epoca_baixa_fim": f.get("Época Baixa Fim", ""),
+                "epoca_alta_ini":  f.get("Época Alta Início", ""),
+                "epoca_alta_fim":  f.get("Época Alta Fim", ""),
+                "com_tipo":        f.get("Comissão Tipo", ""),
+                "com_valor":       f.get("Comissão Valor", 0),
+                "posicao":         f.get("Posição Hierarquia", 0),
+                "obs":             f.get("Observações", ""),
+                "ativo":           f.get("Ativo?", True),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/frota/<record_id>", methods=["PATCH"])
+def patch_frota(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_patch(BASE_RESERVAS, "Carros", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/tarefas", methods=["GET"])
+def get_tarefas():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Tarefas")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            # Primary field is the task title (first field, no fixed name)
+            titulo = ""
+            for k, v in f.items():
+                if isinstance(v, str) and k not in ["Responsável","Status","Urgência","Notas","Data Limite","Categoria","Criado Em","Concluído Em"]:
+                    titulo = v; break
+            out.append({
+                "id":          rec["id"],
+                "titulo":      titulo,
+                "responsavel": f.get("Responsável", ""),
+                "status":      f.get("Status", "Por Fazer"),
+                "urgencia":    f.get("Urgência", ""),
+                "notas":       f.get("Notas", ""),
+                "data_limite": f.get("Data Limite", ""),
+                "categoria":   f.get("Categoria", ""),
+                "criado_em":   f.get("Criado Em", ""),
+                "concluido_em":f.get("Concluído Em", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/tarefas", methods=["POST"])
+def create_tarefa():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_create(BASE_RESERVAS, "Tarefas", fields)
+        return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/tarefas/<record_id>", methods=["PATCH"])
+def patch_tarefa(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_patch(BASE_RESERVAS, "Tarefas", record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # =========================================================================
 # HEALTH
 # =========================================================================
@@ -757,11 +1307,25 @@ def health():
         "endpoints": [
             "/gerar-voucher",
             "/gerar-voucher-atividade",
-            "/airtable/rc",
-            "/airtable/at",
+            "GET  /airtable/rc",
+            "POST /airtable/rc",
+            "PATCH /airtable/rc/<id>",
+            "GET  /airtable/at",
+            "POST /airtable/at",
+            "PATCH /airtable/at/<id>",
             "/airtable/sitemap",
             "/airtable/biblioteca",
             "/airtable/guia",
+            "/airtable/reviews",
+            "/airtable/disponibilidade",
+            "/airtable/frota",
+            "/airtable/tarefas",
+            "/airtable/diario",
+            "/airtable/resumos-mensais",
+            "/airtable/despesas-fixas",
+            "/airtable/despesas-variaveis",
+            "/airtable/objetivos",
+            "/airtable/caixa-mensal",
         ]
     })
 
