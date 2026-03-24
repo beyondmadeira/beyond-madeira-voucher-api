@@ -1,226 +1,320 @@
 """
-Beyond Madeira — Car Rental Voucher API
-Runs on Google Cloud Run. Accepts POST with booking data, returns base64 PDF.
+Beyond Madeira - Voucher API
+POST /gerar-voucher           -> Car Rental PDF
+POST /gerar-voucher-atividade -> Activity PDF
+GET  /                        -> Health check
 """
 
-import os
-import io
-import base64
+import os, io, base64
 from flask import Flask, request, jsonify
-
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.lib.units import cm, mm
-from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame,
-    Paragraph, Spacer, Table, TableStyle, HRFlowable, Image as RLImage, Flowable)
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+from weasyprint import HTML
 
 app = Flask(__name__)
 
-# ── CORES ─────────────────────────────────────────────────────────────────────
-OCEAN    = colors.HexColor("#0A616B")
-INK      = colors.HexColor("#111827")
-INK_MED  = colors.HexColor("#374151")
-INK_S    = colors.HexColor("#6B7280")
-INK_XS   = colors.HexColor("#9CA3AF")
-RULE     = colors.HexColor("#D1D5DB")
-BG       = colors.HexColor("#F8FAFC")
-WHITE    = colors.white
-AMBER    = colors.HexColor("#92400E")
-AMBER_LT = colors.HexColor("#FEF3C7")
-AMBER_BD = colors.HexColor("#D97706")
+API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
+BASE_DIR = os.path.dirname(__file__)
 
-P = 9; GAP = 0.45*cm; R = 6
 
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo_clean.png")
+def logo_b64():
+    with open(os.path.join(BASE_DIR, "logo_clean.png"), "rb") as f:
+        return "data:image/png;base64," + base64.b64encode(f.read()).decode()
 
-def tx(text, sz=8, bold=False, color=INK, align=TA_LEFT, italic=False, lead=None):
-    fn = 'Helvetica-Bold' if bold else 'Helvetica-Oblique' if italic else 'Helvetica'
-    return Paragraph(str(text), ParagraphStyle('_', fontSize=sz, fontName=fn,
-        textColor=color, alignment=align, leading=lead or sz*1.5, spaceBefore=0, spaceAfter=0))
+def fill(tmpl, data):
+    for k, v in data.items():
+        tmpl = tmpl.replace("{{" + k + "}}", str(v) if v is not None else "")
+    return tmpl
 
-def lbl(t): return tx(t, 6, bold=True, color=INK_XS)
+def check_key():
+    return request.headers.get("X-API-Key") == API_KEY
 
-class RoundedCard(Flowable):
-    def __init__(self, inner, radius=6, bg=BG, border_color=RULE, border_width=0.8):
-        super().__init__()
-        self._inner = inner; self.r = radius
-        self.bg = bg; self.bc = border_color; self.bw = border_width
-    def wrap(self, aw, ah):
-        self._w, self._h = self._inner.wrap(aw, ah); return self._w, self._h
-    def draw(self):
-        cv = self.canv
-        cv.setFillColor(self.bg); cv.setStrokeColor(self.bc); cv.setLineWidth(self.bw)
-        cv.roundRect(0, 0, self._w, self._h, self.r, fill=1, stroke=1)
-        self._inner.drawOn(cv, 0, 0)
+def fmt_date(s):
+    from datetime import datetime
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.strftime("%-d %b %Y")
+    except:
+        return s
 
-def card(data, col_widths, extra_styles=[]):
-    inner = Table(data, colWidths=col_widths)
-    inner.setStyle(TableStyle([
-        ('BACKGROUND',   (0,0), (-1,-1), colors.transparent),
-        ('TOPPADDING',   (0,0), (-1,-1), P),
-        ('BOTTOMPADDING',(0,0), (-1,-1), P),
-        ('LEFTPADDING',  (0,0), (-1,-1), P),
-        ('RIGHTPADDING', (0,0), (-1,-1), P),
-        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
-    ] + extra_styles))
-    return RoundedCard(inner, radius=R)
+def fmt_time(s):
+    from datetime import datetime
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.strftime("%H:%M")
+    except:
+        return s
 
-PW, PH = A4
-ML = MR = 1.6*cm; MT = 1.3*cm; MB = 1.3*cm
-UW = PW - ML - MR
-W2 = UW/2; W3 = UW/3; W6 = UW*0.58; W4 = UW*0.42; WL = UW*0.27; WR = UW*0.73
 
-class Doc(BaseDocTemplate):
-    def __init__(self, fn, **kw):
-        super().__init__(fn, **kw)
-        fr = Frame(ML, MB, UW, PH-MT-MB, id='body')
-        self.addPageTemplates([PageTemplate(id='p', frames=fr, onPage=self._bg)])
-    def _bg(self, cv, doc):
-        cv.setFillColor(WHITE); cv.rect(0,0,PW,PH,fill=1,stroke=0)
-        cv.setFillColor(OCEAN); cv.rect(0,PH-4*mm,PW,4*mm,fill=1,stroke=0)
-        cv.setStrokeColor(RULE); cv.setLineWidth(0.5)
-        cv.line(ML, 1.0*cm, PW-MR, 1.0*cm)
-        cv.setFillColor(INK_XS); cv.setFont("Helvetica", 6)
-        cv.drawString(ML, 0.65*cm, "Beyond Madeira  ·  RNAVT 13020  ·  NIPC 518 827 119  ·  Funchal, Madeira, Portugal")
-        cv.drawRightString(PW-MR, 0.65*cm, "beyondmadeira.com  ·  +351 939 566 415")
+# =========================================================================
+# RENT CAR
+# =========================================================================
 
-def gerar_voucher_bytes(d):
-    buf = io.BytesIO()
-    doc = Doc(buf, pagesize=A4, rightMargin=MR, leftMargin=ML, topMargin=MT, bottomMargin=MB)
-    s = []
+def build_rc_html(d):
+    with open(os.path.join(BASE_DIR, "voucher_rc_template.html")) as f:
+        tmpl = f.read()
 
-    logo = RLImage(LOGO_PATH, width=2.7*cm, height=1.55*cm)
-    rh = Table([
-        [tx("CAR RENTAL VOUCHER", 7, bold=True, color=INK_S, align=TA_RIGHT)],
-        [tx("Rental Confirmation", 15, bold=True, color=INK, align=TA_RIGHT)],
-        [tx("Present this document at vehicle pick-up.", 7, color=INK_S, align=TA_RIGHT, italic=True)],
-    ], colWidths=[UW-3.8*cm])
-    rh.setStyle(TableStyle([('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),1),
-        ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0)]))
-    hdr = Table([[logo, rh]], colWidths=[3.8*cm, UW-3.8*cm])
-    hdr.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-        ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0),
-        ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0)]))
-    s.append(hdr); s.append(Spacer(1, 0.3*cm))
-    s.append(HRFlowable(width="100%", thickness=1.5, color=OCEAN, spaceAfter=0.35*cm))
+    # Parse ISO datetimes if needed
+    for field in ["pickup_data", "dropoff_data"]:
+        val = d.get(field, "")
+        if "T" in val or "Z" in val:
+            d[field.replace("data","hora")] = fmt_time(val)
+            d[field] = fmt_date(val)
 
-    s.append(card([
-        [lbl("BOOKING REFERENCE"), lbl("TOTAL AMOUNT")],
-        [tx(d["referencia"], 19, bold=True, color=OCEAN), tx(d["total"], 19, bold=True, color=INK)],
-        [tx("Issued by Beyond Madeira · RNAVT 13020", 6.5, color=INK_XS, italic=True), tx(" ", 6.5)],
-    ], [W2, W2], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
-    s.append(Spacer(1, GAP))
+    # Optional sub-lines (flight / hotel)
+    pu_extra = ""
+    if d.get("pickup_voo"):
+        pu_extra += f'<div class="date-sub">Flight: {d["pickup_voo"]}</div>'
+    if d.get("pickup_hotel"):
+        pu_extra += f'<div class="date-sub">{d["pickup_hotel"]}</div>'
 
-    s.append(card([
-        [lbl("VEHICLE"), lbl("RENTAL COMPANY")],
-       [tx(d["veiculo"] + " or similar", 9, bold=True, color=INK), tx(d["empresa"], 9, bold=True, color=OCEAN)],
-    ], [W6, W4], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
-    s.append(Spacer(1, GAP))
+    do_extra = ""
+    if d.get("dropoff_voo"):
+        do_extra += f'<div class="date-sub">Flight: {d["dropoff_voo"]}</div>'
+    if d.get("dropoff_hotel"):
+        do_extra += f'<div class="date-sub">{d["dropoff_hotel"]}</div>'
 
-    s.append(card([
-        [lbl("CLIENT"), lbl("PHONE"), lbl("EMAIL")],
-        [tx(d["cliente"], 9, bold=True, color=INK),
-         tx(d["telefone"], 9, bold=True, color=INK),
-         tx(d["email"], 8.5, color=INK)],
-    ], [W3, W3, W3], [('LINEAFTER',(0,0),(0,-1),0.5,RULE),('LINEAFTER',(1,0),(1,-1),0.5,RULE)]))
-    s.append(Spacer(1, GAP))
+    d["pickup_extra"]  = pu_extra
+    d["dropoff_extra"] = do_extra
+    d.setdefault("extras", "None")
+    d.setdefault("empresa_telefone", "")
+    d.setdefault("empresa_email", "")
 
-    s.append(card([
-        [lbl("PICK-UP"),                                      lbl("DROP-OFF")],
-        [tx(d["pickup_data"], 12, bold=True, color=INK),      tx(d["dropoff_data"], 12, bold=True, color=INK)],
-        [tx(d["pickup_hora"], 10, bold=True, color=OCEAN),    tx(d["dropoff_hora"], 10, bold=True, color=OCEAN)],
-        [tx(d["pickup_local"], 8, color=INK_S),               tx(d["dropoff_local"], 8, color=INK_S)],
-    ], [W2, W2], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
-    s.append(Spacer(1, GAP))
-
-    extras_inner = Table([[
-        tx("EXTRAS", 7, bold=True, color=AMBER),
-        tx(d.get("extras", "Extra driver, child seat, GPS and other add-ons are available and paid directly at pick-up."), 8, color=AMBER),
-    ]], colWidths=[WL, WR])
-    extras_inner.setStyle(TableStyle([
-        ('BACKGROUND',(0,0),(-1,-1), colors.transparent),
-        ('LINEAFTER',(0,0),(0,-1),0.5,AMBER_BD),
-        ('TOPPADDING',(0,0),(-1,-1),P),('BOTTOMPADDING',(0,0),(-1,-1),P),
-        ('LEFTPADDING',(0,0),(-1,-1),P),('RIGHTPADDING',(0,0),(-1,-1),P),
-        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-    ]))
-    s.append(RoundedCard(extras_inner, radius=R, bg=AMBER_LT, border_color=AMBER_BD))
-    s.append(Spacer(1, GAP))
-
-    s.append(card([
-        [tx("CANCELLATION POLICY", 7, bold=True, color=OCEAN),
-         tx("Free cancellation up to <b>24 hours before</b> pick-up. Late cancellations or no-shows may incur a fee.", 8, color=INK_MED)],
-    ], [WL, WR], [('LINEAFTER',(0,0),(0,-1),0.5,RULE)]))
-    s.append(Spacer(1, 0.35*cm))
-
-    s.append(tx("* Insurance coverage, terms and conditions are governed solely by the rental company's own contract.",
-        7, color=INK_XS, italic=True))
-    s.append(Spacer(1, 0.25*cm))
-
-    s.append(HRFlowable(width="100%", thickness=0.5, color=RULE, spaceAfter=0.15*cm))
-    s.append(tx(
-        "Beyond Madeira (RNAVT 13020) acts exclusively as a booking intermediary pursuant to Decreto-Lei n.o 61/2011. "
-        "Beyond Madeira is not a party to the rental agreement and assumes no liability for vehicle condition, insurance, "
-        "accidents, or disputes. All rental terms are governed by the contract issued by the rental company at pick-up. "
-        "Personal data processed under GDPR for booking fulfilment only.",
-        6.5, color=INK_XS, italic=True, lead=9.5))
-
-    doc.build(s)
-    buf.seek(0)
-    return buf.read()
+    tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
+    return fill(tmpl, d)
 
 
 @app.route("/gerar-voucher", methods=["POST"])
-def gerar_voucher_endpoint():
+def gerar_voucher():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
     try:
         d = request.get_json()
         if not d:
             return jsonify({"error": "JSON body required"}), 400
 
-        required = ["referencia", "total", "veiculo", "empresa", "cliente",
-                    "telefone", "email", "pickup_data", "pickup_hora",
-                    "pickup_local", "dropoff_data", "dropoff_hora", "dropoff_local"]
+        required = ["referencia", "total", "veiculo", "empresa",
+                    "cliente", "telefone", "email",
+                    "pickup_data", "pickup_hora", "pickup_local",
+                    "dropoff_data", "dropoff_hora", "dropoff_local"]
         missing = [f for f in required if not d.get(f)]
         if missing:
-            return jsonify({"error": f"Campos em falta: {missing}"}), 400
+            return jsonify({"error": f"Missing fields: {missing}"}), 400
 
-        from datetime import datetime
-        def fmt_date(s):
-            try:
-                dt = datetime.fromisoformat(s.replace('Z','+00:00'))
-                return dt.strftime('%-d %b %Y')
-            except:
-                return s
-        def fmt_time(s):
-            try:
-                dt = datetime.fromisoformat(s.replace('Z','+00:00'))
-                return dt.strftime('%H:%M')
-            except:
-                return s
-        d['pickup_hora'] = fmt_time(d.get('pickup_data',''))
-        d['dropoff_hora'] = fmt_time(d.get('dropoff_data',''))
-        d['pickup_data'] = fmt_date(d.get('pickup_data',''))
-        d['dropoff_data'] = fmt_date(d.get('dropoff_data',''))
-        pdf_bytes = gerar_voucher_bytes(d)
-        pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-
-        filename = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ', '_')}.pdf"
-
-        return jsonify({
-            "success": True,
-            "filename": filename,
-            "pdf_base64": pdf_b64
-        })
+        html  = build_rc_html(d)
+        pdf   = HTML(string=html).write_pdf()
+        b64   = base64.b64encode(pdf).decode()
+        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+# =========================================================================
+# ACTIVITY VOUCHER
+# =========================================================================
+
+def build_at_html(d):
+    with open(os.path.join(BASE_DIR, "voucher_at_template.html")) as f:
+        tmpl = f.read()
+
+    status   = d.get("status", "confirmed").lower()
+    pagamento = d.get("pagamento", "cash").lower()
+
+    # Status label
+    if status == "paid":
+        d["status_label"] = "Paid \u2713"
+        d["status_class"] = "paid"
+    elif status == "awaiting":
+        d["status_label"] = "Awaiting Payment"
+        d["status_class"] = "awaiting"
+    else:
+        d["status_label"] = "Confirmed"
+        d["status_class"] = ""
+
+    # Price card class
+    if status == "paid":
+        d["price_class"] = "paid"
+        d["price_note"]  = "Payment received"
+    elif status == "awaiting":
+        d["price_class"] = "awaiting"
+        d["price_note"]  = "Payment required"
+    else:
+        d["price_class"] = "cash"
+        if "card" in pagamento and "cash" in pagamento:
+            d["price_note"] = "Cash or card on the day"
+        elif "card" in pagamento:
+            d["price_note"] = "Card on the day"
+        else:
+            d["price_note"] = "Cash on the day"
+
+    # Start time style
+    hora = d.get("hora", "TBC")
+    d["start_time_class"] = "tbc" if hora == "TBC" else "accent"
+
+    # Payment alert block
+    total = d.get("total", "")
+    if status == "awaiting":
+        d["payment_alert_html"] = f"""
+<div class="pay-alert awaiting">
+  <div class="pa-dot awaiting">!</div>
+  <div>
+    <div class="pa-title awaiting">Payment Required Before the Activity</div>
+    <div class="pa-body awaiting">Please transfer <strong>{total}&euro;</strong> via MB Way
+    (+351 939 566 415) or bank transfer. Send proof of payment to
+    <strong>booking@beyondmadeira.com</strong></div>
+  </div>
+</div>"""
+    elif status == "paid":
+        d["payment_alert_html"] = f"""
+<div class="pay-alert paid">
+  <div class="pa-dot paid">&#10003;</div>
+  <div>
+    <div class="pa-title paid">Payment Confirmed</div>
+    <div class="pa-body paid">Your payment of <strong>{total}&euro;</strong> has been received.
+    No further payment required &mdash; just show up and enjoy!</div>
+  </div>
+</div>"""
+    else:
+        d["payment_alert_html"] = ""
+
+    # Payment method block (only for confirmed)
+    if status == "confirmed":
+        pm_map = {
+            "cash":      ("Payment: Cash Only",    "To be paid in cash on the day of the activity."),
+            "card":      ("Payment: Card Only",    "To be paid by card on the day of the activity."),
+            "cash_card": ("Payment: Cash or Card", "To be paid on the day &mdash; cash or card both accepted."),
+        }
+        pm_key = "cash_card" if ("card" in pagamento and "cash" in pagamento) else \
+                 "card" if "card" in pagamento else "cash"
+        pm_title, pm_body = pm_map[pm_key]
+        d["payment_method_html"] = f"""
+<div class="paymethod">
+  <div class="pm-dot">$</div>
+  <div><div class="pm-title">{pm_title}</div><div class="pm-body">{pm_body}</div></div>
+</div>"""
+    else:
+        d["payment_method_html"] = ""
+
+    # Pickup / meeting point block
+    pickup_mode = d.get("pickup_mode", "none")
+    pickup_loc  = d.get("pickup_local", "")
+    hotel_det   = d.get("hotel_detail", "")
+    hora_conf   = d.get("hora_confirmada", "")
+
+    if pickup_mode != "none" and pickup_loc:
+        if pickup_mode == "meeting_point":
+            loc_label = "MEETING POINT"
+            loc_note  = "Please make your own way to the meeting point at the time indicated."
+        elif pickup_mode == "pickup_time_confirmed":
+            loc_label = "PICK-UP"
+            loc_note  = f"Pick-up at <strong>{hora_conf}</strong>." if hora_conf else "Pick-up time confirmed."
+        elif pickup_mode == "pickup_day_before":
+            loc_label = "PICK-UP LOCATION"
+            loc_note  = "Pick-up time will be sent to you the day before the activity."
+        else:
+            loc_label = "PICK-UP LOCATION"
+            loc_note  = "Pick-up time will be confirmed closer to the date."
+
+        hotel_line = f'<div class="pickup-sub">{hotel_det}</div>' if hotel_det else ""
+        d["pickup_html"] = f"""
+<div class="pickup-card">
+  <div class="pickup-dot">&#9679;</div>
+  <div>
+    <div class="pickup-lbl">{loc_label}</div>
+    <div class="pickup-loc">{pickup_loc}</div>
+    {hotel_line}
+    <div class="pickup-note">{loc_note}</div>
+  </div>
+</div>"""
+    else:
+        d["pickup_html"] = ""
+
+    # Special requests
+    if d.get("pedido_especial"):
+        d["special_requests_html"] = f"""
+<div class="special-req">
+  <div class="sr-label">Special Requests</div>
+  <div class="sr-text">{d["pedido_especial"]}</div>
+</div>"""
+    else:
+        d["special_requests_html"] = ""
+
+    # Invoice rows
+    items = d.get("items", [])
+    if not items:
+        hora_inv = d.get("hora", "TBC")
+        items = [{
+            "nome":    d.get("atividade", ""),
+            "detalhe": f"{d.get('data','')} &middot; {hora_inv}",
+            "qty":     d.get("pax", ""),
+            "unit":    d.get("preco_unit", ""),
+            "sub":     d.get("total", ""),
+        }]
+    rows_html = ""
+    for it in items:
+        unit_str = f"&euro;{it['unit']}" if it.get("unit") else ""
+        rows_html += f"""
+<div class="inv-row">
+  <div class="inv-prod">
+    <div class="inv-name">{it.get("nome","")}</div>
+    <div class="inv-detail">{it.get("detalhe","")}</div>
+  </div>
+  <div class="inv-qty">{it.get("qty","")}x</div>
+  <div class="inv-unit">{unit_str}</div>
+  <div class="inv-sub">&euro;{it.get("sub","")}</div>
+</div>"""
+    d["invoice_rows_html"] = rows_html
+
+    d.setdefault("cancelamento",
+        "Free cancellation up to <strong>48 hours</strong> before the activity. "
+        "Late cancellations or no-shows may incur a fee.")
+    d.setdefault("mensagem_confirmacao",
+        "Your reservation is confirmed &mdash; no payment required at this stage. "
+        "The total amount is to be paid in cash on the day of the activity. "
+        "You will receive further details closer to the date, including your exact pick-up time.")
+    d.setdefault("operador_telefone", "")
+    d.setdefault("operador_email", "")
+    d.setdefault("bokun_ref", "")
+
+    tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
+    return fill(tmpl, d)
+
+
+@app.route("/gerar-voucher-atividade", methods=["POST"])
+def gerar_voucher_atividade():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d = request.get_json()
+        if not d:
+            return jsonify({"error": "JSON body required"}), 400
+
+        required = ["referencia", "atividade", "data", "cliente", "total"]
+        missing = [f for f in required if not d.get(f)]
+        if missing:
+            return jsonify({"error": f"Missing fields: {missing}"}), 400
+
+        html  = build_at_html(d)
+        pdf   = HTML(string=html).write_pdf()
+        b64   = base64.b64encode(pdf).decode()
+        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================================================================
+# HEALTH
+# =========================================================================
+
 @app.route("/", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "Beyond Madeira Voucher API"})
+    return jsonify({
+        "status": "ok",
+        "service": "Beyond Madeira Voucher API",
+        "endpoints": ["/gerar-voucher", "/gerar-voucher-atividade"]
+    })
 
 
 if __name__ == "__main__":
