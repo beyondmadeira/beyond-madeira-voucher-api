@@ -22,6 +22,29 @@ from weasyprint import HTML
 
 app = Flask(__name__)
 CORS(app, origins=["https://hub.beyondmadeira.com", "https://hub-crm.8vesjw.easypanel.host", "http://localhost", "file://"])
+
+# =========================================================================
+# CACHE — 30 minute TTL
+# =========================================================================
+import time
+_cache = {}
+CACHE_TTL = 6 * 60 * 60  # 6 hours
+
+def cache_get(key):
+    if key in _cache:
+        data, ts = _cache[key]
+        if time.time() - ts < CACHE_TTL:
+            return data
+    return None
+
+def cache_set(key, data):
+    _cache[key] = (data, time.time())
+
+def cache_clear(key=None):
+    if key:
+        _cache.pop(key, None)
+    else:
+        _cache.clear()
 API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 BASE_DIR = os.path.dirname(__file__)
 
@@ -473,6 +496,9 @@ def get_rc():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
+        cached = cache_get("rc")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
         records = airtable_list(BASE_RESERVAS, "Rent Car")
         out = []
         for rec in records:
@@ -506,6 +532,7 @@ def get_rc():
                 "rEnv":        f.get("Review Enviado", False),
                 "dataFeita":   f.get("Data Feita a Reserva", f.get("Data Feita", f.get("Created Time", ""))),
             })
+        cache_set("rc", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -521,6 +548,7 @@ def patch_rc(record_id):
         if not fields:
             return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_RESERVAS, "Rent Car", record_id, fields)
+        cache_clear("rc")  # invalidate cache after update
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -531,6 +559,9 @@ def get_at():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
+        cached = cache_get("at")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
         records = airtable_list(BASE_RESERVAS, "Atividades")
         out = []
         for rec in records:
@@ -557,6 +588,7 @@ def get_at():
                 "rEnv":        f.get("Review Pedida", f.get("Review Enviado", False)),
                 "dataFeita":   f.get("Created", f.get("Data Feita", f.get("Created Time", ""))),
             })
+        cache_set("at", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -572,6 +604,7 @@ def patch_at(record_id):
         if not fields:
             return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_RESERVAS, "Atividades", record_id, fields)
+        cache_clear("at")  # invalidate cache after update
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -708,6 +741,14 @@ def patch_guia(record_id):
 # =========================================================================
 # HEALTH
 # =========================================================================
+@app.route("/cache/clear", methods=["POST"])
+def clear_cache():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    cache_clear()
+    return jsonify({"success": True, "message": "Cache cleared"})
+
+
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({
