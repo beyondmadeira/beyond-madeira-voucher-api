@@ -350,7 +350,12 @@ def build_at_html(d):
     # Payment alert
     total = d.get("total", "")
     if status == "awaiting":
-        d["payment_alert_html"] = f'<div class="pay-alert awaiting"><div class="pa-dot awaiting">!</div><div><div class="pa-title awaiting">Payment Required Before the Activity</div><div class="pa-body awaiting">Please transfer <strong>{total}&euro;</strong> via MB Way (+351 939 566 415) or bank transfer. Send proof of payment to <strong>booking@beyondmadeira.com</strong></div></div></div>'
+        stripe_link = d.get("stripe_link", "")
+        if stripe_link:
+            pay_btn = f'<a href="{stripe_link}" style="display:inline-block;margin-top:12px;background:var(--amber);color:#fff;font-weight:800;font-size:13px;padding:10px 24px;border-radius:8px;text-decoration:none;letter-spacing:-.2px;">Pay Now &rarr;</a>'
+        else:
+            pay_btn = ""
+        d["payment_alert_html"] = f'<div class="pay-alert awaiting"><div class="pa-dot awaiting">!</div><div><div class="pa-title awaiting">Payment Required Before the Activity</div><div class="pa-body awaiting">To secure your booking, please complete your payment securely online.{pay_btn}</div></div></div>'
     elif status == "paid":
         d["payment_alert_html"] = f'<div class="pay-alert paid"><div class="pa-dot paid">&#10003;</div><div><div class="pa-title paid">Payment Confirmed</div><div class="pa-body paid">Your payment of <strong>{total}&euro;</strong> has been received. No further payment required &mdash; just show up and enjoy!</div></div></div>'
     else:
