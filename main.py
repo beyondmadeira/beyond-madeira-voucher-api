@@ -17,9 +17,11 @@ GET  /                           -> Health check
 
 import os, re, base64, requests as req_lib
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from weasyprint import HTML
 
 app = Flask(__name__)
+CORS(app, origins=["https://hub.beyondmadeira.com", "https://hub-crm.8vesjw.easypanel.host", "http://localhost", "file://"])
 API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 BASE_DIR = os.path.dirname(__file__)
 
@@ -471,21 +473,21 @@ def get_rc():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
-        records = airtable_list(BASE_RESERVAS, "Rent Car")
+        records = airtable_list(BASE_RESERVAS, "Rent Car - geral")
         out = []
         for rec in records:
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
                 "ref":         f.get("Referência", f.get("Referencia", "")),
-                "nome":        f.get("Nome do Cliente", ""),
-                "tel":         f.get("Telefone", ""),
-                "email":       f.get("Email", ""),
+                "nome":        f.get("Nome do cliente", f.get("Nome do Cliente", "")),
+                "tel":         f.get("Número de Telemovel", f.get("Telefone", "")),
+                "email":       f.get("Email do cliente", f.get("Email", "")),
                 "idade":       f.get("Idade", ""),
                 "parceiro":    f.get("Parceiro", ""),
-                "carro":       f.get("Veículo", f.get("Veiculo", "")),
+                "carro":       f.get("Modelo de Carro", f.get("Veículo", f.get("Veiculo", ""))),
                 "estado":      f.get("Estado da Reserva", ""),
-                "pagamento":   f.get("Pagamento", ""),
+                "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
                 "pdt":         f.get("Data Pick-up", ""),
                 "ploc":        f.get("Local Pick-up", ""),
                 "pvoo":        f.get("Voo Pick-up", ""),
@@ -494,7 +496,7 @@ def get_rc():
                 "dloc":        f.get("Local Drop-off", ""),
                 "dvoo":        f.get("Voo Drop-off", ""),
                 "ddet":        f.get("Detalhe Drop-off", ""),
-                "total":       f.get("Total", 0),
+                "total":       f.get("Valor da Reserva (€)", f.get("Total", 0)),
                 "com":         f.get("Comissão", f.get("Comissao", 0)),
                 "dur":         f.get("Duração", f.get("Duracao", 0)),
                 "ext":         f.get("Extras", ""),
@@ -518,7 +520,7 @@ def patch_rc(record_id):
         fields = body.get("fields", {})
         if not fields:
             return jsonify({"error": "No fields provided"}), 400
-        result = airtable_patch(BASE_RESERVAS, "Rent Car", record_id, fields)
+        result = airtable_patch(BASE_RESERVAS, "Rent Car - geral", record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -537,18 +539,18 @@ def get_at():
                 "id":          rec["id"],
                 "ref":         f.get("Referência", f.get("Referencia", "")),
                 "nome":        f.get("Nome do Cliente", ""),
-                "tel":         f.get("Telefone", ""),
-                "email":       f.get("Email", ""),
+                "tel":         f.get("Contacto Telefonico", f.get("Telefone", "")),
+                "email":       f.get("Email Clientes", f.get("Email", "")),
                 "atv":         f.get("Atividade", ""),
                 "cat":         f.get("Categoria", ""),
                 "par":         f.get("Parceiro", ""),
                 "pess":        f.get("Nº Pessoas", f.get("Pessoas", "")),
                 "data":        f.get("Data", ""),
                 "hora":        f.get("Hora", ""),
-                "total":       f.get("Total", 0),
+                "total":       f.get("Valor da Reserva (€)", f.get("Total", 0)),
                 "com":         f.get("Comissão", f.get("Comissao", 0)),
                 "estado":      f.get("Estado da Reserva", ""),
-                "pagamento":   f.get("Pagamento", ""),
+                "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
                 "obs":         f.get("Observações", f.get("Observacoes", "")),
                 "local":       f.get("Local", ""),
                 "eEnv":        f.get("Email Enviado", False),
