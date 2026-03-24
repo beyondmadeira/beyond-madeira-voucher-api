@@ -234,6 +234,25 @@ def build_rc_html(d):
     d.setdefault("empresa_telefone", "")
     d.setdefault("empresa_email", "")
 
+    # Build empresa contact block — only show if there's actual contact info
+    tel = d.get("empresa_telefone", "")
+    eml = d.get("empresa_email", "")
+    if tel or eml:
+        det = ""
+        if tel: det += tel
+        if tel and eml: det += "<br>"
+        if eml: det += eml
+        d["empresa_contact_block"] = f'<div class="contact-card"><div class="contact-lbl">Rental Company</div><div class="contact-name">{empresa}</div><div class="contact-det">{det}</div></div>'
+    else:
+        d["empresa_contact_block"] = ""
+
+    # Build contacts row — full width if no partner contact
+    beyond_card = '<div class="contact-card"><div class="contact-lbl">Beyond Madeira</div><div class="contact-name">Booking Support</div><div class="contact-det">+351 939 566 415<br>booking@beyondmadeira.com</div></div>'
+    if d["empresa_contact_block"]:
+        d["contacts_row_html"] = f'<div class="contacts-row">{d["empresa_contact_block"]}{beyond_card}</div>'
+    else:
+        d["contacts_row_html"] = f'<div class="contacts-row">{beyond_card}</div>'
+
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
     return fill(tmpl, d)
 
