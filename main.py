@@ -473,7 +473,7 @@ def get_rc():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
-        records = airtable_list(BASE_RESERVAS, "Rent Car - geral")
+        records = airtable_list(BASE_RESERVAS, "Rent Car")
         out = []
         for rec in records:
             f = rec.get("fields", {})
@@ -520,7 +520,7 @@ def patch_rc(record_id):
         fields = body.get("fields", {})
         if not fields:
             return jsonify({"error": "No fields provided"}), 400
-        result = airtable_patch(BASE_RESERVAS, "Rent Car - geral", record_id, fields)
+        result = airtable_patch(BASE_RESERVAS, "Rent Car", record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
