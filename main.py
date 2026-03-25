@@ -1299,7 +1299,8 @@ def patch_tarefa(record_id):
 #   RC: Data do Drop Off  — de dia 1 a último dia do mês, excluir Cancelado
 # =========================================================================
 
-TAB_EXTRATO = "tblVsIz5Ubsy8x0JE"
+BASE_EXTRATO = "appRGJjirAzgEe46q"   # Base separada para Extrato Parceiros
+TAB_EXTRATO  = "tblHmWDHM64Dy4iwi"   # Tabela Extrato Parceiros
 TAB_AT_ID   = "tblla0uOKTcyboVXU"
 TAB_RC_ID   = "tblGc8HoEYOA5uG5Q"
 
@@ -1714,12 +1715,18 @@ def gerar_extrato_parceiro():
         pdf_bytes = HTML(string=html_str).write_pdf()
         b64       = base64.b64encode(pdf_bytes).decode()
 
-        # Upload to Airtable
+        # Upload to Airtable — always ONE file (clear first, then upload)
         uploaded = False
         if do_upload and record_id and record_id.startswith("rec"):
             try:
-                airtable_upload_attachment(BASE_RESERVAS, record_id, "Extrato Beyond", pdf_bytes, fname)
-                airtable_patch(BASE_RESERVAS, TAB_EXTRATO, record_id, {
+                # Step 1: Clear existing attachment so only ONE file exists
+                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {
+                    "Extrato Beyond": [],  # clear all existing files
+                })
+                # Step 2: Upload new PDF
+                airtable_upload_attachment(BASE_EXTRATO, record_id, "Extrato Beyond", pdf_bytes, fname)
+                # Step 3: Update value and confirmation status
+                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {
                     "Valor do mês (€)": round(tots["comiss"], 2),
                     "Confirmado pela Beyond Madeira?": True,
                 })
@@ -1760,7 +1767,7 @@ def gerar_extratos_mes():
             return jsonify({"error": "mes obrigatório"}), 400
 
         formula = f'{{Mês}} = "{mes_str}"'
-        registos = airtable_list_table(BASE_RESERVAS, TAB_EXTRATO, formula=formula)
+        registos = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO, formula=formula)
         if not registos:
             return jsonify({"success": True, "results": [],
                             "message": f"Nenhum parceiro em {mes_str}"})
@@ -1786,8 +1793,12 @@ def gerar_extratos_mes():
                 uploaded  = False
                 if reg["id"].startswith("rec") and tots["comiss"] > 0:
                     try:
-                        airtable_upload_attachment(BASE_RESERVAS, reg["id"], "Extrato Beyond", pdf_bytes, fname)
-                        airtable_patch(BASE_RESERVAS, TAB_EXTRATO, reg["id"], {
+                        # Clear existing file first — only ONE extrato per record
+                        airtable_patch(BASE_EXTRATO, TAB_EXTRATO, reg["id"], {
+                            "Extrato Beyond": [],
+                        })
+                        airtable_upload_attachment(BASE_EXTRATO, reg["id"], "Extrato Beyond", pdf_bytes, fname)
+                        airtable_patch(BASE_EXTRATO, TAB_EXTRATO, reg["id"], {
                             "Valor do mês (€)": round(tots["comiss"], 2),
                             "Confirmado pela Beyond Madeira?": True,
                         })
@@ -1811,6 +1822,21 @@ def gerar_extratos_mes():
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
+@app.route("/airtable/extrato-parceiros/<record_id>", methods=["PATCH"])
+def patch_extrato_parceiro(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        result = airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, fields)
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/airtable/extrato-parceiros", methods=["GET"])
 def get_extrato_parceiros():
     if not check_key():
@@ -1818,7 +1844,7 @@ def get_extrato_parceiros():
     try:
         mes = request.args.get("mes", "")
         formula = f'{{Mês}} = "{mes}"' if mes else None
-        records = airtable_list_table(BASE_RESERVAS, TAB_EXTRATO, formula=formula)
+        records = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO, formula=formula)
         out = []
         for rec in records:
             f = rec.get("fields", {})
