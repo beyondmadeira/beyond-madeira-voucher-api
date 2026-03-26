@@ -1603,7 +1603,7 @@ def calc_totais(rows):
                 gt=gt, gc=gc, comiss=comiss, credito=credito, total_fim=total_fim)
 
 
-def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots):
+def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=None):
     from datetime import datetime
     today = datetime.now().strftime("%d/%m/%Y")
     t = tots
@@ -2401,7 +2401,7 @@ def delete_nota(record_id):
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         url = f"https://api.airtable.com/v0/{BASE_RESERVAS}/Notas/{record_id}"
-        resp = requests.delete(url, headers=AIRTABLE_HEADERS)
+        resp = req_lib.delete(url, headers=AT_HEADERS(), timeout=15)
         cache_clear("notas")
         return jsonify({"success": resp.ok})
     except Exception as e:
