@@ -1611,12 +1611,13 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
     def _row_html(r, bg):
         sc = {"Pago":"#166534","Por Pagar":"#111827","Devemos":"#991B1B","Cancelado":"#6B7280"}.get(r["status"],"#6B7280")
         strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
-        pax = str(r.get("pax") or "\u2014").replace(" Pessoas","").replace(" Pessoa","").strip()
+        _em = "—"
+        pax = str(r.get("pax") or _em).replace(" Pessoas","").replace(" Pessoa","").strip()
         return (
             f'<tr style="background:{bg}">'+
             f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>'+
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or "\u2014")[:32]}</td>'+
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or "\u2014")[:28]}</td>'+
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or _em)[:32]}</td>'+
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or _em)[:28]}</td>'+
             f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>'+
             f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td>'+
             f'<td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td>'+
