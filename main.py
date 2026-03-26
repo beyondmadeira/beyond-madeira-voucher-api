@@ -388,11 +388,25 @@ def gerar_voucher():
         missing = [f for f in required if not d.get(f)]
         if missing:
             return jsonify({"error": f"Missing fields: {missing}"}), 400
-        html  = build_rc_html(d)
-        pdf   = HTML(string=html).write_pdf()
-        b64   = base64.b64encode(pdf).decode()
-        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
-        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+        html_str = build_rc_html(d)
+        pdf      = HTML(string=html_str).write_pdf()
+        b64      = base64.b64encode(pdf).decode()
+        fname    = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
+
+        # Upload to Airtable field "Ficheiro" if record_id provided
+        uploaded = False
+        record_id = d.get("record_id", "")
+        if record_id and record_id.startswith("rec") and AT_TOKEN:
+            try:
+                # Clear existing attachments first, then upload new one
+                airtable_patch(BASE_RESERVAS, "Rent Car", record_id, {"Ficheiro": []})
+                airtable_upload_attachment(BASE_RESERVAS, record_id, "Ficheiro", pdf, fname)
+                cache_clear("rc")
+                uploaded = True
+            except Exception as upload_err:
+                pass  # still return PDF even if upload fails
+
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64, "uploaded": uploaded})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -527,11 +541,24 @@ def gerar_voucher_atividade():
         missing = [f for f in required if not d.get(f)]
         if missing:
             return jsonify({"error": f"Missing fields: {missing}"}), 400
-        html  = build_at_html(d)
-        pdf   = HTML(string=html).write_pdf()
-        b64   = base64.b64encode(pdf).decode()
-        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
-        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+        html_str = build_at_html(d)
+        pdf      = HTML(string=html_str).write_pdf()
+        b64      = base64.b64encode(pdf).decode()
+        fname    = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
+
+        # Upload to Airtable field "Ficheiro" if record_id provided
+        uploaded = False
+        record_id = d.get("record_id", "")
+        if record_id and record_id.startswith("rec") and AT_TOKEN:
+            try:
+                airtable_patch(BASE_RESERVAS, "Atividades", record_id, {"Ficheiro": []})
+                airtable_upload_attachment(BASE_RESERVAS, record_id, "Ficheiro", pdf, fname)
+                cache_clear("at")
+                uploaded = True
+            except Exception as upload_err:
+                pass
+
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64, "uploaded": uploaded})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -620,7 +647,7 @@ def get_at():
                 "ref":         f.get("Referência", rec["id"]),
                 "nome":        f.get("Nome do Cliente", ""),
                 "tel":         f.get("Contacto Telefonico", ""),
-                "email":       f.get("Email Clientes", ""),
+                "email":       f.get("Email Clientes", f.get("Email do Cliente", f.get("Email", ""))),
                 "atv":         f.get("Atividade", ""),
                 "cat":         f.get("Categoria", ""),
                 "par":         f.get("Fornecedor/Parceiro", ""),
@@ -815,7 +842,7 @@ def get_diario():
                 "fat":      f.get("Faturação Diária", 0),
                 "fat_rc":   f.get("Faturação RC", 0),
                 "fat_at":   f.get("Faturação AT", 0),
-                "mes":      f.get("Resumo Mensal", ""),
+                "mes":      (f.get("Resumo Mensal") or [{}])[0].get("name","") if isinstance(f.get("Resumo Mensal"), list) else str(f.get("Resumo Mensal","")),
                 "notas":    f.get("Notas do Dia", ""),
                 "resp":     f.get("Responsável", ""),
             })
@@ -905,17 +932,23 @@ def get_despesas_fixas():
         out = []
         for rec in records:
             f = rec.get("fields", {})
+            # "Resumo Mensal(s)" is a linked record field
+            mes_raw = f.get("Resumo Mensal(s)", "") or f.get("Resumo Mensal", "")
+            if isinstance(mes_raw, list):
+                mes_str = mes_raw[0].get("name","") if mes_raw and isinstance(mes_raw[0],dict) else (str(mes_raw[0]) if mes_raw else "")
+            else:
+                mes_str = str(mes_raw)
             out.append({
                 "id":          rec["id"],
-                "categoria":   f.get("Categoria", ""),
-                "valor":       f.get("Valor Mensal", 0),
-                "mes":         f.get("Resumo Mensal(s)", ""),
-                "fornecedor":  f.get("Fornecedor", ""),
-                "nif":         f.get("NIF Fornecedor", ""),
-                "metodo":      f.get("Método Pagamento", ""),
-                "recorrente":  f.get("Recorrente?", False),
-                "pago":        f.get("Pago?", False),
+                "nome":        f.get("Fornecedor", f.get("Nome", "")),
+                "cat":         f.get("Categoria", ""),
+                "valor":       float(f.get("Valor Mensal", 0) or 0),
+                "mes":         mes_str,
+                "pago":        bool(f.get("Pago?", False)),
+                "fatura":      bool(f.get("Fatura Recebida?", False) or f.get("Fatura?", False)),
+                "recorrente":  bool(f.get("Recorrente?", False)),
                 "notas":       f.get("Notas", ""),
+                "tipo":        "fixa",
             })
         return jsonify({"success": True, "records": out})
     except Exception as e:
@@ -931,16 +964,21 @@ def get_despesas_variaveis():
         out = []
         for rec in records:
             f = rec.get("fields", {})
+            mes_raw2 = f.get("Resumo Mensal(s)", "") or f.get("Resumo Mensal", "")
+            if isinstance(mes_raw2, list):
+                mes_str2 = mes_raw2[0].get("name","") if mes_raw2 and isinstance(mes_raw2[0],dict) else (str(mes_raw2[0]) if mes_raw2 else "")
+            else:
+                mes_str2 = str(mes_raw2)
             out.append({
                 "id":          rec["id"],
-                "categoria":   f.get("Categoria", ""),
-                "valor":       f.get("Valor", 0),
-                "tipo":        f.get("Tipo Despesa", ""),
-                "fornecedor":  f.get("Fornecedor", ""),
-                "nif":         f.get("NIF Fornecedor", ""),
-                "metodo":      f.get("Método Pagamento", ""),
-                "pago":        f.get("Pago?", False),
+                "nome":        f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))),
+                "cat":         f.get("Categoria", f.get("Tipo Despesa", "")),
+                "valor":       float(f.get("Valor", 0) or 0),
+                "mes":         mes_str2,
+                "pago":        bool(f.get("Pago?", False)),
+                "fatura":      bool(f.get("Fatura Recebida?", False) or f.get("Fatura?", False)),
                 "notas":       f.get("Notas", ""),
+                "tipo":        "variavel",
             })
         return jsonify({"success": True, "records": out})
     except Exception as e:
@@ -985,28 +1023,61 @@ def get_objetivos():
         return jsonify({"error": str(e)}), 500
 
 
+TAB_CAIXA = "tblW32WemgLNYH9jO"
+
+def parse_eur(val):
+    if val is None or val == "": return 0
+    if isinstance(val, (int, float)): return float(val)
+    return float(str(val).replace("€","").replace(",","").strip() or 0)
+
 @app.route("/airtable/caixa-mensal", methods=["GET"])
 def get_caixa_mensal():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
-        records = airtable_list(BASE_FINANCEIRO, "Caixa Mensal")
+        cached = cache_get("caixa")
+        if cached is not None:
+            return jsonify({"success": True, "records": cached, "cached": True})
+        records = airtable_list_table(BASE_FINANCEIRO, TAB_CAIXA)
         out = []
         for rec in records:
             f = rec.get("fields", {})
             out.append({
-                "id":          rec["id"],
-                "mes":         f.get("Caixa Mensal", rec["id"]),
-                "saldo_dinheiro": f.get("Saldo Dinheiro (€)", 0),
-                "saldo_banco": f.get("Saldo Banco (€)", 0),
-                "saldo_total": f.get("Saldo Total (€)", 0),
-                "fat_mes":     f.get("Faturação do Mês (€)", 0),
-                "desp_mes":    f.get("Despesas do Mês (€)", 0),
-                "lucro":       f.get("Lucro Calculado (€)", 0),
-                "diferenca":   f.get("Diferença vs Caixa Real (€)", 0),
-                "notas":       f.get("Notas", ""),
+                "id":             rec["id"],
+                "mes":            f.get("Mês/Ano", ""),
+                "saldo_dinheiro": parse_eur(f.get("Saldo Dinheiro (€)")),
+                "saldo_banco":    parse_eur(f.get("Saldo Banco (€)")),
+                "saldo_total":    parse_eur(f.get("Saldo Total (€)")),
+                "fat_mes":        parse_eur(f.get("Faturação do Mês (€)")),
+                "desp_mes":       parse_eur(f.get("Despesas do Mês (€)")),
+                "lucro":          parse_eur(f.get("Lucro Calculado (€)")),
+                "diferenca":      parse_eur(f.get("Diferença vs Caixa Real (€)")),
+                "notas":          f.get("Notas", ""),
             })
+        cache_set("caixa", out)
         return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/caixa-mensal/<record_id>", methods=["PATCH"])
+def patch_caixa_mensal(record_id):
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = {}
+        if "saldo_dinheiro" in body:
+            fields["Saldo Dinheiro (€)"] = float(body["saldo_dinheiro"] or 0)
+        if "saldo_banco" in body:
+            fields["Saldo Banco (€)"] = float(body["saldo_banco"] or 0)
+        if "notas" in body:
+            fields["Notas"] = str(body["notas"])
+        if not fields:
+            return jsonify({"error": "Nenhum campo para actualizar"}), 400
+        result = airtable_patch(BASE_FINANCEIRO, TAB_CAIXA, record_id, fields)
+        cache_clear("caixa")
+        return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1537,22 +1608,52 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots):
     today = datetime.now().strftime("%d/%m/%Y")
     t = tots
 
-    rows_html = ""
-    for i, r in enumerate(rows):
-        bg = "#F9FAFB" if i % 2 == 0 else "#FFFFFF"
+    def _row_html(r, bg):
         sc = {"Pago":"#166534","Por Pagar":"#111827","Devemos":"#991B1B","Cancelado":"#6B7280"}.get(r["status"],"#6B7280")
         strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
-        pax = str(r.get("pax") or "—").replace(" Pessoas","").replace(" Pessoa","").strip()
-        rows_html += f"""<tr style="background:{bg}">
-          <td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>
-          <td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or "—")[:32]}</td>
-          <td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or "—")[:28]}</td>
-          <td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>
-          <td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">€ {abs(r["total"]):,.2f}</td>
-          <td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">€ {abs(r["comm"]):,.2f}</td>
-          <td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td>
-        </tr>"""
+        pax = str(r.get("pax") or "\u2014").replace(" Pessoas","").replace(" Pessoa","").strip()
+        return (
+            f'<tr style="background:{bg}">'+
+            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>'+
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or "\u2014")[:32]}</td>'+
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or "\u2014")[:28]}</td>'+
+            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>'+
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td>'+
+            f'<td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td>'+
+            f'<td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td>'+
+            "</tr>"
+        )
 
+    rows_html = ""
+    if rows_by_month and len(rows_by_month) > 1:
+        # Multi-month: each month gets a header + rows + subtotal
+        row_idx = 0
+        for m_nome_i, m_ano_i, m_rows_i in rows_by_month:
+            if not m_rows_i:
+                continue
+            m_tots = calc_totais(m_rows_i)
+            rows_html += (
+                '<tr><td colspan="7" style="padding:8px 8px 4px;background:#f0faf9;'+
+                'border-top:1.5pt solid #0A616B;border-bottom:0.5pt solid #9CA3AF">'+
+                f'<span style="font-size:9pt;font-weight:800;color:#0A616B">{m_nome_i} {m_ano_i}</span>'+
+                f'<span style="font-size:8pt;color:#6B7280;margin-left:8px">{len(m_rows_i)} reservas</span>'+
+                '</td></tr>'
+            )
+            for i, r in enumerate(m_rows_i):
+                rows_html += _row_html(r, "#F9FAFB" if (row_idx + i) % 2 == 0 else "#FFFFFF")
+            row_idx += len(m_rows_i)
+            rows_html += (
+                '<tr style="background:#f0faf9">'+
+                f'<td colspan="4" style="padding:5px 8px;font-size:8pt;color:#374151;font-style:italic">Subtotal {m_nome_i} {m_ano_i}</td>'+
+                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;text-align:right">&euro; {abs(m_tots["gt"]):,.2f}</td>'+
+                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right">&euro; {abs(m_tots["gc"]):,.2f}</td>'+
+                '<td></td></tr>'
+            )
+    else:
+        for i, r in enumerate(rows):
+            rows_html += _row_html(r, "#F9FAFB" if i % 2 == 0 else "#FFFFFF")
+
+    logo_src = logo_b64()
     return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
@@ -1573,7 +1674,8 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots):
 <div class="top-bar"></div>
 
 <table class="main" style="margin-bottom:14pt"><tr>
-  <td style="width:45%;vertical-align:top;padding-top:8pt">
+  <td style="width:45%;vertical-align:top;padding-top:4pt">
+    <img src="{logo_src}" style="height:38pt;margin-bottom:8pt;display:block" alt="Beyond Madeira">
     <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">
       Largo da Saúde 1, 9000-221 Funchal<br>
       RNAVT 13020 · NIPC 518 827 119<br>
@@ -1582,7 +1684,7 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots):
   </td>
   <td style="text-align:right;vertical-align:top">
     <div style="font-size:9pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt">Extrato de Comissões</div>
-    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{mes_nome} {ano}</div>
+    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{"&nbsp;+&nbsp;".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"}</div>
     <div style="font-size:8pt;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.5pt;margin-top:6pt">PARA</div>
     <div style="font-size:14pt;font-weight:700;color:#0A616B;margin-top:2pt">{parceiro}</div>
     <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:4pt">Ref. {ref} · Emitido a {today}</div>
@@ -1603,13 +1705,16 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots):
     <th style="width:54pt;text-align:center">Estado</th>
   </tr></thead>
   <tbody>{rows_html}</tbody>
-  <tfoot><tr>
-    <td colspan="4" style="padding:7px 8px"></td>
-    <td style="padding:7px 8px;font-size:9pt;color:#111827;text-align:right">€ {abs(t["gt"]):,.2f}</td>
-    <td style="padding:7px 8px;font-size:9pt;color:#0A616B;text-align:right">€ {abs(t["gc"]):,.2f}</td>
-    <td style="padding:7px 8px;font-size:7.5pt;color:#6B7280;text-align:center">TOTAL</td>
-  </tr></tfoot>
 </table>
+<div style="border-top:1pt solid #9CA3AF;background:#F3F4F6;display:flex;justify-content:flex-end;padding:7px 8px;margin-bottom:20pt;gap:0">
+  <div style="width:44pt"></div>
+  <div style="width:110pt"></div>
+  <div style="flex:1"></div>
+  <div style="width:28pt"></div>
+  <div style="width:58pt;text-align:right;font-size:9pt;font-weight:700;color:#111827;padding:0 8px">€ {abs(t["gt"]):,.2f}</div>
+  <div style="width:62pt;text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:0 8px">€ {abs(t["gc"]):,.2f}</div>
+  <div style="width:54pt;text-align:center;font-size:7.5pt;color:#6B7280;font-weight:600;padding:0 8px">TOTAL</div>
+</div>
 
 <table class="main"><tr>
   <td style="width:52%;vertical-align:top;padding-right:16pt">
@@ -1691,25 +1796,46 @@ def gerar_extrato_parceiro():
         if not parceiro or not mes_str:
             return jsonify({"error": "parceiro e mes obrigatórios"}), 400
 
-        parts = mes_str.split(" ")
-        if len(parts) != 2 or not parts[1].isdigit():
-            return jsonify({"error": "mes deve ser 'Mês Ano' ex: Março 2026"}), 400
+        # Support multi-month: "meses" array overrides single "mes"
+        meses_list = d.get("meses", [])  # e.g. ["Janeiro 2026", "Fevereiro 2026", "Março 2026"]
+        if not meses_list:
+            meses_list = [mes_str]
 
-        mes_nome = parts[0]
-        ano      = int(parts[1])
-        mes_num  = MESES_IDX.get(mes_nome)
-        if not mes_num:
-            return jsonify({"error": f"Mês inválido: {mes_nome}"}), 400
+        # Parse all months
+        parsed_months = []
+        for m_str in meses_list:
+            parts = m_str.strip().split(" ")
+            if len(parts) != 2 or not parts[1].isdigit():
+                continue
+            m_nome = parts[0]
+            m_ano  = int(parts[1])
+            m_num  = MESES_IDX.get(m_nome)
+            if m_num:
+                parsed_months.append((m_nome, m_ano, m_num))
+
+        if not parsed_months:
+            return jsonify({"error": f"Nenhum mês válido em: {meses_list}"}), 400
+
+        # Use first month as primary for filename/ref
+        mes_nome, ano, mes_num = parsed_months[0]
 
         is_rc = tipo.lower() in ("rent car", "rc", "rentcar")
 
-        # Get reservations with 100% correct date/field rules
-        rows = get_reservas_parceiro(parceiro, mes_num, ano, is_rc)
+        # Get ALL reservations across all months
+        rows = []
+        for m_nome_i, m_ano_i, m_num_i in parsed_months:
+            rows += get_reservas_parceiro(parceiro, m_num_i, m_ano_i, is_rc)
+
         tots = calc_totais(rows)
 
         sl    = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
-        ref   = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
-        fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
+        # Multi-month filename
+        if len(parsed_months) > 1:
+            ref   = f"EXT-{ano}-{sl[:10].upper()}-ACUMULADO"
+            fname = f"BeyondMadeira_{sl}_Acumulado{ano}.pdf"
+        else:
+            ref   = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
+            fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
 
         html_str  = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
         pdf_bytes = HTML(string=html_str).write_pdf()
@@ -1869,6 +1995,462 @@ def get_extrato_parceiros():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+
+
+# =========================================================================
+# PROXY ANTHROPIC — chave segura no Railway, nunca exposta no browser
+# =========================================================================
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not anthropic_key:
+            return jsonify({"error": "ANTHROPIC_API_KEY nao configurada no Railway"}), 500
+        body = request.get_json() or {}
+        r = req_lib.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json=body, timeout=60,
+        )
+        return jsonify(r.json()), r.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================================================================
+# ENVIAR EXTRATO POR EMAIL — Gmail SMTP (credenciais no Railway, nunca partilhadas)
+# Configurar no Railway: GMAIL_USER e GMAIL_APP_PASSWORD
+# =========================================================================
+
+@app.route("/enviar-extrato-email", methods=["POST"])
+def enviar_extrato_email():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        import smtplib, ssl
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.application import MIMEApplication
+
+        d = request.get_json() or {}
+        to           = d.get("to", "").strip()
+        subject      = d.get("subject", "").strip()
+        body_text    = d.get("body", "").strip()
+        parceiro     = d.get("parceiro", "").strip()
+        mes_str      = d.get("mes", "").strip()
+        pdf_b64      = d.get("pdf_base64", "")
+        pdf_filename = d.get("pdf_filename") or f"Extrato_{re.sub(chr(91)+'[^a-zA-Z0-9]'+chr(93),'_',parceiro)}_{mes_str}.pdf"
+        record_id    = d.get("record_id", "")
+
+        if not to:
+            return jsonify({"error": "Email destinatario obrigatorio"}), 400
+
+        gmail_user = os.environ.get("GMAIL_USER", "")
+        gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
+
+        if not gmail_user or not gmail_pass:
+            return jsonify({"error": "Gmail nao configurado. Define GMAIL_USER e GMAIL_APP_PASSWORD no Railway."}), 500
+
+        msg = MIMEMultipart()
+        msg["From"]    = f"Beyond Madeira <{gmail_user}>"
+        msg["To"]      = to
+        msg["Subject"] = subject or f"Extrato de Comissoes - {mes_str} | Beyond Madeira"
+        msg["Reply-To"] = gmail_user
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+
+        if pdf_b64:
+            pdf_bytes = base64.b64decode(pdf_b64)
+            att = MIMEApplication(pdf_bytes, _subtype="pdf")
+            att.add_header("Content-Disposition", "attachment", filename=pdf_filename)
+            msg.attach(att)
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, to, msg.as_string())
+
+        if record_id and record_id.startswith("rec"):
+            try:
+                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {"Mail enviado / pedido?": True})
+            except:
+                pass
+
+        return jsonify({"success": True, "to": to, "parceiro": parceiro, "mes": mes_str})
+
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/airtable/despesas-fixas/<record_id>", methods=["PATCH"])
+def patch_despesa_fixa(record_id):
+    """Update a fixed expense (e.g. mark as paid)."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = {}
+        if "pago" in body:
+            fields["Pago?"] = bool(body["pago"])
+        if "valor" in body:
+            fields["Valor (€)"] = float(body["valor"])
+        if "notas" in body:
+            fields["Notas"] = str(body["notas"])
+        if not fields:
+            return jsonify({"error": "Nenhum campo para actualizar"}), 400
+        result = airtable_patch(BASE_FINANCEIRO, "Despesas Fixas", record_id, fields)
+        cache_clear("despesas")
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/despesas-variaveis/<record_id>", methods=["PATCH"])
+def patch_despesa_variavel(record_id):
+    """Update a variable expense."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = {}
+        if "pago" in body:
+            fields["Pago?"] = bool(body["pago"])
+        if "valor" in body:
+            fields["Valor (€)"] = float(body["valor"])
+        if "notas" in body:
+            fields["Notas"] = str(body["notas"])
+        if not fields:
+            return jsonify({"error": "Nenhum campo para actualizar"}), 400
+        result = airtable_patch(BASE_FINANCEIRO, "Despesas Variáveis", record_id, fields)
+        cache_clear("despesas")
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/extrato-parceiros/criar-mes", methods=["POST"])
+def criar_extrato_mes():
+    """Auto-cria registos Extrato Parceiros em falta para um mês.
+    Detecta automaticamente parceiros novos a partir das reservas RC+AT.
+    Chamado quando o CRM muda de mês."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        mes_str = body.get("mes", "").strip()  # e.g. "Abril 2026"
+        if not mes_str:
+            return jsonify({"error": "mes obrigatório"}), 400
+
+        # Parse month
+        parts = mes_str.split(" ")
+        if len(parts) != 2 or not parts[1].isdigit():
+            return jsonify({"error": f"Formato inválido: {mes_str}"}), 400
+        mes_nome, ano = parts[0], int(parts[1])
+        mes_num = MESES_IDX.get(mes_nome)
+        if not mes_num:
+            return jsonify({"error": f"Mês inválido: {mes_nome}"}), 400
+
+        import calendar
+        from datetime import date
+        first_day = date(ano, mes_num, 1)
+        last_day  = date(ano, mes_num, calendar.monthrange(ano, mes_num)[1])
+
+        # ── Step 1: find ALL partners that have reservations this month ──
+        parceiros_com_reservas = {}  # {nome: tipo}
+
+        # Scan RC reservations (filter by drop-off date)
+        rc_records = airtable_list_table(BASE_RESERVAS, TAB_RC_ID)
+        for rec in rc_records:
+            rf = rec.get("fields", {})
+            if rf.get("Estado de Reserva", "") == "Cancelado":
+                continue
+            # Get drop-off date
+            date_raw = rf.get("Data do Drop Off") or rf.get("Data de Drop-off") or rf.get("Data") or ""
+            dt = parse_date_ext(str(date_raw))
+            if not dt:
+                continue
+            if not (first_day <= dt.date() <= last_day):
+                continue
+            parceiro = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
+            if parceiro and parceiro not in parceiros_com_reservas:
+                parceiros_com_reservas[parceiro] = "Rent Car"
+
+        # Scan AT reservations (filter by activity date)
+        at_records = airtable_list_table(BASE_RESERVAS, TAB_AT_ID)
+        for rec in at_records:
+            rf = rec.get("fields", {})
+            if rf.get("Estado da Reserva", "") == "Cancelado":
+                continue
+            date_raw = rf.get("Data da Atividade") or rf.get("Data") or ""
+            dt = parse_date_ext(str(date_raw))
+            if not dt:
+                continue
+            if not (first_day <= dt.date() <= last_day):
+                continue
+            parceiro = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
+            if parceiro and parceiro not in parceiros_com_reservas:
+                # Detect category from activity name
+                ativ = rf.get("Atividade", "").lower()
+                if any(k in ativ for k in ["jeep","tour","island","safari","drive"]):
+                    tipo = "Island Tours"
+                elif any(k in ativ for k in ["boat","dolphin","whale","sea","swim","diving","surf","coast"]):
+                    tipo = "Water Experiences"
+                elif any(k in ativ for k in ["hike","levada","walk","trail","mountain","dam"]):
+                    tipo = "Hikes"
+                elif any(k in ativ for k in ["buggy","quad","zip","adventure","canyon","via ferrata"]):
+                    tipo = "Adventure"
+                else:
+                    tipo = "Atividades"
+                parceiros_com_reservas[parceiro] = tipo
+
+        # ── Step 2: get existing Extrato records for this month ──
+        existing = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO)
+        existing_map = {}  # {parceiro_nome: record}
+        for rec in existing:
+            f = rec.get("fields", {})
+            mes_rec = f.get("Mês", "") or f.get("Mes", "")
+            parc = get_text_f(f.get("Parceiro", ""))
+            if mes_rec == mes_str and parc:
+                existing_map[parc] = rec
+
+        # ── Step 3: create records for any missing partner ──
+        created = []
+        skipped = []
+        for parceiro, tipo in parceiros_com_reservas.items():
+            if parceiro in existing_map:
+                skipped.append(parceiro)
+                continue
+            rec = airtable_create(BASE_EXTRATO, TAB_EXTRATO, {
+                "Parceiro": parceiro,
+                "Mês": mes_str,
+                "Tipo": tipo,
+            })
+            if rec:
+                created.append(parceiro)
+
+        cache_clear("extrato")
+        return jsonify({
+            "success": True,
+            "mes": mes_str,
+            "parceiros_com_reservas": len(parceiros_com_reservas),
+            "created": len(created),
+            "parceiros_criados": created,
+            "ja_existiam": len(skipped),
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/enviar-voucher-email", methods=["POST"])
+def enviar_voucher_email():
+    """Send voucher PDF by email to client.
+    Body: { to, cliente, atividade, data, pdf_base64, pdf_filename, record_id }
+    """
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        import smtplib, ssl
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.application import MIMEApplication
+
+        d = request.get_json() or {}
+        to           = d.get("to", "").strip()
+        cliente      = d.get("cliente", "Guest")
+        atividade    = d.get("atividade", "Activity")
+        data_str     = d.get("data", "")
+        pdf_b64      = d.get("pdf_base64", "")
+        pdf_filename = d.get("pdf_filename") or f"Voucher_BeyondMadeira.pdf"
+        record_id    = d.get("record_id", "")
+
+        if not to:
+            return jsonify({"error": "Email do cliente obrigatorio"}), 400
+
+        gmail_user = os.environ.get("GMAIL_USER", "")
+        gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
+        if not gmail_user or not gmail_pass:
+            return jsonify({"error": "Gmail nao configurado no Railway"}), 500
+
+        # Get first name for personal greeting
+        first_name = cliente.split()[0] if cliente else "Guest"
+
+        subject = f"Your Booking Confirmation – {atividade} | Beyond Madeira"
+        body = f"""Dear {first_name},
+
+Thank you for booking with Beyond Madeira!
+
+Please find attached your booking confirmation voucher for:
+
+  Activity: {atividade}
+  Date: {data_str}
+
+Please keep this voucher for your records and present it on the day of your activity.
+
+If you have any questions, don't hesitate to contact us:
+  WhatsApp: +351 939 566 415
+  Email: booking@beyondmadeira.com
+
+We look forward to seeing you!
+
+Best regards,
+Beyond Madeira Team
+RNAVT 13020 · beyondmadeira.com
+"""
+
+        msg = MIMEMultipart()
+        msg["From"]     = f"Beyond Madeira <{gmail_user}>"
+        msg["To"]       = to
+        msg["Subject"]  = subject
+        msg["Reply-To"] = gmail_user
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        if pdf_b64:
+            pdf_bytes = base64.b64decode(pdf_b64)
+            att = MIMEApplication(pdf_bytes, _subtype="pdf")
+            att.add_header("Content-Disposition", "attachment", filename=pdf_filename)
+            msg.attach(att)
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(gmail_user, gmail_pass)
+            server.sendmail(gmail_user, to, msg.as_string())
+
+        # Mark email as sent in Airtable
+        if record_id and record_id.startswith("rec"):
+            try:
+                airtable_patch(BASE_RESERVAS, "Atividades", record_id, {"Email Enviado": True})
+                cache_clear("at")
+            except:
+                pass
+
+        return jsonify({"success": True, "to": to, "cliente": cliente})
+
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/airtable/despesas-variaveis", methods=["POST"])
+def create_despesa_variavel():
+    """Create a new variable expense."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields.get("Fornecedor") and not fields.get("Descrição"):
+            return jsonify({"error": "Fornecedor obrigatório"}), 400
+        result = airtable_create(BASE_FINANCEIRO, "Despesas Variáveis", fields)
+        cache_clear("despesas")
+        return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/notas", methods=["GET"])
+def get_notas():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Notas")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":           rec["id"],
+                "titulo":       f.get("Título", f.get("Title", "")),
+                "conteudo":     f.get("Conteúdo", f.get("Content", "")),
+                "responsavel":  f.get("Responsável", ""),
+                "data":         f.get("Data", ""),
+                "categoria":    f.get("Categoria", ""),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/notas", methods=["POST"])
+def create_nota():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_create(BASE_RESERVAS, "Notas", fields)
+        cache_clear("notas")
+        return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/notas/<record_id>", methods=["PATCH"])
+def patch_nota(record_id):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_patch(BASE_RESERVAS, "Notas", record_id, fields)
+        cache_clear("notas")
+        return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/notas/<record_id>", methods=["DELETE"])
+def delete_nota(record_id):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        url = f"https://api.airtable.com/v0/{BASE_RESERVAS}/Notas/{record_id}"
+        resp = requests.delete(url, headers=AIRTABLE_HEADERS)
+        cache_clear("notas")
+        return jsonify({"success": resp.ok})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/wa-templates", methods=["GET"])
+def get_wa_templates():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Templates Mensagens")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":         rec["id"],
+                "cmd":        f.get("Name", ""),
+                "label":      f.get("Name", ""),
+                "categoria":  f.get("Categoria", ""),
+                "empresa":    f.get("Empresa", ""),
+                "topico":     f.get("Tópico", ""),
+                "text_pt":    f.get("Mensagem 🇵🇹", f.get("Message 🇬🇧", "")),
+                "text_en":    f.get("Message 🇬🇧", ""),
+                "subject_pt": f.get("Assunto 🇵🇹", f.get("Assunto Email 🇵🇹", "")),
+                "subject_en": f.get("Subject 🇬🇧", ""),
+                "vezes":      f.get("Vezes Enviado", 0),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/wa-templates/<record_id>", methods=["PATCH"])
+def patch_wa_template(record_id):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        result = airtable_patch(BASE_CONHECIMENTO, "Templates Mensagens", record_id, fields)
+        cache_clear("wa_templates")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/cache/clear", methods=["POST"])
+def clear_cache_route():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    cache_clear()
+    return jsonify({"success": True, "message": "Cache limpo"})
 
 
 @app.route("/", methods=["GET"])
