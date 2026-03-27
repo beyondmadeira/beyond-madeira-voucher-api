@@ -18,7 +18,7 @@ GET  /airtable/extrato-parceiros  -> List Extrato Parceiros records
 GET  /                           -> Health check
 """
 
-import os, re, base64, requests as req_lib
+import os, re, base64, json, urllib.parse, urllib.request, urllib.error, requests as req_lib
 from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 from weasyprint import HTML
@@ -1743,7 +1743,6 @@ def wz_status():
 # Requires Railway vars: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET
 # GMAIL_REDIRECT_URI = https://beyond-madeira-voucher-api-production.up.railway.app/gmail/callback
 # ─────────────────────────────────────────────────────────────
-import json, base64, urllib.request, urllib.parse
 
 GMAIL_CLIENT_ID     = os.environ.get("GMAIL_CLIENT_ID", "184849359060-4tnm984gpiglun1pj0tc9vkqvpbumm4d.apps.googleusercontent.com")
 GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET", "G0CSPX-YtETXvl01m3w99v90W55jMjCDy1p")
