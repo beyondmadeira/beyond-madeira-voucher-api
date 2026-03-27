@@ -1672,7 +1672,11 @@ def wazzup_req(method, path, body=None):
     headers = {"X-Api-Key": WAZZUP_API_KEY, "Content-Type": "application/json"}
     url = WAZZUP_BASE + path
     r = req_lib.get(url, headers=headers) if method == "GET" else req_lib.post(url, headers=headers, json=body)
-    return r.status_code, r.json()
+    try:
+        d = r.json()
+    except:
+        d = {}
+    return r.status_code, d
 
 @app.route("/wazzup/chats")
 def wz_chats():
