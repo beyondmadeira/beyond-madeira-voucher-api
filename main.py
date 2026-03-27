@@ -1712,10 +1712,8 @@ def wz_iframe():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         b = request.get_json() or {}
-        payload = {
-            "url": b.get("url", ""),
-            "channelId": WAZZUP_CHANNEL,
-        }
+        # Wazzup POST /v3/iframe only needs the CRM url
+        payload = { "url": b.get("url", "https://hub.beyondmadeira.com/") }
         s, d = wazzup_req("POST", "/iframe", payload)
         return jsonify(d), s
     except Exception as e:
