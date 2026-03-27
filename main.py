@@ -19,7 +19,7 @@ GET  /                           -> Health check
 """
 
 import os, re, base64, requests as req_lib
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 from weasyprint import HTML
 
@@ -1717,10 +1717,14 @@ def wz_iframe():
         user_name = b.get("userName", "Milton")
         # Step 1: Register/update user in Wazzup
         wazzup_req("POST", "/users", [{"id": user_id, "name": user_name}])
-        # Step 2: Get iframe URL
+        # Step 2: Get iframe URL with events enabled
         payload = {
             "user": {"id": user_id, "name": user_name},
-            "scope": "global"
+            "scope": "global",
+            "options": {
+                "useDealsEvents": True,
+                "useMessageEvents": True
+            }
         }
         s, d = wazzup_req("POST", "/iframe", payload)
         return jsonify(d), s
@@ -1732,6 +1736,256 @@ def wz_status():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     s, d = wazzup_req("GET", "/channels")
     return jsonify({"connected": s == 200, "data": d})
+
+
+# ─────────────────────────────────────────────────────────────
+# GMAIL OAUTH2 ENDPOINTS
+# Requires Railway vars: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET
+# GMAIL_REDIRECT_URI = https://beyond-madeira-voucher-api-production.up.railway.app/gmail/callback
+# ─────────────────────────────────────────────────────────────
+import json, base64, urllib.request, urllib.parse
+
+GMAIL_CLIENT_ID     = os.environ.get("GMAIL_CLIENT_ID", "184849359060-4tnm984gpiglun1pj0tc9vkqvpbumm4d.apps.googleusercontent.com")
+GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET", "G0CSPX-YtETXvl01m3w99v90W55jMjCDy1p")
+GMAIL_REDIRECT_URI  = os.environ.get("GMAIL_REDIRECT_URI", "https://beyond-madeira-voucher-api-production.up.railway.app/gmail/callback")
+GMAIL_SCOPES        = "https://www.googleapis.com/auth/gmail.modify"
+
+def gmail_token_store():
+    """Use Railway env var GMAIL_TOKEN to persist tokens."""
+    return os.environ.get("GMAIL_TOKEN", "")
+
+def gmail_save_token(token_json):
+    """Print token for manual save to Railway env."""
+    print("GMAIL_TOKEN=", token_json)
+
+def gmail_get_tokens():
+    raw = gmail_token_store()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except:
+        return None
+
+def gmail_refresh(tokens):
+    """Refresh access token using refresh token."""
+    data = urllib.parse.urlencode({
+        "client_id": GMAIL_CLIENT_ID,
+        "client_secret": GMAIL_CLIENT_SECRET,
+        "refresh_token": tokens["refresh_token"],
+        "grant_type": "refresh_token"
+    }).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(req) as r:
+        new = json.loads(r.read())
+    tokens["access_token"] = new["access_token"]
+    return tokens
+
+def gmail_request(method, path, tokens, body=None):
+    """Make authenticated Gmail API request."""
+    url = f"https://gmail.googleapis.com/gmail/v1/users/me{path}"
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("Authorization", f"Bearer {tokens['access_token']}")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            # Try refresh
+            tokens = gmail_refresh(tokens)
+            req2 = urllib.request.Request(url, data=data, method=method)
+            req2.add_header("Authorization", f"Bearer {tokens['access_token']}")
+            req2.add_header("Content-Type", "application/json")
+            with urllib.request.urlopen(req2) as r:
+                return json.loads(r.read())
+        raise
+
+@app.route("/gmail/auth")
+def gmail_auth():
+    """Step 1: Redirect to Google OAuth consent screen."""
+    params = urllib.parse.urlencode({
+        "client_id": GMAIL_CLIENT_ID,
+        "redirect_uri": GMAIL_REDIRECT_URI,
+        "response_type": "code",
+        "scope": GMAIL_SCOPES,
+        "access_type": "offline",
+        "prompt": "consent"
+    })
+    return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+@app.route("/gmail/callback")
+def gmail_callback():
+    """Step 2: Exchange code for tokens."""
+    code = request.args.get("code")
+    if not code:
+        return "Erro: sem código de autorização", 400
+    data = urllib.parse.urlencode({
+        "code": code,
+        "client_id": GMAIL_CLIENT_ID,
+        "client_secret": GMAIL_CLIENT_SECRET,
+        "redirect_uri": GMAIL_REDIRECT_URI,
+        "grant_type": "authorization_code"
+    }).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(req) as r:
+        tokens = json.loads(r.read())
+    token_json = json.dumps(tokens)
+    gmail_save_token(token_json)
+    return f"""
+    <h2>Gmail ligado!</h2>
+    <p>Copia este token para a variável <b>GMAIL_TOKEN</b> no Railway:</p>
+    <textarea rows="5" cols="80">{token_json}</textarea>
+    <p>Depois fecha esta janela.</p>
+    """
+
+@app.route("/gmail/inbox")
+def gmail_inbox():
+    """Get inbox messages."""
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    tokens = gmail_get_tokens()
+    if not tokens:
+        return jsonify({"error": "Gmail não autenticado. Vai a /gmail/auth"}), 401
+    try:
+        tab   = request.args.get("tab", "INBOX")   # INBOX, SENT, UNREAD
+        limit = int(request.args.get("limit", 20))
+        q     = request.args.get("q", "")
+        
+        # Build query
+        query = q if q else ""
+        if tab == "UNREAD": query = "is:unread " + query
+        elif tab == "SENT":  query = "in:sent " + query
+        else:                query = "in:inbox " + query
+        
+        # List messages
+        params = urllib.parse.urlencode({"q": query.strip(), "maxResults": limit})
+        list_data = gmail_request("GET", f"/messages?{params}", tokens)
+        messages = list_data.get("messages", [])
+        
+        # Fetch each message (snippet + headers)
+        result = []
+        for m in messages[:limit]:
+            msg = gmail_request("GET", f"/messages/{m['id']}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date", tokens)
+            headers = {h["name"]: h["value"] for h in msg.get("payload", {}).get("headers", [])}
+            labels  = msg.get("labelIds", [])
+            result.append({
+                "id":       msg["id"],
+                "threadId": msg["threadId"],
+                "subject":  headers.get("Subject", "(sem assunto)"),
+                "from":     headers.get("From", ""),
+                "to":       headers.get("To", ""),
+                "date":     headers.get("Date", ""),
+                "snippet":  msg.get("snippet", ""),
+                "unread":   "UNREAD" in labels,
+                "starred":  "STARRED" in labels,
+            })
+        
+        return jsonify({"messages": result, "total": list_data.get("resultSizeEstimate", 0)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/gmail/thread/<thread_id>")
+def gmail_thread(thread_id):
+    """Get full thread with all messages."""
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    tokens = gmail_get_tokens()
+    if not tokens:
+        return jsonify({"error": "Gmail não autenticado"}), 401
+    try:
+        thread = gmail_request("GET", f"/threads/{thread_id}?format=full", tokens)
+        messages = []
+        for msg in thread.get("messages", []):
+            headers = {h["name"]: h["value"] for h in msg.get("payload", {}).get("headers", [])}
+            body = _extract_gmail_body(msg.get("payload", {}))
+            messages.append({
+                "id":      msg["id"],
+                "from":    headers.get("From", ""),
+                "to":      headers.get("To", ""),
+                "date":    headers.get("Date", ""),
+                "subject": headers.get("Subject", ""),
+                "body":    body,
+                "unread":  "UNREAD" in msg.get("labelIds", []),
+            })
+        return jsonify({"threadId": thread_id, "messages": messages})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def _extract_gmail_body(payload):
+    """Extract text/html or text/plain body from Gmail payload."""
+    mime = payload.get("mimeType", "")
+    if mime == "text/html":
+        data = payload.get("body", {}).get("data", "")
+        return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace") if data else ""
+    if mime == "text/plain":
+        data = payload.get("body", {}).get("data", "")
+        return base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="replace") if data else ""
+    # Multipart — recurse
+    for part in payload.get("parts", []):
+        body = _extract_gmail_body(part)
+        if body:
+            return body
+    return ""
+
+@app.route("/gmail/send", methods=["POST"])
+def gmail_send_api():
+    """Send email via Gmail API."""
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    tokens = gmail_get_tokens()
+    if not tokens:
+        return jsonify({"error": "Gmail não autenticado"}), 401
+    try:
+        b       = request.get_json()
+        to      = b.get("to", "")
+        subject = b.get("subject", "")
+        body    = b.get("body", "")
+        thread_id = b.get("threadId", "")   # for replies
+        
+        # Build RFC 2822 message
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        msg = MIMEMultipart("alternative")
+        msg["To"]      = to
+        msg["Subject"] = subject
+        if thread_id:
+            msg["In-Reply-To"] = thread_id
+        msg.attach(MIMEText(body, "html"))
+        
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        payload = {"raw": raw}
+        if thread_id:
+            payload["threadId"] = thread_id
+        
+        result = gmail_request("POST", "/messages/send", tokens, payload)
+        return jsonify({"success": True, "id": result.get("id")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/gmail/star", methods=["POST"])
+def gmail_star():
+    """Star/unstar or mark read/unread."""
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    tokens = gmail_get_tokens()
+    if not tokens:
+        return jsonify({"error": "Gmail não autenticado"}), 401
+    try:
+        b      = request.get_json()
+        msg_id = b.get("id")
+        action = b.get("action")  # star, unstar, read, unread
+        add_labels    = []
+        remove_labels = []
+        if action == "star":   add_labels    = ["STARRED"]
+        if action == "unstar": remove_labels = ["STARRED"]
+        if action == "read":   remove_labels = ["UNREAD"]
+        if action == "unread": add_labels    = ["UNREAD"]
+        gmail_request("POST", f"/messages/{msg_id}/modify", tokens, {
+            "addLabelIds": add_labels, "removeLabelIds": remove_labels
+        })
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
