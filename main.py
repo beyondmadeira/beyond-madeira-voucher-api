@@ -1688,9 +1688,10 @@ def wz_chats():
 @app.route("/wazzup/messages")
 def wz_messages():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
-    chat_id = request.args.get("chatId", "")
-    limit   = request.args.get("limit", 50)
-    s, d = wazzup_req("GET", f"/messages?chatId={chat_id}&limit={limit}")
+    chat_id   = request.args.get("chatId", "")
+    chat_type = request.args.get("chatType", "whatsapp")
+    limit     = request.args.get("limit", 20)
+    s, d = wazzup_req("GET", f"/messages?chatId={chat_id}&chatType={chat_type}&limit={limit}")
     return jsonify(d), s
 
 @app.route("/wazzup/message", methods=["POST"])
@@ -1712,12 +1713,13 @@ def wz_iframe():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         b = request.get_json() or {}
-        # Correct Wazzup POST /v3/iframe payload per documentation
+        user_id   = b.get("userId", "milton")
+        user_name = b.get("userName", "Milton")
+        # Step 1: Register/update user in Wazzup
+        wazzup_req("POST", "/users", [{"id": user_id, "name": user_name}])
+        # Step 2: Get iframe URL
         payload = {
-            "user": {
-                "id": b.get("userId", "milton"),
-                "name": b.get("userName", "Milton")
-            },
+            "user": {"id": user_id, "name": user_name},
             "scope": "global"
         }
         s, d = wazzup_req("POST", "/iframe", payload)
