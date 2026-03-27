@@ -2488,3 +2488,49 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+# ═══════════════════════════════════════════════
+# WAZZUP PROXY
+# ═══════════════════════════════════════════════
+import httpx
+
+WAZZUP_BASE    = "https://api.wazzup24.com/v3"
+WAZZUP_API_KEY = os.environ.get("WAZZUP_API_KEY", "")
+WAZZUP_CHANNEL = os.environ.get("WAZZUP_CHANNEL", "")
+
+async def wazzup_req(method, path, body=None):
+    headers = {"X-Api-Key": WAZZUP_API_KEY, "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=15.0) as c:
+        r = await c.get(WAZZUP_BASE+path, headers=headers) if method=="GET" else await c.post(WAZZUP_BASE+path, headers=headers, json=body)
+    return r.status_code, r.json()
+
+@app.get("/wazzup/chats")
+async def wz_chats():
+    if not check_key(): raise HTTPException(401)
+    s, d = await wazzup_req("GET", "/chats")
+    return d
+
+@app.get("/wazzup/messages")
+async def wz_messages(chatId: str, limit: int = 50):
+    if not check_key(): raise HTTPException(401)
+    s, d = await wazzup_req("GET", f"/messages?chatId={chatId}&limit={limit}")
+    return d
+
+@app.post("/wazzup/message")
+async def wz_send(request: Request):
+    if not check_key(): raise HTTPException(401)
+    b = await request.json()
+    s, d = await wazzup_req("POST", "/message", {"channelId": WAZZUP_CHANNEL, "chatType": "whatsapp", "chatId": b["chatId"], "type": "text", "text": b["text"]})
+    return {"success": s in (200,201), "data": d}
+
+@app.post("/wazzup/mark-as-read")
+async def wz_read(request: Request):
+    if not check_key(): raise HTTPException(401)
+    b = await request.json()
+    await wazzup_req("POST", "/mark-as-read", {"chatId": b["chatId"], "channelId": WAZZUP_CHANNEL})
+    return {"success": True}
+
+@app.get("/wazzup/status")
+async def wz_status():
+    if not check_key(): raise HTTPException(401)
+    s, d = await wazzup_req("GET", "/channels")
+    return {"connected": s==200, "data": d}
