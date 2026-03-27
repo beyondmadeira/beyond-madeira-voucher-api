@@ -1804,16 +1804,26 @@ def gmail_request(method, path, tokens, body=None):
 
 @app.route("/gmail/auth")
 def gmail_auth():
-    """Step 1: Redirect to Google OAuth consent screen."""
-    params = urllib.parse.urlencode({
-        "client_id": GMAIL_CLIENT_ID,
-        "redirect_uri": GMAIL_REDIRECT_URI,
-        "response_type": "code",
-        "scope": GMAIL_SCOPES,
-        "access_type": "offline",
-        "prompt": "consent"
-    })
-    return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+    """Step 1: Show page with OAuth link."""
+    try:
+        params = urllib.parse.urlencode({
+            "client_id": GMAIL_CLIENT_ID,
+            "redirect_uri": GMAIL_REDIRECT_URI,
+            "response_type": "code",
+            "scope": GMAIL_SCOPES,
+            "access_type": "offline",
+            "prompt": "consent"
+        })
+        url = "https://accounts.google.com/o/oauth2/v2/auth?" + params
+        return """<!DOCTYPE html><html><body style="font-family:sans-serif;padding:40px;max-width:500px;margin:auto">
+        <h2 style="color:#0a8f82">Beyond Madeira — Ligar Gmail</h2>
+        <p>Clica para autorizar o acesso ao Gmail:</p>
+        <a href="""" + url + """" style="display:inline-block;padding:14px 28px;background:#0a8f82;color:white;border-radius:8px;text-decoration:none;font-size:16px;font-weight:bold">
+            Autorizar com Google
+        </a>
+        </body></html>"""
+    except Exception as e:
+        return "Erro: " + str(e), 500
 
 @app.route("/gmail/callback")
 def gmail_callback():
