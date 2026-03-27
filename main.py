@@ -26,12 +26,9 @@ from weasyprint import HTML
 app = Flask(__name__)
 CORS(app, origins=["https://hub.beyondmadeira.com", "https://hub-crm.8vesjw.easypanel.host", "http://localhost", "file://"])
 
-# =========================================================================
-# CACHE — 30 minute TTL
-# =========================================================================
 import time
 _cache = {}
-CACHE_TTL = 6 * 60 * 60  # 6 hours
+CACHE_TTL = 6 * 60 * 60
 
 def cache_get(key):
     if key in _cache:
@@ -48,22 +45,17 @@ def cache_clear(key=None):
         _cache.pop(key, None)
     else:
         _cache.clear()
+
 API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 BASE_DIR = os.path.dirname(__file__)
 
-# Airtable
 AT_TOKEN        = os.environ.get("AIRTABLE_TOKEN", "")
 BASE_RESERVAS   = "appR8ZKP5ygR8o8Q0"
 BASE_CONHECIMENTO = "appKhPwEBxolWaO9r"
 BASE_FINANCEIRO   = "appOrdG5Fsr7N0RmH"
 AT_HEADERS      = lambda: {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
 
-
-# =========================================================================
-# OPERATOR CONTACTS  (auto-filled — no need to send from Make)
-# =========================================================================
 OPERATOR_CONTACTS = {
-    # Activity operators
     "Safari Madeira":            ("+351 919 864 485", "geral@safarimadeira.com"),
     "Madeira Surreal":           ("+351 922 250 684", ""),
     "Green Devil":               ("+351 961 858 780", "info@greendevilsafari.com"),
@@ -101,7 +93,6 @@ OPERATOR_CONTACTS = {
     "Nau Santa Maria":           ("+351 965 010 180", ""),
     "Fishing Family":            ("+351 966 377 701", ""),
     "Do It Madeira":             ("+351 912 345 678", ""),
-    # Rent car
     "Point Car":                 ("+351 968 888 026", "booking@pointcarrental.pt"),
     "Atlantic Rent Car":         ("+351 962 403 756", "reservations@atlanticrentacar.pt"),
     "RentCar Madeira":           ("+351 936 716 627", "booking@rentcarmadeira.com"),
@@ -109,10 +100,6 @@ OPERATOR_CONTACTS = {
     "Amsterdam Car":             ("+351 968 566 790", ""),
 }
 
-
-# =========================================================================
-# ACTIVITY RULES  (keyword-based auto-detection)
-# =========================================================================
 TIPS_TEXT = {
     "warm":       "Dress very warmly — it can be very cold at high altitude.",
     "jacket":     "Bring a light jacket — temperatures change quickly in the mountains.",
@@ -125,102 +112,33 @@ TIPS_TEXT = {
 }
 
 ACTIVITY_RULES = [
-    {"kw": ["sunrise", "pico areeiro"],
-     "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["warm", "water", "snack", "shoes"],
-     "note": "Dress very warmly — Pico Areeiro can be below 0°C at sunrise."},
-
-    {"kw": ["caldeirao verde", "caldeirão verde"],
-     "payment": "cash", "pickup": "pickup_hotel",
-     "tips": ["jacket", "water", "flashlight", "snack", "shoes"],
-     "note": "A flashlight is essential for the tunnel section of the trail."},
-
-    {"kw": ["west", "jeep"],
-     "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["jacket", "swimsuit", "water", "snack"],
-     "note": "The tour may include a swim stop — bring swimwear just in case."},
-
-    {"kw": ["west", "minivan"],
-     "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["jacket", "swimsuit", "water", "snack"],
-     "note": "The tour may include a swim stop — bring swimwear just in case."},
-
-    {"kw": ["east", "jeep"],
-     "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["jacket", "water", "snack"], "note": ""},
-
-    {"kw": ["east", "minivan"],
-     "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["jacket", "water", "snack"], "note": ""},
-
-    {"kw": ["whale", "dolphin"],
-     "payment": "cash_card", "pickup": "meeting_point",
-     "tips": ["jacket", "swimsuit", "sunscreen", "water"],
-     "note": "Please arrive at the marina 30 minutes before departure for check-in and payment."},
-
-    {"kw": ["sunset"],
-     "payment": "cash_card", "pickup": "meeting_point",
-     "tips": ["jacket", "sunscreen", "water"], "note": ""},
-
-    {"kw": ["canyoning"],
-     "payment": "cash", "pickup": "pickup_hotel",
-     "tips": ["jacket", "swimsuit", "sunscreen", "snack"],
-     "note": "All equipment is included. Bring swimwear and warm clothes for after."},
-
-    {"kw": ["coasteering"],
-     "payment": "cash", "pickup": "pickup_hotel",
-     "tips": ["jacket", "swimsuit", "sunscreen", "water"],
-     "note": "All equipment is included."},
-
-    {"kw": ["hike", "levada", "stairway to heaven"],
-     "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["jacket", "water", "snack", "shoes"], "note": ""},
-
-    {"kw": ["buggy", "quad"],
-     "payment": "cash_card", "pickup": "pickup_hotel",
-     "tips": ["jacket", "water", "snack"], "note": ""},
-
-    {"kw": ["paragliding", "paraglide"],
-     "payment": "cash", "pickup": "pickup_hotel",
-     "tips": ["jacket", "shoes"],
-     "note": "Wear comfortable clothes and closed shoes."},
-
-    {"kw": ["kayak"],
-     "payment": "cash_card", "pickup": "meeting_point",
-     "tips": ["swimsuit", "sunscreen", "water", "snack"], "note": ""},
-
-    {"kw": ["diving", "scuba"],
-     "payment": "cash", "pickup": "meeting_point",
-     "tips": ["swimsuit", "sunscreen", "water"],
-     "note": "All equipment provided. No experience needed."},
-
-    {"kw": ["surf"],
-     "payment": "cash", "pickup": "meeting_point",
-     "tips": ["swimsuit", "sunscreen", "water"],
-     "note": "All equipment provided."},
-
-    {"kw": ["fishing"],
-     "payment": "cash", "pickup": "meeting_point",
-     "tips": ["jacket", "sunscreen", "water", "snack"], "note": ""},
-
-    {"kw": ["private"],
-     "payment": "cash", "pickup": "pickup_hotel",
-     "tips": ["jacket", "water"], "note": ""},
+    {"kw": ["sunrise", "pico areeiro"], "payment": "cash", "pickup": "pickup_day_before", "tips": ["warm", "water", "snack", "shoes"], "note": "Dress very warmly — Pico Areeiro can be below 0°C at sunrise."},
+    {"kw": ["caldeirao verde", "caldeirão verde"], "payment": "cash", "pickup": "pickup_hotel", "tips": ["jacket", "water", "flashlight", "snack", "shoes"], "note": "A flashlight is essential for the tunnel section of the trail."},
+    {"kw": ["west", "jeep"], "payment": "cash", "pickup": "pickup_day_before", "tips": ["jacket", "swimsuit", "water", "snack"], "note": "The tour may include a swim stop — bring swimwear just in case."},
+    {"kw": ["west", "minivan"], "payment": "cash", "pickup": "pickup_day_before", "tips": ["jacket", "swimsuit", "water", "snack"], "note": "The tour may include a swim stop — bring swimwear just in case."},
+    {"kw": ["east", "jeep"], "payment": "cash", "pickup": "pickup_day_before", "tips": ["jacket", "water", "snack"], "note": ""},
+    {"kw": ["east", "minivan"], "payment": "cash", "pickup": "pickup_day_before", "tips": ["jacket", "water", "snack"], "note": ""},
+    {"kw": ["whale", "dolphin"], "payment": "cash_card", "pickup": "meeting_point", "tips": ["jacket", "swimsuit", "sunscreen", "water"], "note": "Please arrive at the marina 30 minutes before departure for check-in and payment."},
+    {"kw": ["sunset"], "payment": "cash_card", "pickup": "meeting_point", "tips": ["jacket", "sunscreen", "water"], "note": ""},
+    {"kw": ["canyoning"], "payment": "cash", "pickup": "pickup_hotel", "tips": ["jacket", "swimsuit", "sunscreen", "snack"], "note": "All equipment is included. Bring swimwear and warm clothes for after."},
+    {"kw": ["coasteering"], "payment": "cash", "pickup": "pickup_hotel", "tips": ["jacket", "swimsuit", "sunscreen", "water"], "note": "All equipment is included."},
+    {"kw": ["hike", "levada", "stairway to heaven"], "payment": "cash", "pickup": "pickup_day_before", "tips": ["jacket", "water", "snack", "shoes"], "note": ""},
+    {"kw": ["buggy", "quad"], "payment": "cash_card", "pickup": "pickup_hotel", "tips": ["jacket", "water", "snack"], "note": ""},
+    {"kw": ["paragliding", "paraglide"], "payment": "cash", "pickup": "pickup_hotel", "tips": ["jacket", "shoes"], "note": "Wear comfortable clothes and closed shoes."},
+    {"kw": ["kayak"], "payment": "cash_card", "pickup": "meeting_point", "tips": ["swimsuit", "sunscreen", "water", "snack"], "note": ""},
+    {"kw": ["diving", "scuba"], "payment": "cash", "pickup": "meeting_point", "tips": ["swimsuit", "sunscreen", "water"], "note": "All equipment provided. No experience needed."},
+    {"kw": ["surf"], "payment": "cash", "pickup": "meeting_point", "tips": ["swimsuit", "sunscreen", "water"], "note": "All equipment provided."},
+    {"kw": ["fishing"], "payment": "cash", "pickup": "meeting_point", "tips": ["jacket", "sunscreen", "water", "snack"], "note": ""},
+    {"kw": ["private"], "payment": "cash", "pickup": "pickup_hotel", "tips": ["jacket", "water"], "note": ""},
 ]
 
-
 def detect_activity(nome):
-    """Match activity name to rule using keywords."""
     n = nome.lower()
     for rule in ACTIVITY_RULES:
         if all(kw in n for kw in rule["kw"]):
             return rule
     return None
 
-
-# =========================================================================
-# HELPERS
-# =========================================================================
 def logo_b64():
     with open(os.path.join(BASE_DIR, "logo_clean.png"), "rb") as f:
         return "data:image/png;base64," + base64.b64encode(f.read()).decode()
@@ -247,9 +165,7 @@ def fmt_time(s):
     except:
         return s
 
-
 def airtable_list(base_id, table_name, max_records=1000):
-    """Fetch all records from an Airtable table."""
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
     records = []
     offset = None
@@ -266,22 +182,17 @@ def airtable_list(base_id, table_name, max_records=1000):
             break
     return records
 
-
 def airtable_patch(base_id, table_name, record_id, fields):
-    """Patch a single Airtable record."""
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}/{record_id}"
     r = req_lib.patch(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
     r.raise_for_status()
     return r.json()
 
-
 def airtable_create(base_id, table_name, fields):
-    """Create a single Airtable record."""
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
     r = req_lib.post(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
     r.raise_for_status()
     return r.json()
-
 
 @app.route("/airtable/rc", methods=["POST"])
 def create_rc():
@@ -294,13 +205,9 @@ def create_rc():
             return jsonify({"error": "No fields provided"}), 400
         result = airtable_create(BASE_RESERVAS, "Rent Car", fields)
         cache_clear("rc")
-        # Return a simplified record with the new ID
-        rec_id = result.get("id", "")
-        rec_fields = result.get("fields", {})
-        return jsonify({"success": True, "record": {"id": rec_id, "fields": rec_fields}})
+        return jsonify({"success": True, "record": {"id": result.get("id", ""), "fields": result.get("fields", {})}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/at", methods=["POST"])
 def create_at():
@@ -313,45 +220,32 @@ def create_at():
             return jsonify({"error": "No fields provided"}), 400
         result = airtable_create(BASE_RESERVAS, "Atividades", fields)
         cache_clear("at")
-        rec_id = result.get("id", "")
-        rec_fields = result.get("fields", {})
-        return jsonify({"success": True, "record": {"id": rec_id, "fields": rec_fields}})
+        return jsonify({"success": True, "record": {"id": result.get("id", ""), "fields": result.get("fields", {})}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# =========================================================================
-# RENT CAR
-# =========================================================================
 def build_rc_html(d):
     with open(os.path.join(BASE_DIR, "voucher_rc_template.html")) as f:
         tmpl = f.read()
-
     for field in ["pickup_data", "dropoff_data"]:
         val = d.get(field, "")
         if "T" in val or "Z" in val:
             d[field.replace("data", "hora")] = fmt_time(val)
             d[field] = fmt_date(val)
-
     pu_extra = ""
     if d.get("pickup_voo"):   pu_extra += f'<div class="date-sub">Flight: {d["pickup_voo"]}</div>'
     if d.get("pickup_hotel"): pu_extra += f'<div class="date-sub">{d["pickup_hotel"]}</div>'
     do_extra = ""
     if d.get("dropoff_voo"):   do_extra += f'<div class="date-sub">Flight: {d["dropoff_voo"]}</div>'
     if d.get("dropoff_hotel"): do_extra += f'<div class="date-sub">{d["dropoff_hotel"]}</div>'
-
     d["pickup_extra"]  = pu_extra
     d["dropoff_extra"] = do_extra
     d.setdefault("extras", "None")
-
-    # Auto-fill operator contacts
     empresa = d.get("empresa", "")
     if not d.get("empresa_telefone") and empresa in OPERATOR_CONTACTS:
         d["empresa_telefone"], d["empresa_email"] = OPERATOR_CONTACTS[empresa]
     d.setdefault("empresa_telefone", "")
     d.setdefault("empresa_email", "")
-
-    # Build empresa contact block — only show if there's actual contact info
     tel = d.get("empresa_telefone", "")
     eml = d.get("empresa_email", "")
     if tel or eml:
@@ -362,17 +256,13 @@ def build_rc_html(d):
         d["empresa_contact_block"] = f'<div class="contact-card"><div class="contact-lbl">Rental Company</div><div class="contact-name">{empresa}</div><div class="contact-det">{det}</div></div>'
     else:
         d["empresa_contact_block"] = ""
-
-    # Build contacts row — full width if no partner contact
     beyond_card = '<div class="contact-card"><div class="contact-lbl">Beyond Madeira</div><div class="contact-name">Booking Support</div><div class="contact-det">+351 939 566 415<br>booking@beyondmadeira.com</div></div>'
     if d["empresa_contact_block"]:
         d["contacts_row_html"] = f'<div class="contacts-row">{d["empresa_contact_block"]}{beyond_card}</div>'
     else:
         d["contacts_row_html"] = f'<div class="contacts-row">{beyond_card}</div>'
-
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
     return fill(tmpl, d)
-
 
 @app.route("/gerar-voucher", methods=["POST"])
 def gerar_voucher():
@@ -382,9 +272,7 @@ def gerar_voucher():
         d = request.get_json()
         if not d:
             return jsonify({"error": "JSON body required"}), 400
-        required = ["referencia", "total", "veiculo", "empresa", "cliente",
-                    "telefone", "email", "pickup_data", "pickup_hora",
-                    "pickup_local", "dropoff_data", "dropoff_hora", "dropoff_local"]
+        required = ["referencia", "total", "veiculo", "empresa", "cliente", "telefone", "email", "pickup_data", "pickup_hora", "pickup_local", "dropoff_data", "dropoff_hora", "dropoff_local"]
         missing = [f for f in required if not d.get(f)]
         if missing:
             return jsonify({"error": f"Missing fields: {missing}"}), 400
@@ -392,46 +280,33 @@ def gerar_voucher():
         pdf      = HTML(string=html_str).write_pdf()
         b64      = base64.b64encode(pdf).decode()
         fname    = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
-
-        # Upload to Airtable field "Ficheiro" if record_id provided
         uploaded = False
         record_id = d.get("record_id", "")
         if record_id and record_id.startswith("rec") and AT_TOKEN:
             try:
-                # Clear existing attachments first, then upload new one
                 airtable_patch(BASE_RESERVAS, "Rent Car", record_id, {"Ficheiro": []})
                 airtable_upload_attachment(BASE_RESERVAS, record_id, "Ficheiro", pdf, fname)
                 cache_clear("rc")
                 uploaded = True
             except Exception as upload_err:
-                pass  # still return PDF even if upload fails
-
+                pass
         return jsonify({"success": True, "filename": fname, "pdf_base64": b64, "uploaded": uploaded})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# =========================================================================
-# ACTIVITY VOUCHER
-# =========================================================================
 def build_at_html(d):
     with open(os.path.join(BASE_DIR, "voucher_at_template.html")) as f:
         tmpl = f.read()
-
     rule = detect_activity(d.get("atividade", ""))
-
     operador = d.get("operador", "")
     if not d.get("operador_telefone") and operador in OPERATOR_CONTACTS:
         d["operador_telefone"], d["operador_email"] = OPERATOR_CONTACTS[operador]
     d.setdefault("operador_telefone", "")
     d.setdefault("operador_email", "")
-
     if rule and not d.get("pagamento"):
         d["pagamento"] = rule["payment"]
-
     if rule and not d.get("pickup_mode"):
         d["pickup_mode"] = rule["pickup"]
-
     tips_html = ""
     if rule and rule.get("tips"):
         tips_lines = [TIPS_TEXT[t] for t in rule["tips"] if t in TIPS_TEXT]
@@ -442,10 +317,8 @@ def build_at_html(d):
     if d.get("pedido_especial"):
         tips_html += f'<div class="special-req"><div class="sr-label">Special Requests</div><div class="sr-text">{d["pedido_especial"]}</div></div>'
     d["special_requests_html"] = tips_html
-
     status    = d.get("status", "confirmed").lower()
     pagamento = d.get("pagamento", "cash").lower()
-
     if status == "paid":
         d["status_label"] = "Paid \u2713"
         d["status_class"] = "paid"
@@ -466,10 +339,8 @@ def build_at_html(d):
             d["price_note"] = "Card on the day"
         else:
             d["price_note"] = "Cash on the day"
-
     hora = d.get("hora", "TBC")
     d["start_time_class"] = "tbc" if hora == "TBC" else "accent"
-
     total = d.get("total", "")
     if status == "awaiting":
         stripe_link = d.get("stripe_link", "")
@@ -482,7 +353,6 @@ def build_at_html(d):
         d["payment_alert_html"] = f'<div class="pay-alert paid"><div class="pa-dot paid">&#10003;</div><div><div class="pa-title paid">Payment Confirmed</div><div class="pa-body paid">Your payment of <strong>{total}&euro;</strong> has been received. No further payment required &mdash; just show up and enjoy!</div></div></div>'
     else:
         d["payment_alert_html"] = ""
-
     if status == "confirmed":
         pm_map = {
             "cash":      ("Payment: Cash Only",    "To be paid in cash on the day of the activity."),
@@ -494,12 +364,10 @@ def build_at_html(d):
         d["payment_method_html"] = f'<div class="paymethod"><div class="pm-dot">$</div><div><div class="pm-title">{pt}</div><div class="pm-body">{pb}</div></div></div>'
     else:
         d["payment_method_html"] = ""
-
     pickup_mode = d.get("pickup_mode", "none")
     pickup_loc  = d.get("pickup_local", "")
     hotel_det   = d.get("hotel_detail", "")
     hora_conf   = d.get("hora_confirmada", "")
-
     if pickup_mode != "none" and pickup_loc:
         labels = {
             "meeting_point":        ("MEETING POINT",    "Please make your own way to the meeting point at the time indicated."),
@@ -511,7 +379,6 @@ def build_at_html(d):
         d["pickup_html"] = f'<div class="pickup-card"><div class="pickup-dot">&#9679;</div><div><div class="pickup-lbl">{loc_label}</div><div class="pickup-loc">{pickup_loc}</div>{hotel_line}<div class="pickup-note">{loc_note}</div></div></div>'
     else:
         d["pickup_html"] = ""
-
     items = d.get("items", [])
     if not items:
         items = [{"nome": d.get("atividade",""), "detalhe": f"{d.get('data','')} &middot; {d.get('hora','TBC')}", "qty": d.get("pax",""), "unit": d.get("preco_unit",""), "sub": d.get("total","")}]
@@ -520,14 +387,11 @@ def build_at_html(d):
         unit_str = f"&euro;{it['unit']}" if it.get("unit") else ""
         rows_html += f'<div class="inv-row"><div class="inv-prod"><div class="inv-name">{it.get("nome","")}</div><div class="inv-detail">{it.get("detalhe","")}</div></div><div class="inv-qty">{it.get("qty","")}x</div><div class="inv-unit">{unit_str}</div><div class="inv-sub">&euro;{it.get("sub","")}</div></div>'
     d["invoice_rows_html"] = rows_html
-
     d.setdefault("cancelamento", "Free cancellation up to <strong>48 hours</strong> before the activity. Late cancellations or no-shows may incur a fee.")
     d.setdefault("mensagem_confirmacao", "Your reservation is confirmed &mdash; no payment required at this stage. The total amount is to be paid in cash on the day of the activity. You will receive further details closer to the date, including your exact pick-up time.")
     d.setdefault("bokun_ref", "")
-
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
     return fill(tmpl, d)
-
 
 @app.route("/gerar-voucher-atividade", methods=["POST"])
 def gerar_voucher_atividade():
@@ -545,8 +409,6 @@ def gerar_voucher_atividade():
         pdf      = HTML(string=html_str).write_pdf()
         b64      = base64.b64encode(pdf).decode()
         fname    = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
-
-        # Upload to Airtable field "Ficheiro" if record_id provided
         uploaded = False
         record_id = d.get("record_id", "")
         if record_id and record_id.startswith("rec") and AT_TOKEN:
@@ -557,15 +419,9 @@ def gerar_voucher_atividade():
                 uploaded = True
             except Exception as upload_err:
                 pass
-
         return jsonify({"success": True, "filename": fname, "pdf_base64": b64, "uploaded": uploaded})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# =========================================================================
-# AIRTABLE — RESERVAS (RC + AT)  base: appR8ZKP5ygR8o8Q0
-# =========================================================================
 
 @app.route("/airtable/rc", methods=["GET"])
 def get_rc():
@@ -589,14 +445,14 @@ def get_rc():
                 "parceiro":    f.get("Fornecedor/Parceiro", ""),
                 "carro":       f.get("Modelo de Carro", ""),
                 "estado":      f.get("Estado de Reserva", ""),
-                "pagamento":   "",  # RC has no payment status field
+                "pagamento":   "",
                 "pdt":         f.get("Data da Pick-up", ""),
                 "ploc":        f.get("Localização Pick-up", f.get("Local Pick-up", "")),
-                "pvoo":        "",  # RC has no flight field
+                "pvoo":        "",
                 "pdet":        f.get("Detalhes Pick Up", ""),
                 "ddt":         f.get("Data do Drop Off", ""),
                 "dloc":        f.get("Localização Drop-off", f.get("Local Drop-off", "")),
-                "dvoo":        "",  # RC has no flight field
+                "dvoo":        "",
                 "ddet":        f.get("Detalhes Drop Off", ""),
                 "total":       f.get("Valor da Reserva (€)", 0),
                 "com":         f.get("Comissão", 0),
@@ -613,7 +469,6 @@ def get_rc():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/rc/<record_id>", methods=["PATCH"])
 def patch_rc(record_id):
     if not check_key():
@@ -624,11 +479,10 @@ def patch_rc(record_id):
         if not fields:
             return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_RESERVAS, "Rent Car", record_id, fields)
-        cache_clear("rc")  # invalidate cache after update
+        cache_clear("rc")
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/at", methods=["GET"])
 def get_at():
@@ -672,7 +526,6 @@ def get_at():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/at/<record_id>", methods=["PATCH"])
 def patch_at(record_id):
     if not check_key():
@@ -683,15 +536,10 @@ def patch_at(record_id):
         if not fields:
             return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_RESERVAS, "Atividades", record_id, fields)
-        cache_clear("at")  # invalidate cache after update
+        cache_clear("at")
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# =========================================================================
-# AIRTABLE — CONHECIMENTO  base: appKhPwEBxolWaO9r
-# =========================================================================
 
 @app.route("/airtable/sitemap", methods=["GET"])
 def get_sitemap():
@@ -702,20 +550,10 @@ def get_sitemap():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":        rec["id"],
-                "nome":      f.get("Nome de Página", f.get("Nome de Pagina", "")),
-                "estado":    f.get("Estado", ""),
-                "categoria": f.get("Categoria Principal", ""),
-                "url":       f.get("URL", ""),
-                "cat":       f.get("Categoria", ""),
-                "conteudo":  f.get("Conteúdo", f.get("Conteudo", "")),
-                "modified":  f.get("Last Modified", ""),
-            })
+            out.append({"id": rec["id"], "nome": f.get("Nome de Página", f.get("Nome de Pagina", "")), "estado": f.get("Estado", ""), "categoria": f.get("Categoria Principal", ""), "url": f.get("URL", ""), "cat": f.get("Categoria", ""), "conteudo": f.get("Conteúdo", f.get("Conteudo", "")), "modified": f.get("Last Modified", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/sitemap/<record_id>", methods=["PATCH"])
 def patch_sitemap(record_id):
@@ -724,13 +562,10 @@ def patch_sitemap(record_id):
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_CONHECIMENTO, "Sitemap", record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/biblioteca", methods=["GET"])
 def get_biblioteca():
@@ -741,19 +576,10 @@ def get_biblioteca():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":       rec["id"],
-                "titulo":   f.get("Answer Title", ""),
-                "gatilho":  f.get("Trigger / Customer Question", ""),
-                "resposta": f.get("Answer", ""),
-                "categoria":f.get("Category", ""),
-                "estado":   f.get("Status", ""),
-                "obs":      f.get("Observação", f.get("Observacao", "")),
-            })
+            out.append({"id": rec["id"], "titulo": f.get("Answer Title", ""), "gatilho": f.get("Trigger / Customer Question", ""), "resposta": f.get("Answer", ""), "categoria": f.get("Category", ""), "estado": f.get("Status", ""), "obs": f.get("Observação", f.get("Observacao", ""))})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/biblioteca/<record_id>", methods=["PATCH"])
 def patch_biblioteca(record_id):
@@ -762,13 +588,10 @@ def patch_biblioteca(record_id):
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_CONHECIMENTO, "Biblioteca", record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/guia", methods=["GET"])
 def get_guia():
@@ -779,28 +602,10 @@ def get_guia():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":          rec["id"],
-                "titulo":      f.get("Nome", ""),
-                "categoria":   f.get("Categoria", ""),
-                "descricao":   f.get("Descrição", f.get("Descricao", "")),
-                "localizacao": f.get("Localização", f.get("Localizacao", "")),
-                "estado":      f.get("Estado", ""),
-                "prioridade":  f.get("Prioridade", ""),
-                "tags":        f.get("Tags", ""),
-                "notas":       f.get("Notas Internas", ""),
-                "recomendado": f.get("Recomendado?", False),
-                "preco":       f.get("Preço Nível", f.get("Preco Nivel", "")),
-                "horario":     f.get("Horário", f.get("Horario", "")),
-                "distancia":   f.get("Distância", f.get("Distancia", "")),
-                "dificuldade": f.get("Dificuldade", ""),
-                "website":     f.get("Website", ""),
-                "contacto":    f.get("Contacto", ""),
-            })
+            out.append({"id": rec["id"], "titulo": f.get("Nome", ""), "categoria": f.get("Categoria", ""), "descricao": f.get("Descrição", f.get("Descricao", "")), "localizacao": f.get("Localização", f.get("Localizacao", "")), "estado": f.get("Estado", ""), "prioridade": f.get("Prioridade", ""), "tags": f.get("Tags", ""), "notas": f.get("Notas Internas", ""), "recomendado": f.get("Recomendado?", False), "preco": f.get("Preço Nível", f.get("Preco Nivel", "")), "horario": f.get("Horário", f.get("Horario", "")), "distancia": f.get("Distância", f.get("Distancia", "")), "dificuldade": f.get("Dificuldade", ""), "website": f.get("Website", ""), "contacto": f.get("Contacto", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/guia/<record_id>", methods=["PATCH"])
 def patch_guia(record_id):
@@ -809,20 +614,10 @@ def patch_guia(record_id):
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_CONHECIMENTO, "Madeira Guide", record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-
-# =========================================================================
-# AIRTABLE — FINANCEIRO  base: appOrdG5Fsr7N0RmH
-# Tabelas: Registos Diários, Resumos Mensais, Despesas Fixas,
-#          Despesas Variáveis, Objetivos & Crescimento, Caixa Mensal
-# =========================================================================
 
 @app.route("/airtable/diario", methods=["GET"])
 def get_diario():
@@ -836,21 +631,11 @@ def get_diario():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":       rec["id"],
-                "data":     f.get("Data", ""),
-                "fat":      f.get("Faturação Diária", 0),
-                "fat_rc":   f.get("Faturação RC", 0),
-                "fat_at":   f.get("Faturação AT", 0),
-                "mes":      (f.get("Resumo Mensal") or [{}])[0].get("name","") if isinstance(f.get("Resumo Mensal"), list) else str(f.get("Resumo Mensal","")),
-                "notas":    f.get("Notas do Dia", ""),
-                "resp":     f.get("Responsável", ""),
-            })
+            out.append({"id": rec["id"], "data": f.get("Data", ""), "fat": f.get("Faturação Diária", 0), "fat_rc": f.get("Faturação RC", 0), "fat_at": f.get("Faturação AT", 0), "mes": (f.get("Resumo Mensal") or [{}])[0].get("name","") if isinstance(f.get("Resumo Mensal"), list) else str(f.get("Resumo Mensal","")), "notas": f.get("Notas do Dia", ""), "resp": f.get("Responsável", "")})
         cache_set("diario", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/diario", methods=["POST"])
 def create_diario():
@@ -859,14 +644,11 @@ def create_diario():
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_create(BASE_FINANCEIRO, "Registos Diários", fields)
         cache_clear("diario")
         return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/diario/<record_id>", methods=["PATCH"])
 def patch_diario(record_id):
@@ -875,14 +657,11 @@ def patch_diario(record_id):
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_FINANCEIRO, "Registos Diários", record_id, fields)
         cache_clear("diario")
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/resumos-mensais", methods=["GET"])
 def get_resumos_mensais():
@@ -896,32 +675,11 @@ def get_resumos_mensais():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":          rec["id"],
-                "mes":         f.get("Resumo Mensal", rec["id"]),
-                "fat":         f.get("Total de Faturação Mensal (€)", 0),
-                "fat_rc":      f.get("Faturação RC", 0),
-                "fat_at":      f.get("Faturação AT", 0),
-                "lucro":       f.get("Lucro Mensal (Automático)", 0),
-                "caixa":       f.get("Caixa Final (€)", 0),
-                "receita":     f.get("Receita Realizada", 0),
-                "obj":         f.get("Objetivo Mensal (€)", 0),
-                "diff_obj":    f.get("Diferença vs Objetivo", 0),
-                "desp_fixas":  f.get("Total de Despesas Fixas (€)", 0),
-                "desp_var":    f.get("Total de Despesas Variáveis (€)", 0),
-                "desp_total":  f.get("Total de Despesas (€)", 0),
-                "media_diaria":f.get("Média Diária de Faturação (€)", 0),
-                "dias_fat":    f.get("N.º de Dias com Faturação", 0),
-                "nres_rc":     f.get("Nº Reservas RC", 0),
-                "nres_at":     f.get("Nº Reservas AT", 0),
-                "status":      f.get("Status do Mês", ""),
-                "notas":       f.get("Notas do Mês", ""),
-            })
+            out.append({"id": rec["id"], "mes": f.get("Resumo Mensal", rec["id"]), "fat": f.get("Total de Faturação Mensal (€)", 0), "fat_rc": f.get("Faturação RC", 0), "fat_at": f.get("Faturação AT", 0), "lucro": f.get("Lucro Mensal (Automático)", 0), "caixa": f.get("Caixa Final (€)", 0), "receita": f.get("Receita Realizada", 0), "obj": f.get("Objetivo Mensal (€)", 0), "diff_obj": f.get("Diferença vs Objetivo", 0), "desp_fixas": f.get("Total de Despesas Fixas (€)", 0), "desp_var": f.get("Total de Despesas Variáveis (€)", 0), "desp_total": f.get("Total de Despesas (€)", 0), "media_diaria": f.get("Média Diária de Faturação (€)", 0), "dias_fat": f.get("N.º de Dias com Faturação", 0), "nres_rc": f.get("Nº Reservas RC", 0), "nres_at": f.get("Nº Reservas AT", 0), "status": f.get("Status do Mês", ""), "notas": f.get("Notas do Mês", "")})
         cache_set("resumos_mensais", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/despesas-fixas", methods=["GET"])
 def get_despesas_fixas():
@@ -932,28 +690,15 @@ def get_despesas_fixas():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            # "Resumo Mensal(s)" is a linked record field
             mes_raw = f.get("Resumo Mensal(s)", "") or f.get("Resumo Mensal", "")
             if isinstance(mes_raw, list):
                 mes_str = mes_raw[0].get("name","") if mes_raw and isinstance(mes_raw[0],dict) else (str(mes_raw[0]) if mes_raw else "")
             else:
                 mes_str = str(mes_raw)
-            out.append({
-                "id":          rec["id"],
-                "nome":        f.get("Fornecedor", f.get("Nome", "")),
-                "cat":         f.get("Categoria", ""),
-                "valor":       float(f.get("Valor Mensal", 0) or 0),
-                "mes":         mes_str,
-                "pago":        bool(f.get("Pago?", False)),
-                "fatura":      bool(f.get("Fatura Recebida?", False) or f.get("Fatura?", False)),
-                "recorrente":  bool(f.get("Recorrente?", False)),
-                "notas":       f.get("Notas", ""),
-                "tipo":        "fixa",
-            })
+            out.append({"id": rec["id"], "nome": f.get("Fornecedor", f.get("Nome", "")), "cat": f.get("Categoria", ""), "valor": float(f.get("Valor Mensal", 0) or 0), "mes": mes_str, "pago": bool(f.get("Pago?", False)), "fatura": bool(f.get("Fatura Recebida?", False) or f.get("Fatura?", False)), "recorrente": bool(f.get("Recorrente?", False)), "notas": f.get("Notas", ""), "tipo": "fixa"})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/despesas-variaveis", methods=["GET"])
 def get_despesas_variaveis():
@@ -969,21 +714,10 @@ def get_despesas_variaveis():
                 mes_str2 = mes_raw2[0].get("name","") if mes_raw2 and isinstance(mes_raw2[0],dict) else (str(mes_raw2[0]) if mes_raw2 else "")
             else:
                 mes_str2 = str(mes_raw2)
-            out.append({
-                "id":          rec["id"],
-                "nome":        f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))),
-                "cat":         f.get("Categoria", f.get("Tipo Despesa", "")),
-                "valor":       float(f.get("Valor", 0) or 0),
-                "mes":         mes_str2,
-                "pago":        bool(f.get("Pago?", False)),
-                "fatura":      bool(f.get("Fatura Recebida?", False) or f.get("Fatura?", False)),
-                "notas":       f.get("Notas", ""),
-                "tipo":        "variavel",
-            })
+            out.append({"id": rec["id"], "nome": f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))), "cat": f.get("Categoria", f.get("Tipo Despesa", "")), "valor": float(f.get("Valor", 0) or 0), "mes": mes_str2, "pago": bool(f.get("Pago?", False)), "fatura": bool(f.get("Fatura Recebida?", False) or f.get("Fatura?", False)), "notas": f.get("Notas", ""), "tipo": "variavel"})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/objetivos", methods=["GET"])
 def get_objetivos():
@@ -994,34 +728,10 @@ def get_objetivos():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":              rec["id"],
-                "mes":             f.get("Objetivos", rec["id"]),
-                "obj_fat":         f.get("🎯 Objetivo Faturação (€)", 0),
-                "res_fat":         f.get("Resultado Faturação (€)", 0),
-                "dif_fat":         f.get("📊 Diferença Faturação (€)", 0),
-                "obj_lucro":       f.get("🎯 Objetivo Lucro (€)", 0),
-                "res_lucro":       f.get("Resultado Lucro (€)", 0),
-                "obj_reviews":     f.get("🎯 Objetivo Reviews", 0),
-                "res_reviews":     f.get("Resultado Reviews", 0),
-                "obj_ig":          f.get("🎯 Objetivo Instagram", 0),
-                "res_ig":          f.get("Resultado Instagram", 0),
-                "obj_fb":          f.get("🎯 Objetivo Facebook", 0),
-                "res_fb":          f.get("Resultado Facebook", 0),
-                "obj_tiktok":      f.get("🎯 Objetivo Tiktok", 0),
-                "res_tiktok":      f.get("Resultado Tiktok", 0),
-                "obj_views":       f.get("🎯 Objetivo Website Views", 0),
-                "res_views":       f.get("Resultado Website Views", 0),
-                "obj_users":       f.get("🎯 Objetivo Utilizadores Ativos", 0),
-                "res_users":       f.get("Resultado Utilizadores Ativos", 0),
-                "status":          f.get("Status Geral", ""),
-                "acoes":           f.get("Ações do Mês", ""),
-                "notas":           f.get("Notas", ""),
-            })
+            out.append({"id": rec["id"], "mes": f.get("Objetivos", rec["id"]), "obj_fat": f.get("🎯 Objetivo Faturação (€)", 0), "res_fat": f.get("Resultado Faturação (€)", 0), "dif_fat": f.get("📊 Diferença Faturação (€)", 0), "obj_lucro": f.get("🎯 Objetivo Lucro (€)", 0), "res_lucro": f.get("Resultado Lucro (€)", 0), "obj_reviews": f.get("🎯 Objetivo Reviews", 0), "res_reviews": f.get("Resultado Reviews", 0), "obj_ig": f.get("🎯 Objetivo Instagram", 0), "res_ig": f.get("Resultado Instagram", 0), "obj_fb": f.get("🎯 Objetivo Facebook", 0), "res_fb": f.get("Resultado Facebook", 0), "obj_tiktok": f.get("🎯 Objetivo Tiktok", 0), "res_tiktok": f.get("Resultado Tiktok", 0), "obj_views": f.get("🎯 Objetivo Website Views", 0), "res_views": f.get("Resultado Website Views", 0), "obj_users": f.get("🎯 Objetivo Utilizadores Ativos", 0), "res_users": f.get("Resultado Utilizadores Ativos", 0), "status": f.get("Status Geral", ""), "acoes": f.get("Ações do Mês", ""), "notas": f.get("Notas", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 TAB_CAIXA = "tblW32WemgLNYH9jO"
 
@@ -1042,23 +752,11 @@ def get_caixa_mensal():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":             rec["id"],
-                "mes":            f.get("Mês/Ano", ""),
-                "saldo_dinheiro": parse_eur(f.get("Saldo Dinheiro (€)")),
-                "saldo_banco":    parse_eur(f.get("Saldo Banco (€)")),
-                "saldo_total":    parse_eur(f.get("Saldo Total (€)")),
-                "fat_mes":        parse_eur(f.get("Faturação do Mês (€)")),
-                "desp_mes":       parse_eur(f.get("Despesas do Mês (€)")),
-                "lucro":          parse_eur(f.get("Lucro Calculado (€)")),
-                "diferenca":      parse_eur(f.get("Diferença vs Caixa Real (€)")),
-                "notas":          f.get("Notas", ""),
-            })
+            out.append({"id": rec["id"], "mes": f.get("Mês/Ano", ""), "saldo_dinheiro": parse_eur(f.get("Saldo Dinheiro (€)")), "saldo_banco": parse_eur(f.get("Saldo Banco (€)")), "saldo_total": parse_eur(f.get("Saldo Total (€)")), "fat_mes": parse_eur(f.get("Faturação do Mês (€)")), "desp_mes": parse_eur(f.get("Despesas do Mês (€)")), "lucro": parse_eur(f.get("Lucro Calculado (€)")), "diferenca": parse_eur(f.get("Diferença vs Caixa Real (€)")), "notas": f.get("Notas", "")})
         cache_set("caixa", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/caixa-mensal/<record_id>", methods=["PATCH"])
 def patch_caixa_mensal(record_id):
@@ -1067,12 +765,9 @@ def patch_caixa_mensal(record_id):
     try:
         body = request.get_json() or {}
         fields = {}
-        if "saldo_dinheiro" in body:
-            fields["Saldo Dinheiro (€)"] = float(body["saldo_dinheiro"] or 0)
-        if "saldo_banco" in body:
-            fields["Saldo Banco (€)"] = float(body["saldo_banco"] or 0)
-        if "notas" in body:
-            fields["Notas"] = str(body["notas"])
+        if "saldo_dinheiro" in body: fields["Saldo Dinheiro (€)"] = float(body["saldo_dinheiro"] or 0)
+        if "saldo_banco" in body: fields["Saldo Banco (€)"] = float(body["saldo_banco"] or 0)
+        if "notas" in body: fields["Notas"] = str(body["notas"])
         if not fields:
             return jsonify({"error": "Nenhum campo para actualizar"}), 400
         result = airtable_patch(BASE_FINANCEIRO, TAB_CAIXA, record_id, fields)
@@ -1080,7 +775,6 @@ def patch_caixa_mensal(record_id):
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/parceiros", methods=["GET"])
 def get_parceiros():
@@ -1094,31 +788,11 @@ def get_parceiros():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":                   rec["id"],
-                "nome":                 f.get("Nome", f.get("Name", rec["id"])),
-                "categoria":            f.get("Categoria", ""),
-                "tel":                  f.get("Contacto Telefone", ""),
-                "email":                f.get("Email", ""),
-                "website":              f.get("Website", ""),
-                "morada":               f.get("Morada Office", ""),
-                "meeting_point":        f.get("Meeting Point", ""),
-                "comissao_tipo":        f.get("Comissão Tipo", ""),
-                "comissao_valor":       f.get("Comissão Valor", 0),
-                "comissao_notas":       f.get("Comissão Notas", ""),
-                "instrucoes_aeroporto": f.get("Instruções Aeroporto", ""),
-                "instrucoes_hotel":     f.get("Instruções Hotel", ""),
-                "instrucoes_office":    f.get("Instruções Office", ""),
-                "atividades":           f.get("Atividades / Passeios", ""),
-                "logo_url":             f.get("Logo URL", ""),
-                "notas":                f.get("Notas Internas", ""),
-                "ativo":                f.get("Ativo?", True),
-            })
+            out.append({"id": rec["id"], "nome": f.get("Nome", f.get("Name", rec["id"])), "categoria": f.get("Categoria", ""), "tel": f.get("Contacto Telefone", ""), "email": f.get("Email", ""), "website": f.get("Website", ""), "morada": f.get("Morada Office", ""), "meeting_point": f.get("Meeting Point", ""), "comissao_tipo": f.get("Comissão Tipo", ""), "comissao_valor": f.get("Comissão Valor", 0), "comissao_notas": f.get("Comissão Notas", ""), "instrucoes_aeroporto": f.get("Instruções Aeroporto", ""), "instrucoes_hotel": f.get("Instruções Hotel", ""), "instrucoes_office": f.get("Instruções Office", ""), "atividades": f.get("Atividades / Passeios", ""), "logo_url": f.get("Logo URL", ""), "notas": f.get("Notas Internas", ""), "ativo": f.get("Ativo?", True)})
         cache_set("parceiros", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/parceiros/<record_id>", methods=["PATCH"])
 def patch_parceiros(record_id):
@@ -1127,14 +801,11 @@ def patch_parceiros(record_id):
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_RESERVAS, "Parceiros", record_id, fields)
         cache_clear("parceiros")
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/clientes", methods=["GET"])
 def get_clientes():
@@ -1148,27 +819,11 @@ def get_clientes():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":               rec["id"],
-                "email":            f.get("Email", ""),
-                "tel":              f.get("Telefone", ""),
-                "n_rc":             f.get("N RC", 0),
-                "n_at":             f.get("N AT", 0),
-                "total_rc":         f.get("Total Gasto RC", 0),
-                "total_at":         f.get("Total Gasto AT", 0),
-                "total":            f.get("Total Gasto", 0),
-                "n_total":          f.get("N Total Reservas", 0),
-                "primeira_reserva": f.get("Primeira Reserva", ""),
-                "ultima_reserva":   f.get("Ultima Reserva", ""),
-                "pais":             f.get("País", ""),
-                "notas":            f.get("Notas", ""),
-                "vip":              f.get("VIP?", False),
-            })
+            out.append({"id": rec["id"], "email": f.get("Email", ""), "tel": f.get("Telefone", ""), "n_rc": f.get("N RC", 0), "n_at": f.get("N AT", 0), "total_rc": f.get("Total Gasto RC", 0), "total_at": f.get("Total Gasto AT", 0), "total": f.get("Total Gasto", 0), "n_total": f.get("N Total Reservas", 0), "primeira_reserva": f.get("Primeira Reserva", ""), "ultima_reserva": f.get("Ultima Reserva", ""), "pais": f.get("País", ""), "notas": f.get("Notas", ""), "vip": f.get("VIP?", False)})
         cache_set("clientes", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/reviews", methods=["GET"])
 def get_reviews():
@@ -1179,24 +834,10 @@ def get_reviews():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":         rec["id"],
-                "nome":       f.get("Nome Cliente", ""),
-                "email":      f.get("Email Cliente", ""),
-                "nota":       f.get("Nota (1-5)", 0),
-                "texto":      f.get("Texto Review", ""),
-                "data":       f.get("Data", ""),
-                "reserva":    f.get("Reserva Relacionada", ""),
-                "tipo":       f.get("Tipo Reserva", ""),
-                "respondido": f.get("Respondido?", False),
-                "resposta":   f.get("Resposta", ""),
-                "link":       f.get("Link Review", ""),
-                "notas":      f.get("Notas Internas", ""),
-            })
+            out.append({"id": rec["id"], "nome": f.get("Nome Cliente", ""), "email": f.get("Email Cliente", ""), "nota": f.get("Nota (1-5)", 0), "texto": f.get("Texto Review", ""), "data": f.get("Data", ""), "reserva": f.get("Reserva Relacionada", ""), "tipo": f.get("Tipo Reserva", ""), "respondido": f.get("Respondido?", False), "resposta": f.get("Resposta", ""), "link": f.get("Link Review", ""), "notas": f.get("Notas Internas", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/reviews/<record_id>", methods=["PATCH"])
 def patch_reviews(record_id):
@@ -1210,7 +851,6 @@ def patch_reviews(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/disponibilidade", methods=["GET"])
 def get_disponibilidade():
     if not check_key():
@@ -1220,18 +860,10 @@ def get_disponibilidade():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":          rec["id"],
-                "carro":       f.get("Carro", ""),
-                "data_inicio": f.get("Data Início", ""),
-                "data_fim":    f.get("Data Fim", ""),
-                "motivo":      f.get("Motivo", ""),
-                "alternativa": f.get("Alternativa Sugerida", ""),
-            })
+            out.append({"id": rec["id"], "carro": f.get("Carro", ""), "data_inicio": f.get("Data Início", ""), "data_fim": f.get("Data Fim", ""), "motivo": f.get("Motivo", ""), "alternativa": f.get("Alternativa Sugerida", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/disponibilidade", methods=["POST"])
 def create_disponibilidade():
@@ -1245,7 +877,6 @@ def create_disponibilidade():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/disponibilidade/<record_id>", methods=["PATCH"])
 def patch_disponibilidade(record_id):
     if not check_key():
@@ -1258,7 +889,6 @@ def patch_disponibilidade(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/frota", methods=["GET"])
 def get_frota():
     if not check_key():
@@ -1268,30 +898,10 @@ def get_frota():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":            rec["id"],
-                "carro":         f.get("Carro", ""),
-                "tipo":          f.get("Tipo", ""),
-                "preco_baixa_12":  f.get("Preço Baixa 1-2d", 0),
-                "preco_baixa_36":  f.get("Preço Baixa 3-6d", 0),
-                "preco_baixa_7p":  f.get("Preço Baixa 7d+", 0),
-                "preco_alta_12":   f.get("Preço Alta 1-2d", 0),
-                "preco_alta_36":   f.get("Preço Alta 3-6d", 0),
-                "preco_alta_7p":   f.get("Preço Alta 7d+", 0),
-                "epoca_baixa_ini": f.get("Época Baixa Início", ""),
-                "epoca_baixa_fim": f.get("Época Baixa Fim", ""),
-                "epoca_alta_ini":  f.get("Época Alta Início", ""),
-                "epoca_alta_fim":  f.get("Época Alta Fim", ""),
-                "com_tipo":        f.get("Comissão Tipo", ""),
-                "com_valor":       f.get("Comissão Valor", 0),
-                "posicao":         f.get("Posição Hierarquia", 0),
-                "obs":             f.get("Observações", ""),
-                "ativo":           f.get("Ativo?", True),
-            })
+            out.append({"id": rec["id"], "carro": f.get("Carro", ""), "tipo": f.get("Tipo", ""), "preco_baixa_12": f.get("Preço Baixa 1-2d", 0), "preco_baixa_36": f.get("Preço Baixa 3-6d", 0), "preco_baixa_7p": f.get("Preço Baixa 7d+", 0), "preco_alta_12": f.get("Preço Alta 1-2d", 0), "preco_alta_36": f.get("Preço Alta 3-6d", 0), "preco_alta_7p": f.get("Preço Alta 7d+", 0), "epoca_baixa_ini": f.get("Época Baixa Início", ""), "epoca_baixa_fim": f.get("Época Baixa Fim", ""), "epoca_alta_ini": f.get("Época Alta Início", ""), "epoca_alta_fim": f.get("Época Alta Fim", ""), "com_tipo": f.get("Comissão Tipo", ""), "com_valor": f.get("Comissão Valor", 0), "posicao": f.get("Posição Hierarquia", 0), "obs": f.get("Observações", ""), "ativo": f.get("Ativo?", True)})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/frota/<record_id>", methods=["PATCH"])
 def patch_frota(record_id):
@@ -1305,7 +915,6 @@ def patch_frota(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/tarefas", methods=["GET"])
 def get_tarefas():
     if not check_key():
@@ -1315,27 +924,14 @@ def get_tarefas():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            # Primary field is the task title (first field, no fixed name)
             titulo = ""
             for k, v in f.items():
                 if isinstance(v, str) and k not in ["Responsável","Status","Urgência","Notas","Data Limite","Categoria","Criado Em","Concluído Em"]:
                     titulo = v; break
-            out.append({
-                "id":          rec["id"],
-                "titulo":      titulo,
-                "responsavel": f.get("Responsável", ""),
-                "status":      f.get("Status", "Por Fazer"),
-                "urgencia":    f.get("Urgência", ""),
-                "notas":       f.get("Notas", ""),
-                "data_limite": f.get("Data Limite", ""),
-                "categoria":   f.get("Categoria", ""),
-                "criado_em":   f.get("Criado Em", ""),
-                "concluido_em":f.get("Concluído Em", ""),
-            })
+            out.append({"id": rec["id"], "titulo": titulo, "responsavel": f.get("Responsável", ""), "status": f.get("Status", "Por Fazer"), "urgencia": f.get("Urgência", ""), "notas": f.get("Notas", ""), "data_limite": f.get("Data Limite", ""), "categoria": f.get("Categoria", ""), "criado_em": f.get("Criado Em", ""), "concluido_em": f.get("Concluído Em", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/tarefas", methods=["POST"])
 def create_tarefa():
@@ -1349,7 +945,6 @@ def create_tarefa():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/tarefas/<record_id>", methods=["PATCH"])
 def patch_tarefa(record_id):
     if not check_key():
@@ -1362,38 +957,16 @@ def patch_tarefa(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# =========================================================================
-# EXTRATO PARCEIROS
-# Regras exactas:
-#   AT: Data da Atividade — de dia 1 a último dia do mês, excluir Cancelado
-#   RC: Data do Drop Off  — de dia 1 a último dia do mês, excluir Cancelado
-# =========================================================================
-
-BASE_EXTRATO = "appRGJjirAzgEe46q"   # Base separada para Extrato Parceiros
-TAB_EXTRATO  = "tblHmWDHM64Dy4iwi"   # Tabela Extrato Parceiros
+BASE_EXTRATO = "appRGJjirAzgEe46q"
+TAB_EXTRATO  = "tblHmWDHM64Dy4iwi"
 TAB_AT_ID   = "tblla0uOKTcyboVXU"
 TAB_RC_ID   = "tblGc8HoEYOA5uG5Q"
 
-MESES_PT = {1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",
-            7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro"}
+MESES_PT = {1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro"}
 MESES_IDX = {v:k for k,v in MESES_PT.items()}
 
 ALIASES_PARC = {
-    "jungle lost":"junglelost","surreal":"surrealmadeira","surreal madeira":"surrealmadeira",
-    "be local":"belocal","trail 4 fun":"trail4fun","trail4fun":"trail4fun",
-    "warriors adventure":"warriorsadventure","warriors":"warriorsadventure",
-    "green devil":"greendevil","101 routes":"101routes","madeira tours":"madeiratourspt",
-    "madeira discovery":"madeiradiscovery","icon travel":"icontravel",
-    "wildermadeira":"wildermadeira","wilder madeira":"wildermadeira",
-    "lido tours":"lidotours","madeira explorers":"madeiraexplorers",
-    "vmt":"vmt","seaborn":"seaborn","nau santa maria":"nausantamaria",
-    "epicmadeira":"epicmadeira","epic madeira":"epicmadeira",
-    "quad xperience":"quadxperience","damwalk":"damwalk",
-    "free spirit":"freespirit","bearded":"bearded",
-    "mak":"mak","amsterdam rent car":"amsterdamrentcar",
-    "atlantic rent car":"atlanticrentcar","pointcar":"pointcar",
-    "point car":"pointcar","ab4rent":"ab4rent","rent car madeira":"rentcarmadeira",
+    "jungle lost":"junglelost","surreal":"surrealmadeira","surreal madeira":"surrealmadeira","be local":"belocal","trail 4 fun":"trail4fun","trail4fun":"trail4fun","warriors adventure":"warriorsadventure","warriors":"warriorsadventure","green devil":"greendevil","101 routes":"101routes","madeira tours":"madeiratourspt","madeira discovery":"madeiradiscovery","icon travel":"icontravel","wildermadeira":"wildermadeira","wilder madeira":"wildermadeira","lido tours":"lidotours","madeira explorers":"madeiraexplorers","vmt":"vmt","seaborn":"seaborn","nau santa maria":"nausantamaria","epicmadeira":"epicmadeira","epic madeira":"epicmadeira","quad xperience":"quadxperience","damwalk":"damwalk","free spirit":"freespirit","bearded":"bearded","mak":"mak","amsterdam rent car":"amsterdamrentcar","atlantic rent car":"atlanticrentcar","pointcar":"pointcar","point car":"pointcar","ab4rent":"ab4rent","rent car madeira":"rentcarmadeira",
 }
 
 def slug_norm_p(s):
@@ -1415,11 +988,9 @@ def get_text_f(v):
     return str(v)
 
 def fget_f(rf, *keys):
-    """Get field value, trying multiple key names."""
     for k in keys:
         val = rf.get(k)
         if val not in (None, ""): return val
-    # Try stripped keys
     rf_s = {k.strip(): v for k,v in rf.items()}
     for k in keys:
         val = rf_s.get(k.strip())
@@ -1427,22 +998,13 @@ def fget_f(rf, *keys):
     return None
 
 def parse_date_ext(s):
-    """Parse Airtable date string.
-    Handles formats:
-      - d/m/yyyy HH:mm  (Airtable PT format — most common)
-      - yyyy-mm-dd      (ISO date)
-      - yyyy-mm-ddTHH:mm:ss.000Z (ISO datetime)
-    Ignores typo dates (year outside 2010-2035).
-    """
     from datetime import datetime
     if not s: return None
     s = str(s).strip()
-    # Strip time component — both ISO (T) and space separator
     s = s.split("T")[0].split(" ")[0]
     for fmt_ in ("%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y"):
         try:
             dt = datetime.strptime(s, fmt_)
-            # Sanity check: reject obvious typos (e.g. year 20285, 0225)
             if not (2010 <= dt.year <= 2035):
                 return None
             return dt
@@ -1451,21 +1013,9 @@ def parse_date_ext(s):
     return None
 
 NORM_RULES = [
-    (["private","west"],"Private West Tour"),(["private","east"],"Private East Tour"),
-    (["private","jeep"],"Private Jeep Tour"),(["private","mini","van"],"Private Mini Van"),
-    (["private","levada"],"Private Levada Walk"),(["private","walk"],"Private Guided Walk"),
-    (["private","tour"],"Private Tour"),(["west"],"West Tour"),(["east"],"East Tour"),
-    (["mini","van"],"Mini Van Tour"),(["25","fountain"],"25 Fountains"),(["rabaçal"],"25 Fountains"),
-    (["jeep"],"Jeep Safari"),(["safari"],"Jeep Safari"),
-    (["canyoning","beginner"],"Canyoning Beginner"),(["canyoning","intermediate"],"Canyoning Intermediate"),
-    (["canyoning"],"Canyoning"),(["buggy"],"Buggy Experience"),(["sunrise"],"Sunrise Tour"),
-    (["pico"],"Pico Arieiro"),(["levada","alecrim"],"Levada do Alecrim"),
-    (["levada","rei"],"Levada do Rei"),(["levada"],"Levada Walk"),
-    (["caldeirão"],"Caldeirão Verde"),(["whale"],"Whale & Dolphin"),
-    (["boat"],"Boat Tour"),(["e-bike"],"E-Bike Experience"),(["quad"],"Quad Experience"),
-    (["surf"],"Surf Lesson"),(["scuba"],"Scuba Diving"),(["fishing"],"Fishing"),
-    (["coasteering"],"Coasteering"),(["fanal"],"Fanal Walk"),
+    (["private","west"],"Private West Tour"),(["private","east"],"Private East Tour"),(["private","jeep"],"Private Jeep Tour"),(["private","mini","van"],"Private Mini Van"),(["private","levada"],"Private Levada Walk"),(["private","walk"],"Private Guided Walk"),(["private","tour"],"Private Tour"),(["west"],"West Tour"),(["east"],"East Tour"),(["mini","van"],"Mini Van Tour"),(["25","fountain"],"25 Fountains"),(["rabaçal"],"25 Fountains"),(["jeep"],"Jeep Safari"),(["safari"],"Jeep Safari"),(["canyoning","beginner"],"Canyoning Beginner"),(["canyoning","intermediate"],"Canyoning Intermediate"),(["canyoning"],"Canyoning"),(["buggy"],"Buggy Experience"),(["sunrise"],"Sunrise Tour"),(["pico"],"Pico Arieiro"),(["levada","alecrim"],"Levada do Alecrim"),(["levada","rei"],"Levada do Rei"),(["levada"],"Levada Walk"),(["caldeirão"],"Caldeirão Verde"),(["whale"],"Whale & Dolphin"),(["boat"],"Boat Tour"),(["e-bike"],"E-Bike Experience"),(["quad"],"Quad Experience"),(["surf"],"Surf Lesson"),(["scuba"],"Scuba Diving"),(["fishing"],"Fishing"),(["coasteering"],"Coasteering"),(["fanal"],"Fanal Walk"),
 ]
+
 def norm_act(raw):
     raw = get_text_f(raw)
     if not raw: return "—"
@@ -1475,7 +1025,6 @@ def norm_act(raw):
     return raw.strip()[:30]
 
 def airtable_list_table(base_id, table_id, formula=None):
-    """List by table ID for precision."""
     url = f"https://api.airtable.com/v0/{base_id}/{table_id}"
     params = {"pageSize": 100}
     if formula: params["filterByFormula"] = formula
@@ -1491,64 +1040,35 @@ def airtable_list_table(base_id, table_id, formula=None):
     return records
 
 def airtable_upload_attachment(base_id, record_id, field_name, pdf_bytes, filename):
-    """Upload PDF attachment to Airtable record."""
     b64 = base64.b64encode(pdf_bytes).decode("utf-8")
     field_enc = req_lib.utils.quote(field_name, safe="")
     url = f"https://content.airtable.com/v0/{base_id}/{record_id}/{field_enc}/uploadAttachment"
     headers = {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
-    r = req_lib.post(url, headers=headers,
-        json={"filename": filename, "contentType": "application/pdf", "file": b64}, timeout=30)
+    r = req_lib.post(url, headers=headers, json={"filename": filename, "contentType": "application/pdf", "file": b64}, timeout=30)
     r.raise_for_status()
     return r.json()
 
 def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
-    """
-    Get all reservations for a partner in a given month.
-    AT: filter by Data da Atividade
-    RC: filter by Data do Drop Off
-    Both: exclude Cancelado
-    Returns list of dicts ready for PDF.
-    """
     from datetime import datetime, date
     import calendar
-
     sn_parc = slug_norm_p(parceiro)
-    # First and last day of month
     first_day = date(ano, mes_num, 1)
     last_day  = date(ano, mes_num, calendar.monthrange(ano, mes_num)[1])
-
     fonte = airtable_list_table(BASE_RESERVAS, TAB_RC_ID if is_rc else TAB_AT_ID)
-
     rows = []
     for rec in fonte:
         rf = rec.get("fields", {})
-
-        # Match partner name
         pname = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
         if slug_norm_p(pname) != sn_parc:
             continue
-
-        # Date filter — strict: must be within month
-        if is_rc:
-            # RC: Data do Drop Off (exact field name confirmed)
-            date_raw = fget_f(rf, "Data do Drop Off")
-        else:
-            # AT: Data da Atividade (exact field name confirmed)
-            date_raw = fget_f(rf, "Data da Atividade")
-
+        date_raw = fget_f(rf, "Data do Drop Off") if is_rc else fget_f(rf, "Data da Atividade")
         dt = parse_date_ext(date_raw)
         if not dt:
             continue
         dt_date = dt.date() if hasattr(dt, "date") else dt
         if not (first_day <= dt_date <= last_day):
             continue
-
-        # Estado — exclude Cancelado
-        if is_rc:
-            estado = get_text_f(fget_f(rf, "Estado de Reserva") or "")
-        else:
-            estado = get_text_f(fget_f(rf, "Estado da Reserva") or "")
-
+        estado = get_text_f(fget_f(rf, "Estado de Reserva") or "") if is_rc else get_text_f(fget_f(rf, "Estado da Reserva") or "")
         if estado in ("Cancelado", "Cancelada"):
             status = "Cancelado"
         elif estado == "Devemos":
@@ -1557,8 +1077,6 @@ def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
             status = "Pago"
         else:
             status = "Por Pagar"
-
-        # Values — exact field names confirmed
         if is_rc:
             total  = eur_val(fget_f(rf, "Valor da Reserva (€)") or 0)
             comm   = eur_val(fget_f(rf, "Comissão") or 0)
@@ -1571,24 +1089,11 @@ def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
             client = get_text_f(fget_f(rf, "Nome do Cliente") or "")
             act    = norm_act(fget_f(rf, "Atividade") or "")
             pax    = str(fget_f(rf, "Nº Pessoas") or "").strip()
-
-        rows.append({
-            "date":   dt.strftime("%d/%m"),
-            "client": client,
-            "act":    act,
-            "pax":    pax,
-            "total":  total,
-            "comm":   comm,
-            "status": status,
-        })
-
-    # Sort by date
+        rows.append({"date": dt.strftime("%d/%m"), "client": client, "act": act, "pax": pax, "total": total, "comm": comm, "status": status})
     rows.sort(key=lambda x: x["date"])
     return rows
 
-
 def calc_totais(rows):
-    """Calculate financial totals from rows."""
     n       = len(rows)
     n_can   = sum(1 for r in rows if r["status"] == "Cancelado")
     rows_v  = [r for r in rows if r["status"] != "Cancelado"]
@@ -1599,9 +1104,7 @@ def calc_totais(rows):
     comiss  = sum(r["comm"]  for r in rows_v if r["status"] != "Devemos")
     credito = sum(r["total"] - r["comm"] for r in rows_v if r["status"] == "Devemos")
     total_fim = comiss - credito
-    return dict(n=n, n_can=n_can, n_norm=n_norm, n_dev=n_dev,
-                gt=gt, gc=gc, comiss=comiss, credito=credito, total_fim=total_fim)
-
+    return dict(n=n, n_can=n_can, n_norm=n_norm, n_dev=n_dev, gt=gt, gc=gc, comiss=comiss, credito=credito, total_fim=total_fim)
 
 def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=None):
     from datetime import datetime
@@ -1613,48 +1116,26 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
         strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
         _em = "—"
         pax = str(r.get("pax") or _em).replace(" Pessoas","").replace(" Pessoa","").strip()
-        return (
-            f'<tr style="background:{bg}">'+
-            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>'+
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or _em)[:32]}</td>'+
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or _em)[:28]}</td>'+
-            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>'+
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td>'+
-            f'<td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td>'+
-            f'<td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td>'+
-            "</tr>"
-        )
+        return (f'<tr style="background:{bg}"><td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td><td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or _em)[:32]}</td><td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or _em)[:28]}</td><td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td><td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td><td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td><td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td></tr>')
 
     rows_html = ""
     if rows_by_month and len(rows_by_month) > 1:
-        # Multi-month: each month gets a header + rows + subtotal
         row_idx = 0
         for m_nome_i, m_ano_i, m_rows_i in rows_by_month:
             if not m_rows_i:
                 continue
             m_tots = calc_totais(m_rows_i)
-            rows_html += (
-                '<tr><td colspan="7" style="padding:8px 8px 4px;background:#f0faf9;'+
-                'border-top:1.5pt solid #0A616B;border-bottom:0.5pt solid #9CA3AF">'+
-                f'<span style="font-size:9pt;font-weight:800;color:#0A616B">{m_nome_i} {m_ano_i}</span>'+
-                f'<span style="font-size:8pt;color:#6B7280;margin-left:8px">{len(m_rows_i)} reservas</span>'+
-                '</td></tr>'
-            )
+            rows_html += f'<tr><td colspan="7" style="padding:8px 8px 4px;background:#f0faf9;border-top:1.5pt solid #0A616B;border-bottom:0.5pt solid #9CA3AF"><span style="font-size:9pt;font-weight:800;color:#0A616B">{m_nome_i} {m_ano_i}</span><span style="font-size:8pt;color:#6B7280;margin-left:8px">{len(m_rows_i)} reservas</span></td></tr>'
             for i, r in enumerate(m_rows_i):
                 rows_html += _row_html(r, "#F9FAFB" if (row_idx + i) % 2 == 0 else "#FFFFFF")
             row_idx += len(m_rows_i)
-            rows_html += (
-                '<tr style="background:#f0faf9">'+
-                f'<td colspan="4" style="padding:5px 8px;font-size:8pt;color:#374151;font-style:italic">Subtotal {m_nome_i} {m_ano_i}</td>'+
-                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;text-align:right">&euro; {abs(m_tots["gt"]):,.2f}</td>'+
-                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right">&euro; {abs(m_tots["gc"]):,.2f}</td>'+
-                '<td></td></tr>'
-            )
+            rows_html += f'<tr style="background:#f0faf9"><td colspan="4" style="padding:5px 8px;font-size:8pt;color:#374151;font-style:italic">Subtotal {m_nome_i} {m_ano_i}</td><td style="padding:5px 8px;font-size:8.5pt;font-weight:700;text-align:right">&euro; {abs(m_tots["gt"]):,.2f}</td><td style="padding:5px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right">&euro; {abs(m_tots["gc"]):,.2f}</td><td></td></tr>'
     else:
         for i, r in enumerate(rows):
             rows_html += _row_html(r, "#F9FAFB" if i % 2 == 0 else "#FFFFFF")
 
     logo_src = logo_b64()
+    title_mes = "&nbsp;+&nbsp;".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"
     return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
@@ -1662,86 +1143,46 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
   * {{ margin:0;padding:0;box-sizing:border-box; }}
   body {{ font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }}
   .top-bar {{ position:fixed;top:-1.8cm;left:-1.8cm;right:-1.8cm;height:5mm;background:#0A616B; }}
-  .footer {{ position:fixed;bottom:-1.6cm;left:-1.8cm;right:-1.8cm;border-top:0.5pt solid #E5E7EB;
-             padding:4pt 1.8cm;display:flex;justify-content:space-between;align-items:center; }}
+  .footer {{ position:fixed;bottom:-1.6cm;left:-1.8cm;right:-1.8cm;border-top:0.5pt solid #E5E7EB;padding:4pt 1.8cm;display:flex;justify-content:space-between;align-items:center; }}
   .footer span {{ font-size:6.5pt;color:#6B7280; }}
   table.main {{ width:100%;border-collapse:collapse; }}
-  .dt th {{ font-size:7.5pt;font-weight:700;color:#6B7280;padding:7px 8px;
-             border-bottom:1pt solid #9CA3AF;text-align:left;background:#fff; }}
-  .dt tfoot td {{ border-top:1pt solid #9CA3AF;font-weight:700;background:#F3F4F6; }}
+  .dt th {{ font-size:7.5pt;font-weight:700;color:#6B7280;padding:7px 8px;border-bottom:1pt solid #9CA3AF;text-align:left;background:#fff; }}
   .dt {{ margin-bottom:20pt;width:100%;border-collapse:collapse; }}
 </style>
 </head><body>
 <div class="top-bar"></div>
-
 <table class="main" style="margin-bottom:14pt"><tr>
   <td style="width:45%;vertical-align:top;padding-top:4pt">
     <img src="{logo_src}" style="height:38pt;margin-bottom:8pt;display:block" alt="Beyond Madeira">
-    <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">
-      Largo da Saúde 1, 9000-221 Funchal<br>
-      RNAVT 13020 · NIPC 518 827 119<br>
-      info@beyondmadeira.com · +351 939 566 415
-    </div>
+    <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">Largo da Saúde 1, 9000-221 Funchal<br>RNAVT 13020 · NIPC 518 827 119<br>info@beyondmadeira.com · +351 939 566 415</div>
   </td>
   <td style="text-align:right;vertical-align:top">
     <div style="font-size:9pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt">Extrato de Comissões</div>
-    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{"&nbsp;+&nbsp;".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"}</div>
+    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{title_mes}</div>
     <div style="font-size:8pt;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.5pt;margin-top:6pt">PARA</div>
     <div style="font-size:14pt;font-weight:700;color:#0A616B;margin-top:2pt">{parceiro}</div>
     <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:4pt">Ref. {ref} · Emitido a {today}</div>
   </td>
 </tr></table>
-
 <hr style="border:none;border-top:1pt solid #111827;margin:0 0 14pt 0">
-
 <div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Detalhe das Reservas</div>
 <table class="dt">
-  <thead><tr>
-    <th style="width:44pt">Data</th>
-    <th style="width:110pt">Cliente</th>
-    <th>Atividade / Carro</th>
-    <th style="width:28pt;text-align:center">Pax</th>
-    <th style="width:58pt;text-align:right">Total</th>
-    <th style="width:62pt;text-align:right">Comissão</th>
-    <th style="width:54pt;text-align:center">Estado</th>
-  </tr></thead>
+  <thead><tr><th style="width:44pt">Data</th><th style="width:110pt">Cliente</th><th>Atividade / Carro</th><th style="width:28pt;text-align:center">Pax</th><th style="width:58pt;text-align:right">Total</th><th style="width:62pt;text-align:right">Comissão</th><th style="width:54pt;text-align:center">Estado</th></tr></thead>
   <tbody>{rows_html}</tbody>
 </table>
-<div style="border-top:1pt solid #9CA3AF;background:#F3F4F6;display:flex;justify-content:flex-end;padding:7px 8px;margin-bottom:20pt;gap:0">
-  <div style="width:44pt"></div>
-  <div style="width:110pt"></div>
-  <div style="flex:1"></div>
-  <div style="width:28pt"></div>
+<div style="border-top:1pt solid #9CA3AF;background:#F3F4F6;display:flex;justify-content:flex-end;padding:7px 8px;margin-bottom:20pt">
+  <div style="width:44pt"></div><div style="width:110pt"></div><div style="flex:1"></div><div style="width:28pt"></div>
   <div style="width:58pt;text-align:right;font-size:9pt;font-weight:700;color:#111827;padding:0 8px">€ {abs(t["gt"]):,.2f}</div>
   <div style="width:62pt;text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:0 8px">€ {abs(t["gc"]):,.2f}</div>
   <div style="width:54pt;text-align:center;font-size:7.5pt;color:#6B7280;font-weight:600;padding:0 8px">TOTAL</div>
 </div>
-
 <table class="main"><tr>
   <td style="width:52%;vertical-align:top;padding-right:16pt">
     <div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Resumo Financeiro</div>
     <table style="width:100%;border-collapse:collapse">
-      <tr style="background:#fff;border-bottom:0.5pt solid #E5E7EB">
-        <td style="padding:10px 8px">
-          <div style="font-weight:700;font-size:9pt">Total faturado</div>
-          <div style="font-size:7pt;color:#9CA3AF">{t["n"]} reservas · {t["n_can"]} canceladas</div>
-        </td>
-        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">€ {abs(t["gt"]):,.2f}</td>
-      </tr>
-      <tr style="background:#F3F4F6;border-bottom:0.5pt solid #E5E7EB">
-        <td style="padding:10px 8px">
-          <div style="font-weight:700;font-size:9pt">Comissões a pagar</div>
-          <div style="font-size:7pt;color:#9CA3AF">{t["n_norm"]} reservas — cliente pagou ao parceiro</div>
-        </td>
-        <td style="text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:10px 8px">€ {abs(t["comiss"]):,.2f}</td>
-      </tr>
-      <tr style="background:#fff">
-        <td style="padding:10px 8px">
-          <div style="font-weight:700;font-size:9pt">Crédito a descontar</div>
-          <div style="font-size:7pt;color:#9CA3AF">{t["n_dev"]} reservas — cliente pagou à Beyond</div>
-        </td>
-        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">− € {abs(t["credito"]):,.2f}</td>
-      </tr>
+      <tr style="background:#fff;border-bottom:0.5pt solid #E5E7EB"><td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Total faturado</div><div style="font-size:7pt;color:#9CA3AF">{t["n"]} reservas · {t["n_can"]} canceladas</div></td><td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">€ {abs(t["gt"]):,.2f}</td></tr>
+      <tr style="background:#F3F4F6;border-bottom:0.5pt solid #E5E7EB"><td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Comissões a pagar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_norm"]} reservas — cliente pagou ao parceiro</div></td><td style="text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:10px 8px">€ {abs(t["comiss"]):,.2f}</td></tr>
+      <tr style="background:#fff"><td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Crédito a descontar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_dev"]} reservas — cliente pagou à Beyond</div></td><td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">− € {abs(t["credito"]):,.2f}</td></tr>
     </table>
     <div style="background:#0A616B;border-radius:6pt;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8pt">
       <span style="font-size:10pt;font-weight:700;color:white">TOTAL A RECEBER</span>
@@ -1751,35 +1192,17 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
   <td style="width:48%;vertical-align:top">
     <div style="background:#0A616B;border-radius:10pt;padding:16px 18px;color:white">
       <div style="font-size:7pt;font-weight:700;color:#A7F3D0;margin-bottom:12pt">DADOS PARA PAGAMENTO</div>
-      <div style="margin-bottom:10pt">
-        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">Banco</div>
-        <div style="font-size:9pt">Santander</div>
-      </div>
-      <div style="margin-bottom:10pt">
-        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">IBAN</div>
-        <div style="font-size:8.5pt;font-weight:700">PT50 0018 0003 6587 1568 0201 8</div>
-      </div>
-      <div style="margin-bottom:10pt">
-        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">Titular</div>
-        <div style="font-size:9pt">Milton Quintal Lda</div>
-      </div>
-      <div>
-        <div style="font-size:7pt;font-weight:700;color:#A7F3D0">Referência</div>
-        <div style="font-size:9pt">{ref}</div>
-      </div>
+      <div style="margin-bottom:10pt"><div style="font-size:7pt;font-weight:700;color:#A7F3D0">Banco</div><div style="font-size:9pt">Santander</div></div>
+      <div style="margin-bottom:10pt"><div style="font-size:7pt;font-weight:700;color:#A7F3D0">IBAN</div><div style="font-size:8.5pt;font-weight:700">PT50 0018 0003 6587 1568 0201 8</div></div>
+      <div style="margin-bottom:10pt"><div style="font-size:7pt;font-weight:700;color:#A7F3D0">Titular</div><div style="font-size:9pt">Milton Quintal Lda</div></div>
+      <div><div style="font-size:7pt;font-weight:700;color:#A7F3D0">Referência</div><div style="font-size:9pt">{ref}</div></div>
     </div>
   </td>
 </tr></table>
-
 <hr style="border:none;border-top:0.5pt solid #E5E7EB;margin-top:20pt">
 <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:6pt">Em caso de dúvida ou discrepância, contacte-nos antes de efetuar qualquer transferência. Obrigado pela parceria.</div>
-
-<div class="footer">
-  <span>Beyond Madeira · RNAVT 13020 · NIPC 518 827 119 · +351 939 566 415</span>
-  <span>Ref. {ref}</span>
-</div>
+<div class="footer"><span>Beyond Madeira · RNAVT 13020 · NIPC 518 827 119 · +351 939 566 415</span><span>Ref. {ref}</span></div>
 </body></html>"""
-
 
 @app.route("/gerar-extrato-parceiro", methods=["POST"])
 def gerar_extrato_parceiro():
@@ -1789,20 +1212,15 @@ def gerar_extrato_parceiro():
         from datetime import datetime
         d = request.get_json() or {}
         parceiro  = d.get("parceiro", "").strip()
-        mes_str   = d.get("mes", "").strip()     # "Março 2026"
-        tipo      = d.get("tipo", "").strip()    # "Rent Car" ou outro
+        mes_str   = d.get("mes", "").strip()
+        tipo      = d.get("tipo", "").strip()
         record_id = d.get("record_id", "").strip()
         do_upload = d.get("upload", True)
-
         if not parceiro or not mes_str:
             return jsonify({"error": "parceiro e mes obrigatórios"}), 400
-
-        # Support multi-month: "meses" array overrides single "mes"
-        meses_list = d.get("meses", [])  # e.g. ["Janeiro 2026", "Fevereiro 2026", "Março 2026"]
+        meses_list = d.get("meses", [])
         if not meses_list:
             meses_list = [mes_str]
-
-        # Parse all months
         parsed_months = []
         for m_str in meses_list:
             parts = m_str.strip().split(" ")
@@ -1813,78 +1231,41 @@ def gerar_extrato_parceiro():
             m_num  = MESES_IDX.get(m_nome)
             if m_num:
                 parsed_months.append((m_nome, m_ano, m_num))
-
         if not parsed_months:
             return jsonify({"error": f"Nenhum mês válido em: {meses_list}"}), 400
-
-        # Use first month as primary for filename/ref
         mes_nome, ano, mes_num = parsed_months[0]
-
         is_rc = tipo.lower() in ("rent car", "rc", "rentcar")
-
-        # Get ALL reservations across all months
         rows = []
         for m_nome_i, m_ano_i, m_num_i in parsed_months:
             rows += get_reservas_parceiro(parceiro, m_num_i, m_ano_i, is_rc)
-
         tots = calc_totais(rows)
-
         sl    = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
-        # Multi-month filename
         if len(parsed_months) > 1:
             ref   = f"EXT-{ano}-{sl[:10].upper()}-ACUMULADO"
             fname = f"BeyondMadeira_{sl}_Acumulado{ano}.pdf"
         else:
             ref   = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
             fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
-
         html_str  = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
         pdf_bytes = HTML(string=html_str).write_pdf()
         b64       = base64.b64encode(pdf_bytes).decode()
-
-        # Upload to Airtable — always ONE file (clear first, then upload)
         uploaded = False
         if do_upload and record_id and record_id.startswith("rec"):
             try:
-                # Step 1: Clear existing attachment so only ONE file exists
-                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {
-                    "Extrato Beyond": [],  # clear all existing files
-                })
-                # Step 2: Upload new PDF
+                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {"Extrato Beyond": []})
                 airtable_upload_attachment(BASE_EXTRATO, record_id, "Extrato Beyond", pdf_bytes, fname)
-                # Step 3: Update value and confirmation status
-                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {
-                    "Valor do mês (€)": round(tots["comiss"], 2),
-                    "Confirmado pela Beyond Madeira?": True,
-                })
+                airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {"Valor do mês (€)": round(tots["comiss"], 2), "Confirmado pela Beyond Madeira?": True})
                 cache_clear("extrato")
                 uploaded = True
             except Exception as ue:
-                uploaded = False  # Don't fail — still return PDF
-
-        return jsonify({
-            "success":     True,
-            "filename":    fname,
-            "pdf_base64":  b64,
-            "ref":         ref,
-            "parceiro":    parceiro,
-            "mes":         mes_str,
-            "is_rc":       is_rc,
-            "n_reservas":  tots["n"],
-            "n_canceladas":tots["n_can"],
-            "comissoes":   round(tots["comiss"], 2),
-            "credito":     round(tots["credito"], 2),
-            "total_fim":   round(tots["total_fim"], 2),
-            "uploaded":    uploaded,
-        })
+                uploaded = False
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64, "ref": ref, "parceiro": parceiro, "mes": mes_str, "is_rc": is_rc, "n_reservas": tots["n"], "n_canceladas": tots["n_can"], "comissoes": round(tots["comiss"], 2), "credito": round(tots["credito"], 2), "total_fim": round(tots["total_fim"], 2), "uploaded": uploaded})
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
-
 @app.route("/gerar-extratos-mes", methods=["POST"])
 def gerar_extratos_mes():
-    """Generate all partner statements for a given month."""
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -1892,13 +1273,10 @@ def gerar_extratos_mes():
         mes_str = d.get("mes", "").strip()
         if not mes_str:
             return jsonify({"error": "mes obrigatório"}), 400
-
         formula = f'{{Mês}} = "{mes_str}"'
         registos = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO, formula=formula)
         if not registos:
-            return jsonify({"success": True, "results": [],
-                            "message": f"Nenhum parceiro em {mes_str}"})
-
+            return jsonify({"success": True, "results": [], "message": f"Nenhum parceiro em {mes_str}"})
         results = []
         for reg in registos:
             f   = reg.get("fields", {})
@@ -1920,34 +1298,19 @@ def gerar_extratos_mes():
                 uploaded  = False
                 if reg["id"].startswith("rec") and tots["comiss"] > 0:
                     try:
-                        # Clear existing file first — only ONE extrato per record
-                        airtable_patch(BASE_EXTRATO, TAB_EXTRATO, reg["id"], {
-                            "Extrato Beyond": [],
-                        })
+                        airtable_patch(BASE_EXTRATO, TAB_EXTRATO, reg["id"], {"Extrato Beyond": []})
                         airtable_upload_attachment(BASE_EXTRATO, reg["id"], "Extrato Beyond", pdf_bytes, fname)
-                        airtable_patch(BASE_EXTRATO, TAB_EXTRATO, reg["id"], {
-                            "Valor do mês (€)": round(tots["comiss"], 2),
-                            "Confirmado pela Beyond Madeira?": True,
-                        })
+                        airtable_patch(BASE_EXTRATO, TAB_EXTRATO, reg["id"], {"Valor do mês (€)": round(tots["comiss"], 2), "Confirmado pela Beyond Madeira?": True})
                         uploaded = True
                     except: pass
-                results.append({"parceiro": par, "success": True, "tipo": tip,
-                                 "total_fim": round(tots["total_fim"], 2),
-                                 "comissoes": round(tots["comiss"], 2),
-                                 "n_reservas": tots["n"] - tots["n_can"],
-                                 "uploaded": uploaded})
+                results.append({"parceiro": par, "success": True, "tipo": tip, "total_fim": round(tots["total_fim"], 2), "comissoes": round(tots["comiss"], 2), "n_reservas": tots["n"] - tots["n_can"], "uploaded": uploaded})
             except Exception as e:
                 results.append({"parceiro": par, "success": False, "error": str(e)})
-
         total_geral = sum(r.get("comissoes", 0) for r in results if r.get("success"))
-        return jsonify({"success": True, "mes": mes_str,
-                        "n_parceiros": len(results),
-                        "total_geral": round(total_geral, 2),
-                        "results": results})
+        return jsonify({"success": True, "mes": mes_str, "n_parceiros": len(results), "total_geral": round(total_geral, 2), "results": results})
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
-
 
 @app.route("/airtable/extrato-parceiros/<record_id>", methods=["PATCH"])
 def patch_extrato_parceiro(record_id):
@@ -1956,13 +1319,10 @@ def patch_extrato_parceiro(record_id):
     try:
         body = request.get_json() or {}
         fields = body.get("fields", {})
-        if not fields:
-            return jsonify({"error": "No fields provided"}), 400
         result = airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/airtable/extrato-parceiros", methods=["GET"])
 def get_extrato_parceiros():
@@ -1975,33 +1335,10 @@ def get_extrato_parceiros():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":                rec["id"],
-                "parceiro":          get_text_f(f.get("Parceiro", "")),
-                "mes":               f.get("Mês", ""),
-                "tipo":              get_text_f(f.get("Tipo", "")),
-                "valor":             eur_val(f.get("Valor do mês (€)", 0)),
-                "ajustes":           eur_val(f.get("Ajustes / Atrasos (€)", 0)),
-                "total":             eur_val(f.get("Total a Receber (€)", 0)),
-                "confirmadoParceiro":f.get("Confirmado pelo parceiro?") == "checked",
-                "mailEnviado":       f.get("Mail enviado / pedido?") == "checked",
-                "recebido":          f.get("Recebido?") == "checked",
-                "confirmadoBeyond":  bool(f.get("Confirmado pela Beyond Madeira?", False)),
-                "dataRecebimento":   f.get("Data de Recebimento", ""),
-                "obs":               f.get("Observações - Faltou Reservas no papel? E na capa?", ""),
-                "categoria":         get_text_f(f.get("Categoria Parceiro", "")),
-                "comissaoCalc":      eur_val(f.get("Comissão Calculada (€)", 0)),
-            })
+            out.append({"id": rec["id"], "parceiro": get_text_f(f.get("Parceiro", "")), "mes": f.get("Mês", ""), "tipo": get_text_f(f.get("Tipo", "")), "valor": eur_val(f.get("Valor do mês (€)", 0)), "ajustes": eur_val(f.get("Ajustes / Atrasos (€)", 0)), "total": eur_val(f.get("Total a Receber (€)", 0)), "confirmadoParceiro": f.get("Confirmado pelo parceiro?") == "checked", "mailEnviado": f.get("Mail enviado / pedido?") == "checked", "recebido": f.get("Recebido?") == "checked", "confirmadoBeyond": bool(f.get("Confirmado pela Beyond Madeira?", False)), "dataRecebimento": f.get("Data de Recebimento", ""), "obs": f.get("Observações - Faltou Reservas no papel? E na capa?", ""), "categoria": get_text_f(f.get("Categoria Parceiro", "")), "comissaoCalc": eur_val(f.get("Comissão Calculada (€)", 0))})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-
-
-# =========================================================================
-# PROXY ANTHROPIC — chave segura no Railway, nunca exposta no browser
-# =========================================================================
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
@@ -2012,20 +1349,10 @@ def api_chat():
         if not anthropic_key:
             return jsonify({"error": "ANTHROPIC_API_KEY nao configurada no Railway"}), 500
         body = request.get_json() or {}
-        r = req_lib.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json=body, timeout=60,
-        )
+        r = req_lib.post("https://api.anthropic.com/v1/messages", headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}, json=body, timeout=60)
         return jsonify(r.json()), r.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# =========================================================================
-# ENVIAR EXTRATO POR EMAIL — Gmail SMTP (credenciais no Railway, nunca partilhadas)
-# Configurar no Railway: GMAIL_USER e GMAIL_APP_PASSWORD
-# =========================================================================
 
 @app.route("/enviar-extrato-email", methods=["POST"])
 def enviar_extrato_email():
@@ -2036,7 +1363,6 @@ def enviar_extrato_email():
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
         from email.mime.application import MIMEApplication
-
         d = request.get_json() or {}
         to           = d.get("to", "").strip()
         subject      = d.get("subject", "").strip()
@@ -2046,61 +1372,47 @@ def enviar_extrato_email():
         pdf_b64      = d.get("pdf_base64", "")
         pdf_filename = d.get("pdf_filename") or f"Extrato_{re.sub(chr(91)+'[^a-zA-Z0-9]'+chr(93),'_',parceiro)}_{mes_str}.pdf"
         record_id    = d.get("record_id", "")
-
         if not to:
             return jsonify({"error": "Email destinatario obrigatorio"}), 400
-
         gmail_user = os.environ.get("GMAIL_USER", "")
         gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
-
         if not gmail_user or not gmail_pass:
             return jsonify({"error": "Gmail nao configurado. Define GMAIL_USER e GMAIL_APP_PASSWORD no Railway."}), 500
-
         msg = MIMEMultipart()
         msg["From"]    = f"Beyond Madeira <{gmail_user}>"
         msg["To"]      = to
         msg["Subject"] = subject or f"Extrato de Comissoes - {mes_str} | Beyond Madeira"
         msg["Reply-To"] = gmail_user
         msg.attach(MIMEText(body_text, "plain", "utf-8"))
-
         if pdf_b64:
             pdf_bytes = base64.b64decode(pdf_b64)
             att = MIMEApplication(pdf_bytes, _subtype="pdf")
             att.add_header("Content-Disposition", "attachment", filename=pdf_filename)
             msg.attach(att)
-
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
             server.login(gmail_user, gmail_pass)
             server.sendmail(gmail_user, to, msg.as_string())
-
         if record_id and record_id.startswith("rec"):
             try:
                 airtable_patch(BASE_EXTRATO, TAB_EXTRATO, record_id, {"Mail enviado / pedido?": True})
             except:
                 pass
-
         return jsonify({"success": True, "to": to, "parceiro": parceiro, "mes": mes_str})
-
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
-
 @app.route("/airtable/despesas-fixas/<record_id>", methods=["PATCH"])
 def patch_despesa_fixa(record_id):
-    """Update a fixed expense (e.g. mark as paid)."""
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
         fields = {}
-        if "pago" in body:
-            fields["Pago?"] = bool(body["pago"])
-        if "valor" in body:
-            fields["Valor (€)"] = float(body["valor"])
-        if "notas" in body:
-            fields["Notas"] = str(body["notas"])
+        if "pago" in body: fields["Pago?"] = bool(body["pago"])
+        if "valor" in body: fields["Valor (€)"] = float(body["valor"])
+        if "notas" in body: fields["Notas"] = str(body["notas"])
         if not fields:
             return jsonify({"error": "Nenhum campo para actualizar"}), 400
         result = airtable_patch(BASE_FINANCEIRO, "Despesas Fixas", record_id, fields)
@@ -2109,21 +1421,16 @@ def patch_despesa_fixa(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/despesas-variaveis/<record_id>", methods=["PATCH"])
 def patch_despesa_variavel(record_id):
-    """Update a variable expense."""
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
         fields = {}
-        if "pago" in body:
-            fields["Pago?"] = bool(body["pago"])
-        if "valor" in body:
-            fields["Valor (€)"] = float(body["valor"])
-        if "notas" in body:
-            fields["Notas"] = str(body["notas"])
+        if "pago" in body: fields["Pago?"] = bool(body["pago"])
+        if "valor" in body: fields["Valor (€)"] = float(body["valor"])
+        if "notas" in body: fields["Notas"] = str(body["notas"])
         if not fields:
             return jsonify({"error": "Nenhum campo para actualizar"}), 400
         result = airtable_patch(BASE_FINANCEIRO, "Despesas Variáveis", record_id, fields)
@@ -2132,21 +1439,15 @@ def patch_despesa_variavel(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/extrato-parceiros/criar-mes", methods=["POST"])
 def criar_extrato_mes():
-    """Auto-cria registos Extrato Parceiros em falta para um mês.
-    Detecta automaticamente parceiros novos a partir das reservas RC+AT.
-    Chamado quando o CRM muda de mês."""
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
-        mes_str = body.get("mes", "").strip()  # e.g. "Abril 2026"
+        mes_str = body.get("mes", "").strip()
         if not mes_str:
             return jsonify({"error": "mes obrigatório"}), 400
-
-        # Parse month
         parts = mes_str.split(" ")
         if len(parts) != 2 or not parts[1].isdigit():
             return jsonify({"error": f"Formato inválido: {mes_str}"}), 400
@@ -2154,104 +1455,63 @@ def criar_extrato_mes():
         mes_num = MESES_IDX.get(mes_nome)
         if not mes_num:
             return jsonify({"error": f"Mês inválido: {mes_nome}"}), 400
-
         import calendar
         from datetime import date
         first_day = date(ano, mes_num, 1)
         last_day  = date(ano, mes_num, calendar.monthrange(ano, mes_num)[1])
-
-        # ── Step 1: find ALL partners that have reservations this month ──
-        parceiros_com_reservas = {}  # {nome: tipo}
-
-        # Scan RC reservations (filter by drop-off date)
+        parceiros_com_reservas = {}
         rc_records = airtable_list_table(BASE_RESERVAS, TAB_RC_ID)
         for rec in rc_records:
             rf = rec.get("fields", {})
-            if rf.get("Estado de Reserva", "") == "Cancelado":
-                continue
-            # Get drop-off date
+            if rf.get("Estado de Reserva", "") == "Cancelado": continue
             date_raw = rf.get("Data do Drop Off") or rf.get("Data de Drop-off") or rf.get("Data") or ""
             dt = parse_date_ext(str(date_raw))
-            if not dt:
-                continue
-            if not (first_day <= dt.date() <= last_day):
-                continue
+            if not dt: continue
+            if not (first_day <= dt.date() <= last_day): continue
             parceiro = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
             if parceiro and parceiro not in parceiros_com_reservas:
                 parceiros_com_reservas[parceiro] = "Rent Car"
-
-        # Scan AT reservations (filter by activity date)
         at_records = airtable_list_table(BASE_RESERVAS, TAB_AT_ID)
         for rec in at_records:
             rf = rec.get("fields", {})
-            if rf.get("Estado da Reserva", "") == "Cancelado":
-                continue
+            if rf.get("Estado da Reserva", "") == "Cancelado": continue
             date_raw = rf.get("Data da Atividade") or rf.get("Data") or ""
             dt = parse_date_ext(str(date_raw))
-            if not dt:
-                continue
-            if not (first_day <= dt.date() <= last_day):
-                continue
+            if not dt: continue
+            if not (first_day <= dt.date() <= last_day): continue
             parceiro = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
             if parceiro and parceiro not in parceiros_com_reservas:
-                # Detect category from activity name
                 ativ = rf.get("Atividade", "").lower()
-                if any(k in ativ for k in ["jeep","tour","island","safari","drive"]):
-                    tipo = "Island Tours"
-                elif any(k in ativ for k in ["boat","dolphin","whale","sea","swim","diving","surf","coast"]):
-                    tipo = "Water Experiences"
-                elif any(k in ativ for k in ["hike","levada","walk","trail","mountain","dam"]):
-                    tipo = "Hikes"
-                elif any(k in ativ for k in ["buggy","quad","zip","adventure","canyon","via ferrata"]):
-                    tipo = "Adventure"
-                else:
-                    tipo = "Atividades"
+                if any(k in ativ for k in ["jeep","tour","island","safari","drive"]): tipo = "Island Tours"
+                elif any(k in ativ for k in ["boat","dolphin","whale","sea","swim","diving","surf","coast"]): tipo = "Water Experiences"
+                elif any(k in ativ for k in ["hike","levada","walk","trail","mountain","dam"]): tipo = "Hikes"
+                elif any(k in ativ for k in ["buggy","quad","zip","adventure","canyon","via ferrata"]): tipo = "Adventure"
+                else: tipo = "Atividades"
                 parceiros_com_reservas[parceiro] = tipo
-
-        # ── Step 2: get existing Extrato records for this month ──
         existing = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO)
-        existing_map = {}  # {parceiro_nome: record}
+        existing_map = {}
         for rec in existing:
             f = rec.get("fields", {})
             mes_rec = f.get("Mês", "") or f.get("Mes", "")
             parc = get_text_f(f.get("Parceiro", ""))
             if mes_rec == mes_str and parc:
                 existing_map[parc] = rec
-
-        # ── Step 3: create records for any missing partner ──
         created = []
         skipped = []
         for parceiro, tipo in parceiros_com_reservas.items():
             if parceiro in existing_map:
                 skipped.append(parceiro)
                 continue
-            rec = airtable_create(BASE_EXTRATO, TAB_EXTRATO, {
-                "Parceiro": parceiro,
-                "Mês": mes_str,
-                "Tipo": tipo,
-            })
-            if rec:
-                created.append(parceiro)
-
+            rec = airtable_create(BASE_EXTRATO, TAB_EXTRATO, {"Parceiro": parceiro, "Mês": mes_str, "Tipo": tipo})
+            if rec: created.append(parceiro)
         cache_clear("extrato")
-        return jsonify({
-            "success": True,
-            "mes": mes_str,
-            "parceiros_com_reservas": len(parceiros_com_reservas),
-            "created": len(created),
-            "parceiros_criados": created,
-            "ja_existiam": len(skipped),
-        })
+        return jsonify({"success": True, "mes": mes_str, "parceiros_com_reservas": len(parceiros_com_reservas), "created": len(created), "parceiros_criados": created, "ja_existiam": len(skipped)})
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
-
 @app.route("/enviar-voucher-email", methods=["POST"])
 def enviar_voucher_email():
-    """Send voucher PDF by email to client.
-    Body: { to, cliente, atividade, data, pdf_base64, pdf_filename, record_id }
-    """
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -2259,86 +1519,50 @@ def enviar_voucher_email():
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
         from email.mime.application import MIMEApplication
-
         d = request.get_json() or {}
         to           = d.get("to", "").strip()
         cliente      = d.get("cliente", "Guest")
         atividade    = d.get("atividade", "Activity")
         data_str     = d.get("data", "")
         pdf_b64      = d.get("pdf_base64", "")
-        pdf_filename = d.get("pdf_filename") or f"Voucher_BeyondMadeira.pdf"
+        pdf_filename = d.get("pdf_filename") or "Voucher_BeyondMadeira.pdf"
         record_id    = d.get("record_id", "")
-
         if not to:
             return jsonify({"error": "Email do cliente obrigatorio"}), 400
-
         gmail_user = os.environ.get("GMAIL_USER", "")
         gmail_pass = os.environ.get("GMAIL_APP_PASSWORD", "")
         if not gmail_user or not gmail_pass:
             return jsonify({"error": "Gmail nao configurado no Railway"}), 500
-
-        # Get first name for personal greeting
         first_name = cliente.split()[0] if cliente else "Guest"
-
         subject = f"Your Booking Confirmation – {atividade} | Beyond Madeira"
-        body = f"""Dear {first_name},
-
-Thank you for booking with Beyond Madeira!
-
-Please find attached your booking confirmation voucher for:
-
-  Activity: {atividade}
-  Date: {data_str}
-
-Please keep this voucher for your records and present it on the day of your activity.
-
-If you have any questions, don't hesitate to contact us:
-  WhatsApp: +351 939 566 415
-  Email: booking@beyondmadeira.com
-
-We look forward to seeing you!
-
-Best regards,
-Beyond Madeira Team
-RNAVT 13020 · beyondmadeira.com
-"""
-
+        body = f"Dear {first_name},\n\nThank you for booking with Beyond Madeira!\n\nPlease find attached your booking confirmation voucher for:\n\n  Activity: {atividade}\n  Date: {data_str}\n\nIf you have any questions, don't hesitate to contact us:\n  WhatsApp: +351 939 566 415\n  Email: booking@beyondmadeira.com\n\nWe look forward to seeing you!\n\nBest regards,\nBeyond Madeira Team\nRNAVT 13020 · beyondmadeira.com\n"
         msg = MIMEMultipart()
         msg["From"]     = f"Beyond Madeira <{gmail_user}>"
         msg["To"]       = to
         msg["Subject"]  = subject
         msg["Reply-To"] = gmail_user
         msg.attach(MIMEText(body, "plain", "utf-8"))
-
         if pdf_b64:
             pdf_bytes = base64.b64decode(pdf_b64)
             att = MIMEApplication(pdf_bytes, _subtype="pdf")
             att.add_header("Content-Disposition", "attachment", filename=pdf_filename)
             msg.attach(att)
-
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
             server.login(gmail_user, gmail_pass)
             server.sendmail(gmail_user, to, msg.as_string())
-
-        # Mark email as sent in Airtable
         if record_id and record_id.startswith("rec"):
             try:
                 airtable_patch(BASE_RESERVAS, "Atividades", record_id, {"Email Enviado": True})
                 cache_clear("at")
-            except:
-                pass
-
+            except: pass
         return jsonify({"success": True, "to": to, "cliente": cliente})
-
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
-
 @app.route("/airtable/despesas-variaveis", methods=["POST"])
 def create_despesa_variavel():
-    """Create a new variable expense."""
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -2352,7 +1576,6 @@ def create_despesa_variavel():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/airtable/notas", methods=["GET"])
 def get_notas():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
@@ -2361,14 +1584,7 @@ def get_notas():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":           rec["id"],
-                "titulo":       f.get("Título", f.get("Title", "")),
-                "conteudo":     f.get("Conteúdo", f.get("Content", "")),
-                "responsavel":  f.get("Responsável", ""),
-                "data":         f.get("Data", ""),
-                "categoria":    f.get("Categoria", ""),
-            })
+            out.append({"id": rec["id"], "titulo": f.get("Título", f.get("Title", "")), "conteudo": f.get("Conteúdo", f.get("Content", "")), "responsavel": f.get("Responsável", ""), "data": f.get("Data", ""), "categoria": f.get("Categoria", "")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -2416,19 +1632,7 @@ def get_wa_templates():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({
-                "id":         rec["id"],
-                "cmd":        f.get("Name", ""),
-                "label":      f.get("Name", ""),
-                "categoria":  f.get("Categoria", ""),
-                "empresa":    f.get("Empresa", ""),
-                "topico":     f.get("Tópico", ""),
-                "text_pt":    f.get("Mensagem 🇵🇹", f.get("Message 🇬🇧", "")),
-                "text_en":    f.get("Message 🇬🇧", ""),
-                "subject_pt": f.get("Assunto 🇵🇹", f.get("Assunto Email 🇵🇹", "")),
-                "subject_en": f.get("Subject 🇬🇧", ""),
-                "vezes":      f.get("Vezes Enviado", 0),
-            })
+            out.append({"id": rec["id"], "cmd": f.get("Name", ""), "label": f.get("Name", ""), "categoria": f.get("Categoria", ""), "empresa": f.get("Empresa", ""), "topico": f.get("Tópico", ""), "text_pt": f.get("Mensagem 🇵🇹", f.get("Message 🇬🇧", "")), "text_en": f.get("Message 🇬🇧", ""), "subject_pt": f.get("Assunto 🇵🇹", f.get("Assunto Email 🇵🇹", "")), "subject_en": f.get("Subject 🇬🇧", ""), "vezes": f.get("Vezes Enviado", 0)})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -2445,7 +1649,6 @@ def patch_wa_template(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/cache/clear", methods=["POST"])
 def clear_cache_route():
     if not check_key():
@@ -2453,42 +1656,13 @@ def clear_cache_route():
     cache_clear()
     return jsonify({"success": True, "message": "Cache limpo"})
 
-
 @app.route("/", methods=["GET"])
 def health():
-    return jsonify({
-        "status": "ok",
-        "service": "Beyond Madeira Voucher API",
-        "endpoints": [
-            "/gerar-voucher",
-            "/gerar-voucher-atividade",
-            "GET  /airtable/rc",
-            "POST /airtable/rc",
-            "PATCH /airtable/rc/<id>",
-            "GET  /airtable/at",
-            "POST /airtable/at",
-            "PATCH /airtable/at/<id>",
-            "/airtable/sitemap",
-            "/airtable/biblioteca",
-            "/airtable/guia",
-            "/airtable/reviews",
-            "/airtable/disponibilidade",
-            "/airtable/frota",
-            "/airtable/tarefas",
-            "/airtable/diario",
-            "/airtable/resumos-mensais",
-            "/airtable/despesas-fixas",
-            "/airtable/despesas-variaveis",
-            "/airtable/objetivos",
-            "/airtable/caixa-mensal",
-        ]
-    })
-
+    return jsonify({"status": "ok", "service": "Beyond Madeira Voucher API", "endpoints": ["/gerar-voucher", "/gerar-voucher-atividade", "GET /airtable/rc", "POST /airtable/rc", "PATCH /airtable/rc/<id>", "GET /airtable/at", "POST /airtable/at", "PATCH /airtable/at/<id>", "/airtable/sitemap", "/airtable/biblioteca", "/airtable/guia", "/airtable/reviews", "/airtable/disponibilidade", "/airtable/frota", "/airtable/tarefas", "/airtable/diario", "/airtable/resumos-mensais", "/airtable/despesas-fixas", "/airtable/despesas-variaveis", "/airtable/objetivos", "/airtable/caixa-mensal", "/wazzup/chats", "/wazzup/messages", "/wazzup/message", "/wazzup/mark-as-read", "/wazzup/status"]})
 
 # ═══════════════════════════════════════════════
 # WAZZUP PROXY
 # ═══════════════════════════════════════════════
-import requests as req_lib
 
 WAZZUP_BASE    = "https://api.wazzup24.com/v3"
 WAZZUP_API_KEY = os.environ.get("WAZZUP_API_KEY", "")
@@ -2534,20 +1708,6 @@ def wz_status():
     s, d = wazzup_req("GET", "/channels")
     return jsonify({"connected": s == 200, "data": d})
 
-# ═══════════════════════════════════════════════
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-```
-
-Ou seja, a estrutura final deve ser:
-```
-[... resto do main.py ...]
-        "/airtable/caixa-mensal",
-    ]
-})
-
-# ← COLA AQUI O BLOCO WAZZUP
-
-if __name__ == "__main__":   ← este fica sempre NO FIM
