@@ -1669,7 +1669,7 @@ WAZZUP_API_KEY = os.environ.get("WAZZUP_API_KEY", "")
 WAZZUP_CHANNEL = os.environ.get("WAZZUP_CHANNEL", "")
 
 def wazzup_req(method, path, body=None):
-    headers = {"X-Api-Key": WAZZUP_API_KEY, "Content-Type": "application/json"}
+    headers = {"Authorization": "Bearer " + WAZZUP_API_KEY, "Content-Type": "application/json"}
     url = WAZZUP_BASE + path
     r = req_lib.get(url, headers=headers) if method == "GET" else req_lib.post(url, headers=headers, json=body)
     try:
@@ -1681,7 +1681,8 @@ def wazzup_req(method, path, body=None):
 @app.route("/wazzup/chats")
 def wz_chats():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
-    s, d = wazzup_req("GET", "/chats")
+    # Wazzup v3 uses /contacts to get contact list
+    s, d = wazzup_req("GET", "/contacts")
     return jsonify(d), s
 
 @app.route("/wazzup/messages")
