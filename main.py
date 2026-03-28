@@ -519,6 +519,7 @@ def get_at():
                 "eEnv":        f.get("Email Enviado", False),
                 "tyEnv":       f.get("Thank You Enviado", False),
                 "rEnv":        f.get("Review Pedida", False),
+                "template_id": f.get("Template ID", ""),
                 "dataFeita":   f.get("Created", ""),
             })
         cache_set("at", out)
@@ -1534,8 +1535,14 @@ def enviar_voucher_email():
         if not gmail_user or not gmail_pass:
             return jsonify({"error": "Gmail nao configurado no Railway"}), 500
         first_name = cliente.split()[0] if cliente else "Guest"
-        subject = f"Your Booking Confirmation – {atividade} | Beyond Madeira"
-        body = f"Dear {first_name},\n\nThank you for booking with Beyond Madeira!\n\nPlease find attached your booking confirmation voucher for:\n\n  Activity: {atividade}\n  Date: {data_str}\n\nIf you have any questions, don't hesitate to contact us:\n  WhatsApp: +351 939 566 415\n  Email: booking@beyondmadeira.com\n\nWe look forward to seeing you!\n\nBest regards,\nBeyond Madeira Team\nRNAVT 13020 · beyondmadeira.com\n"
+        # Use personalised template body/subject if provided by frontend matching
+        custom_body    = (d.get("email_body") or "").strip()
+        custom_subject = (d.get("email_subject") or "").strip()
+        subject = custom_subject if custom_subject else f"Your Booking Confirmation – {atividade} | Beyond Madeira"
+        if custom_body:
+            body = custom_body
+        else:
+            body = f"Dear {first_name},\n\nThank you for booking with Beyond Madeira!\n\nPlease find attached your booking confirmation voucher for:\n\n  Activity: {atividade}\n  Date: {data_str}\n\nIf you have any questions, don't hesitate to contact us:\n  WhatsApp: +351 939 566 415\n  Email: booking@beyondmadeira.com\n\nWe look forward to seeing you!\n\nBest regards,\nBeyond Madeira Team\nRNAVT 13020 · beyondmadeira.com\n"
         msg = MIMEMultipart()
         msg["From"]     = f"Beyond Madeira <{gmail_user}>"
         msg["To"]       = to
@@ -1632,7 +1639,28 @@ def get_wa_templates():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({"id": rec["id"], "cmd": f.get("Name", ""), "label": f.get("Name", ""), "categoria": f.get("Categoria", ""), "empresa": f.get("Empresa", ""), "topico": f.get("Tópico", ""), "text_pt": f.get("Mensagem 🇵🇹", f.get("Message 🇬🇧", "")), "text_en": f.get("Message 🇬🇧", ""), "subject_pt": f.get("Assunto 🇵🇹", f.get("Assunto Email 🇵🇹", "")), "subject_en": f.get("Subject 🇬🇧", ""), "vezes": f.get("Vezes Enviado", 0)})
+            out.append({
+                "id":         rec["id"],
+                "name":       f.get("Name", ""),
+                "label":      f.get("Name", ""),
+                "categoria":  f.get("Categoria", ""),
+                "empresa":    f.get("Empresa", ""),
+                "topico":     f.get("Tópico", ""),
+                "contexto":   f.get("Contexto", ""),
+                "msg_en":     f.get("Message 🇬🇧", ""),
+                "msg_pt":     f.get("Mensagem 🇵🇹", ""),
+                "msg_fr":     f.get("Mensagem 🇫🇷", ""),
+                "subj_en":    f.get("Subject 🇬🇧", ""),
+                "subj_pt":    f.get("Assunto Email 🇵🇹", f.get("Assunto 🇵🇹", "")),
+                "subj_fr":    f.get("Assunto 🇫🇷", ""),
+                "com_cancel": f.get("Com cancelamento", ""),
+                "vezes":      f.get("Vezes Enviado", 0),
+                # legacy compat
+                "text_pt":    f.get("Mensagem 🇵🇹", f.get("Message 🇬🇧", "")),
+                "text_en":    f.get("Message 🇬🇧", ""),
+                "subject_pt": f.get("Assunto Email 🇵🇹", f.get("Assunto 🇵🇹", "")),
+                "subject_en": f.get("Subject 🇬🇧", ""),
+            })
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1753,18 +1781,41 @@ def gmail_token_store():
     """Use Railway env var GMAIL_TOKEN to persist tokens."""
     return os.environ.get("GMAIL_TOKEN", "")
 
+_GMAIL_TOKEN_FILE = '/tmp/gmail_token.json'
+_gmail_token_cache = {}
+
 def gmail_save_token(token_json):
-    """Print token for manual save to Railway env."""
+    """Save token to file and memory cache."""
+    global _gmail_token_cache
+    try:
+        _gmail_token_cache = json.loads(token_json) if isinstance(token_json, str) else token_json
+        with open(_GMAIL_TOKEN_FILE, 'w') as f:
+            json.dump(_gmail_token_cache, f)
+    except Exception as e:
+        print("Error saving token:", e)
     print("GMAIL_TOKEN=", token_json)
 
 def gmail_get_tokens():
-    raw = gmail_token_store()
-    if not raw:
-        return None
+    global _gmail_token_cache
+    # 1. In-memory cache
+    if _gmail_token_cache:
+        return _gmail_token_cache
+    # 2. File on disk
     try:
-        return json.loads(raw)
+        with open(_GMAIL_TOKEN_FILE, 'r') as f:
+            _gmail_token_cache = json.load(f)
+            return _gmail_token_cache
     except:
-        return None
+        pass
+    # 3. Railway env var (manually set)
+    raw = os.environ.get("GMAIL_TOKEN", "")
+    if raw:
+        try:
+            _gmail_token_cache = json.loads(raw)
+            return _gmail_token_cache
+        except:
+            pass
+    return None
 
 def gmail_refresh(tokens):
     """Refresh access token using refresh token."""
@@ -1779,6 +1830,7 @@ def gmail_refresh(tokens):
     with urllib.request.urlopen(req) as r:
         new = json.loads(r.read())
     tokens["access_token"] = new["access_token"]
+    gmail_save_token(json.dumps(tokens))
     return tokens
 
 def gmail_request(method, path, tokens, body=None):
@@ -1840,16 +1892,24 @@ def gmail_callback():
     }).encode()
     req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data, method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    with urllib.request.urlopen(req) as r:
-        tokens = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req) as r:
+            tokens = json.loads(r.read())
+    except urllib.error.HTTPError as he:
+        err_body = he.read().decode("utf-8", errors="replace")
+        return f"""<html><body style="font-family:sans-serif;padding:40px">
+        <h2 style="color:red">Erro {he.code} do Google</h2>
+        <p>O código OAuth expirou ou já foi usado. Vai a <a href="/gmail/auth">/gmail/auth</a> e tenta de novo imediatamente.</p>
+        <pre style="background:#f5f5f5;padding:12px;border-radius:8px;font-size:12px">{err_body}</pre>
+        </body></html>""", 400
     token_json = json.dumps(tokens)
     gmail_save_token(token_json)
-    return f"""
-    <h2>Gmail ligado!</h2>
-    <p>Copia este token para a variável <b>GMAIL_TOKEN</b> no Railway:</p>
-    <textarea rows="5" cols="80">{token_json}</textarea>
-    <p>Depois fecha esta janela.</p>
-    """
+    return f"""<html><body style="font-family:sans-serif;padding:40px;max-width:600px;margin:auto">
+    <h2 style="color:#0a8f82">✅ Gmail ligado com sucesso!</h2>
+    <p>O token foi guardado automaticamente. Podes fechar esta janela e usar o Gmail no CRM.</p>
+    <details><summary style="cursor:pointer;color:#666;font-size:12px">Ver token (para backup)</summary>
+    <textarea rows="4" style="width:100%;font-size:11px;margin-top:8px">{token_json}</textarea></details>
+    </body></html>"""
 
 @app.route("/gmail/inbox")
 def gmail_inbox():
