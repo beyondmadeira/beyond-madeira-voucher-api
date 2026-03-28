@@ -15,7 +15,7 @@ PATCH /airtable/guia/<id>        -> Update Guia record
 GET  /                           -> Health check
 """
 
-import os, re, base64, requests as req_lib
+import os, re, base64, json, urllib.parse, urllib.request, requests as req_lib
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from weasyprint import HTML
@@ -52,6 +52,7 @@ BASE_DIR = os.path.dirname(__file__)
 AT_TOKEN        = os.environ.get("AIRTABLE_TOKEN", "")
 BASE_RESERVAS   = "appR8ZKP5ygR8o8Q0"
 BASE_CONHECIMENTO = "appKhPwEBxolWaO9r"
+BASE_FINANCEIRO   = "appOrdG5Fsr7N0RmH"
 AT_HEADERS      = lambda: {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
 
 
@@ -268,6 +269,45 @@ def airtable_patch(base_id, table_name, record_id, fields):
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}/{record_id}"
     r = req_lib.patch(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
     r.raise_for_status()
+    return r.json()
+
+def airtable_create(base_id, table_name, fields):
+    """Create a single Airtable record."""
+    url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
+    r = req_lib.post(url, headers=AT_HEADERS(), json={"fields": fields}, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+def airtable_list_table(base_id, table_id, formula=None, max_records=2000):
+    """List records from Airtable by table ID (not name)."""
+    url = f"https://api.airtable.com/v0/{base_id}/{table_id}"
+    params = {"pageSize": 100}
+    if formula:
+        params["filterByFormula"] = formula
+    records = []
+    while True:
+        r = req_lib.get(url, headers=AT_HEADERS(), params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        records.extend(data.get("records", []))
+        offset = data.get("offset")
+        if not offset or len(records) >= max_records:
+            break
+        params["offset"] = offset
+    return records
+
+def airtable_upload_attachment(base_id, record_id, field_name, file_bytes, filename):
+    """Upload a file as attachment to an Airtable record."""
+    import base64 as b64_mod
+    b64_data = b64_mod.b64encode(file_bytes).decode()
+    url = f"https://api.airtable.com/v0/{base_id}/{record_id}/uploadAttachment"
+    # Use the uploadAttachment API
+    headers = {"Authorization": f"Bearer {AT_TOKEN}", "Content-Type": "application/json"}
+    payload = {"contentType": "application/pdf", "file": b64_data, "filename": filename}
+    r = req_lib.post(url, headers=headers, json=payload, timeout=30)
+    if not r.ok:
+        # Fallback: patch with URL-based attachment not supported in free tier
+        raise Exception(f"Upload failed: {r.status_code} {r.text[:200]}")
     return r.json()
 
 
@@ -1350,7 +1390,7 @@ def get_extrato_parceiros():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({"id":rec["id"],"parceiro":get_text_f(f.get("Parceiro","")),"mes":f.get("Mês",""),"tipo":get_text_f(f.get("Tipo","")),"valor":eur_val(f.get("Valor do mês (€)",0)),"ajustes":eur_val(f.get("Ajustes / Atrasos (€)",0)),"total":eur_val(f.get("Total a Receber (€)",0)),"confirmadoParceiro":f.get("Confirmado pelo parceiro?")=="checked","mailEnviado":f.get("Mail enviado / pedido?")=="checked","recebido":f.get("Recebido?")=="checked","confirmadoBeyond":bool(f.get("Confirmado pela Beyond Madeira?",False)),"dataRecebimento":f.get("Data de Recebimento",""),"obs":f.get("Observações - Faltou Reservas no papel? E na capa?",""),"categoria":get_text_f(f.get("Categoria Parceiro","")),"comissaoCalc":eur_val(f.get("Comissão Calculada (€)",0))})
+            out.append({"id":rec["id"],"parceiro":get_text_f(f.get("Parceiro","")),"mes":f.get("Mês",""),"tipo":get_text_f(f.get("Tipo","")),"valor":eur_val(f.get("Valor do mês (€)",0)),"ajustes":eur_val(f.get("Ajustes / Atrasos (€)",0)),"total":eur_val(f.get("Total a Receber (€)",0)),"confirmadoParceiro":f.get("Confirmado pelo parceiro?")==True,"mailEnviado":f.get("Mail enviado / pedido?")==True,"recebido":f.get("Recebido?")==True,"confirmadoBeyond":bool(f.get("Confirmado pela Beyond Madeira?",False)),"dataRecebimento":f.get("Data de Recebimento",""),"obs":f.get("Observações - Faltou Reservas no papel? E na capa?",""),"categoria":get_text_f(f.get("Categoria Parceiro","")),"comissaoCalc":eur_val(f.get("Comissão Calculada (€)",0))})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1985,7 +2025,25 @@ def gmail_callback():
         return f'<html><body style="font-family:sans-serif;padding:40px"><h2 style="color:red">Erro {he.code}</h2><p>Tenta de novo: <a href="/gmail/auth">/gmail/auth</a></p><pre>{err_body}</pre></body></html>', 400
     token_json = json.dumps(tokens)
     gmail_save_token(token_json)
-    return f'<html><body style="font-family:sans-serif;padding:40px;max-width:600px;margin:auto"><h2 style="color:#0a8f82">Gmail ligado com sucesso!</h2><p>Podes fechar esta janela.</p><details><summary>Ver token</summary><textarea rows="4" style="width:100%;font-size:11px">{token_json}</textarea></details></body></html>'
+    # Show token prominently so user can copy to Railway GMAIL_TOKEN env var
+    return f'''<html><head><meta charset="UTF-8"></head>
+<body style="font-family:-apple-system,sans-serif;padding:40px;max-width:640px;margin:auto;background:#f9fafb">
+<div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+<h2 style="color:#0a8f82;margin:0 0 8px">✅ Gmail ligado com sucesso!</h2>
+<p style="color:#6b7280;margin:0 0 24px">O token foi guardado temporariamente. Para persistir entre deploys, copia o valor abaixo para o Railway.</p>
+<div style="background:#f0faf9;border:1.5px solid #a7f3d0;border-radius:10px;padding:16px;margin-bottom:20px">
+<div style="font-size:12px;font-weight:700;color:#0a8f82;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">
+  Railway → Variables → GMAIL_TOKEN
+</div>
+<textarea id="tk" rows="4" onclick="this.select()" style="width:100%;font-size:11px;font-family:monospace;border:1px solid #d1fae5;border-radius:6px;padding:8px;background:#fff;resize:none;box-sizing:border-box">{token_json}</textarea>
+<button onclick="navigator.clipboard.writeText(document.getElementById('tk').value);this.textContent='✓ Copiado!';setTimeout(()=>this.textContent='Copiar',2000)" 
+style="margin-top:8px;height:36px;padding:0 16px;background:#0a8f82;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">
+Copiar</button>
+</div>
+<p style="font-size:12px;color:#9ca3af">Depois de copiar: Railway → o teu projeto → Variables → adiciona <strong>GMAIL_TOKEN</strong> com esse valor. A autenticação não vai ser necessária novamente.</p>
+<a href="javascript:window.close()" style="display:inline-block;margin-top:12px;color:#0a8f82;font-size:13px">Fechar janela</a>
+</div>
+</body></html>'''
 
 @app.route("/gmail/inbox")
 def gmail_inbox():
@@ -2129,13 +2187,15 @@ def health():
         "status": "ok",
         "service": "Beyond Madeira Voucher API",
         "endpoints": [
-            "/gerar-voucher",
-            "/gerar-voucher-atividade",
-            "/airtable/rc",
-            "/airtable/at",
-            "/airtable/sitemap",
-            "/airtable/biblioteca",
-            "/airtable/guia",
+            "/gerar-voucher", "/gerar-voucher-atividade",
+            "/airtable/rc", "/airtable/at", "/airtable/diario",
+            "/airtable/parceiros", "/airtable/tarefas", "/airtable/notas",
+            "/airtable/despesas-fixas", "/airtable/despesas-variaveis",
+            "/airtable/financeiro/despesas", "/airtable/extrato-parceiros",
+            "/gerar-extrato-parceiro", "/gerar-extratos-mes",
+            "/enviar-voucher-email", "/enviar-extrato-email",
+            "/api/chat", "/wazzup/iframe", "/gmail/auth", "/gmail/inbox",
+            "/stripe/create-payment-link"
         ]
     })
 
