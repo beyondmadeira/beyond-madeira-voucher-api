@@ -1697,6 +1697,75 @@ def enviar_extrato_email():
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
+def build_at_email_html(body_text, client_name, activity, date_str, ref):
+    """Wrap plain text email body in a beautiful branded HTML template."""
+    from datetime import datetime
+
+    first_name = (client_name or 'Guest').split()[0]
+    safe_body = ''
+    if body_text:
+        import html as html_mod
+        safe_body = html_mod.escape(body_text).replace('\n', '<br>')
+
+    # If no body text, use default
+    if not safe_body:
+        safe_body = f"Thank you for booking with Beyond Madeira. Your reservation for <strong>{html_mod.escape(activity or '')}</strong> on {html_mod.escape(date_str or '')} is confirmed."
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Booking Confirmation</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<div style="max-width:600px;margin:32px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
+
+  <!-- HEADER -->
+  <div style="background:#0A616B;padding:28px 40px 0;">
+    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">Beyond Madeira</div>
+    <div style="font-size:11px;font-weight:700;color:#A7F3D0;letter-spacing:.1em;text-transform:uppercase;margin-top:4px;padding-bottom:24px;">Booking Confirmation</div>
+  </div>
+
+  <!-- HERO -->
+  <div style="background:#0A616B;padding:0 40px 32px;">
+    <div style="font-size:24px;font-weight:800;color:#ffffff;line-height:1.25;">{activity or 'Activity Booking'}</div>
+    <div style="font-size:14px;font-weight:600;color:#A7F3D0;margin-top:6px;">{date_str or ''}</div>
+  </div>
+  <div style="height:4px;background:linear-gradient(90deg,#0A616B,#22D3EE);"></div>
+
+  <!-- BODY -->
+  <div style="padding:32px 40px;">
+    <p style="font-size:16px;color:#374151;margin:0 0 20px;line-height:1.6;">Hi <strong>{first_name}</strong>,</p>
+    <div style="font-size:14.5px;color:#374151;line-height:1.8;white-space:pre-wrap;">{safe_body}</div>
+
+    <!-- REFERENCE BOX -->
+    <div style="background:#F0FAF9;border:1.5px solid #A7F3D0;border-radius:12px;padding:18px 22px;margin:28px 0 0;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0A616B;margin-bottom:4px;">Booking Reference</div>
+      <div style="font-size:20px;font-weight:800;color:#0A616B;">{ref or ''}</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:4px;">Please keep this reference for your records</div>
+    </div>
+
+    <!-- CTA -->
+    <div style="background:#0A616B;border-radius:10px;padding:18px 24px;text-align:center;margin:28px 0 0;">
+      <p style="color:#A7F3D0;font-size:13px;margin:0 0 6px;">Questions? We're always here to help.</p>
+      <div style="color:#ffffff;font-size:15px;font-weight:700;">📱 +351 939 566 415 &nbsp;·&nbsp; ✉️ booking@beyondmadeira.com</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:20px 40px;text-align:center;">
+    <p style="font-size:12px;color:#9CA3AF;line-height:1.8;margin:0;">
+      Beyond Madeira · RNAVT 13020<br>
+      Largo da Saúde 1, 9000-221 Funchal, Madeira<br>
+      <a href="https://beyondmadeira.com" style="color:#0A616B;text-decoration:none;">beyondmadeira.com</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>"""
+
+
 @app.route("/enviar-voucher-email", methods=["POST"])
 def enviar_voucher_email():
     if not check_key():
@@ -1723,12 +1792,16 @@ def enviar_voucher_email():
         custom_subject = (d.get("email_subject") or "").strip()
         subject = custom_subject if custom_subject else f"Your Booking Confirmation - {atividade} | Beyond Madeira"
         body = custom_body if custom_body else f"Dear {first_name},\n\nThank you for booking with Beyond Madeira!\n\nPlease find attached your booking confirmation voucher for:\n\n  Activity: {atividade}\n  Date: {data_str}\n\nIf you have any questions, don't hesitate to contact us:\n  WhatsApp: +351 939 566 415\n  Email: booking@beyondmadeira.com\n\nWe look forward to seeing you!\n\nBest regards,\nBeyond Madeira Team\nRNAVT 13020 · beyondmadeira.com\n"
-        msg = MIMEMultipart()
+        msg = MIMEMultipart("alternative")
         msg["From"]     = f"Beyond Madeira <{gmail_user}>"
         msg["To"]       = to
         msg["Subject"]  = subject
         msg["Reply-To"] = gmail_user
+        # Plain text fallback
         msg.attach(MIMEText(body, "plain", "utf-8"))
+        # HTML version
+        html_body = build_at_email_html(body, cliente, atividade, data_str, d.get("pdf_filename","").replace("Voucher_","").replace(".pdf",""))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
         if pdf_b64:
             att = MIMEApplication(base64.b64decode(pdf_b64), _subtype="pdf")
             att.add_header("Content-Disposition","attachment",filename=pdf_filename)
