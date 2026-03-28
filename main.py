@@ -1932,7 +1932,7 @@ def wz_status():
 # ── GMAIL OAUTH2 ──────────────────────────────────────────────
 
 GMAIL_CLIENT_ID     = os.environ.get("GMAIL_CLIENT_ID","184849359060-4tnm984gpiglun1pj0tc9vkqvpbumm4d.apps.googleusercontent.com")
-GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET","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")
+GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET","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")
 GMAIL_REDIRECT_URI  = os.environ.get("GMAIL_REDIRECT_URI","https://beyond-madeira-voucher-api-production.up.railway.app/gmail/callback")
 GMAIL_SCOPES        = "https://www.googleapis.com/auth/gmail.modify"
 
