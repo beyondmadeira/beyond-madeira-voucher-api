@@ -1424,6 +1424,141 @@ def criar_extrato_mes():
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
+def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=None):
+    from datetime import datetime
+    today = datetime.now().strftime("%d/%m/%Y")
+    t = tots
+    em_dash = "—"
+
+    def _row_html(r, bg):
+        sc = {"Pago":"#166534","Por Pagar":"#111827","Devemos":"#991B1B","Cancelado":"#6B7280"}.get(r["status"],"#6B7280")
+        strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
+        pax = str(r.get("pax") or em_dash).replace(" Pessoas","").replace(" Pessoa","").strip()
+        return (
+            f'<tr style="background:{bg}">'
+            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or em_dash)[:32]}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or em_dash)[:28]}</td>'
+            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td>'
+            f'<td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td></tr>'
+        )
+
+    rows_html = ""
+    if rows_by_month and len(rows_by_month) > 1:
+        row_idx = 0
+        for m_nome_i, m_ano_i, m_rows_i in rows_by_month:
+            if not m_rows_i: continue
+            m_tots = calc_totais(m_rows_i)
+            rows_html += (
+                f'<tr><td colspan="7" style="padding:8px 8px 4px;background:#f0faf9;'
+                f'border-top:1.5pt solid #0A616B;border-bottom:0.5pt solid #9CA3AF">'
+                f'<span style="font-size:9pt;font-weight:800;color:#0A616B">{m_nome_i} {m_ano_i}</span>'
+                f'<span style="font-size:8pt;color:#6B7280;margin-left:8px">{len(m_rows_i)} reservas</span></td></tr>'
+            )
+            for i, r in enumerate(m_rows_i):
+                rows_html += _row_html(r, "#F9FAFB" if (row_idx + i) % 2 == 0 else "#FFFFFF")
+            row_idx += len(m_rows_i)
+            rows_html += (
+                f'<tr style="background:#f0faf9"><td colspan="4" style="padding:5px 8px;font-size:8pt;color:#374151;font-style:italic">'
+                f'Subtotal {m_nome_i} {m_ano_i}</td>'
+                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;text-align:right">&euro; {abs(m_tots["gt"]):,.2f}</td>'
+                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right">&euro; {abs(m_tots["gc"]):,.2f}</td>'
+                f'<td></td></tr>'
+            )
+    else:
+        for i, r in enumerate(rows):
+            rows_html += _row_html(r, "#F9FAFB" if i % 2 == 0 else "#FFFFFF")
+
+    logo_src = logo_b64()
+    title_mes = "&nbsp;+&nbsp;".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page {{ size: A4; margin: 1.8cm 1.8cm 1.6cm 1.8cm; }}
+  * {{ margin:0;padding:0;box-sizing:border-box; }}
+  body {{ font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }}
+  .top-bar {{ position:fixed;top:-1.8cm;left:-1.8cm;right:-1.8cm;height:5mm;background:#0A616B; }}
+  .footer {{ position:fixed;bottom:-1.6cm;left:-1.8cm;right:-1.8cm;border-top:0.5pt solid #E5E7EB;padding:4pt 1.8cm;display:flex;justify-content:space-between;align-items:center; }}
+  .footer span {{ font-size:6.5pt;color:#6B7280; }}
+  table.main {{ width:100%;border-collapse:collapse; }}
+  .dt th {{ font-size:7.5pt;font-weight:700;color:#6B7280;padding:7px 8px;border-bottom:1pt solid #9CA3AF;text-align:left;background:#fff; }}
+  .dt {{ margin-bottom:20pt;width:100%;border-collapse:collapse; }}
+</style>
+</head><body>
+<div class="top-bar"></div>
+<table class="main" style="margin-bottom:14pt"><tr>
+  <td style="width:45%;vertical-align:top;padding-top:4pt">
+    <img src="{logo_src}" style="height:38pt;margin-bottom:8pt;display:block" alt="Beyond Madeira">
+    <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">Largo da Saúde 1, 9000-221 Funchal<br>RNAVT 13020 · NIPC 518 827 119<br>info@beyondmadeira.com · +351 939 566 415</div>
+  </td>
+  <td style="text-align:right;vertical-align:top">
+    <div style="font-size:9pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt">Extrato de Comissões</div>
+    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{title_mes}</div>
+    <div style="font-size:8pt;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.5pt;margin-top:6pt">PARA</div>
+    <div style="font-size:14pt;font-weight:700;color:#0A616B;margin-top:2pt">{parceiro}</div>
+    <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:4pt">Ref. {ref} · Emitido a {today}</div>
+  </td>
+</tr></table>
+<hr style="border:none;border-top:1pt solid #111827;margin:0 0 14pt 0">
+<div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Detalhe das Reservas</div>
+<table class="dt">
+  <thead><tr>
+    <th style="width:44pt">Data</th><th style="width:110pt">Cliente</th><th>Atividade / Carro</th>
+    <th style="width:28pt;text-align:center">Pax</th><th style="width:58pt;text-align:right">Total</th>
+    <th style="width:62pt;text-align:right">Comissão</th><th style="width:54pt;text-align:center">Estado</th>
+  </tr></thead>
+  <tbody>{rows_html}</tbody>
+</table>
+<div style="border-top:1pt solid #9CA3AF;background:#F3F4F6;display:flex;justify-content:flex-end;padding:7px 8px;margin-bottom:20pt">
+  <div style="width:44pt"></div><div style="width:110pt"></div><div style="flex:1"></div><div style="width:28pt"></div>
+  <div style="width:58pt;text-align:right;font-size:9pt;font-weight:700;color:#111827;padding:0 8px">€ {abs(t["gt"]):,.2f}</div>
+  <div style="width:62pt;text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:0 8px">€ {abs(t["gc"]):,.2f}</div>
+  <div style="width:54pt;text-align:center;font-size:7.5pt;color:#6B7280;font-weight:600;padding:0 8px">TOTAL</div>
+</div>
+<table class="main"><tr>
+  <td style="width:52%;vertical-align:top;padding-right:16pt">
+    <div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Resumo Financeiro</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr style="background:#fff;border-bottom:0.5pt solid #E5E7EB">
+        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Total faturado</div><div style="font-size:7pt;color:#9CA3AF">{t["n"]} reservas · {t["n_can"]} canceladas</div></td>
+        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">€ {abs(t["gt"]):,.2f}</td>
+      </tr>
+      <tr style="background:#F3F4F6;border-bottom:0.5pt solid #E5E7EB">
+        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Comissões a pagar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_norm"]} reservas {em_dash} cliente pagou ao parceiro</div></td>
+        <td style="text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:10px 8px">€ {abs(t["comiss"]):,.2f}</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Crédito a descontar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_dev"]} reservas {em_dash} cliente pagou à Beyond</div></td>
+        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px">{em_dash} € {abs(t["credito"]):,.2f}</td>
+      </tr>
+    </table>
+    <div style="background:#0A616B;border-radius:6pt;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8pt">
+      <span style="font-size:10pt;font-weight:700;color:white">TOTAL A RECEBER</span>
+      <span style="font-size:16pt;font-weight:700;color:white">€ {abs(t["total_fim"]):,.2f}</span>
+    </div>
+  </td>
+  <td style="width:48%;vertical-align:top">
+    <div style="background:#0A616B;border-radius:10pt;padding:16px 18px;color:white">
+      <div style="font-size:7pt;font-weight:700;color:#A7F3D0;margin-bottom:12pt">DADOS PARA PAGAMENTO</div>
+      <div style="margin-bottom:10pt"><div style="font-size:7pt;font-weight:700;color:#A7F3D0">Banco</div><div style="font-size:9pt">Santander</div></div>
+      <div style="margin-bottom:10pt"><div style="font-size:7pt;font-weight:700;color:#A7F3D0">IBAN</div><div style="font-size:8.5pt;font-weight:700">PT50 0018 0003 6587 1568 0201 8</div></div>
+      <div style="margin-bottom:10pt"><div style="font-size:7pt;font-weight:700;color:#A7F3D0">Titular</div><div style="font-size:9pt">Milton Quintal Lda</div></div>
+      <div><div style="font-size:7pt;font-weight:700;color:#A7F3D0">Referência</div><div style="font-size:9pt">{ref}</div></div>
+    </div>
+  </td>
+</tr></table>
+<hr style="border:none;border-top:0.5pt solid #E5E7EB;margin-top:20pt">
+<div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:6pt">Em caso de dúvida ou discrepância, contacte-nos antes de efetuar qualquer transferência. Obrigado pela parceria.</div>
+<div class="footer">
+  <span>Beyond Madeira · RNAVT 13020 · NIPC 518 827 119 · +351 939 566 415</span>
+  <span>Ref. {ref}</span>
+</div>
+</body></html>"""
+
+
 @app.route("/gerar-extrato-parceiro", methods=["POST"])
 def gerar_extrato_parceiro():
     if not check_key():
