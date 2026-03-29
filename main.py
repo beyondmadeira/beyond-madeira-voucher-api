@@ -1219,6 +1219,7 @@ def gerar_extrato_parceiro():
         tipo      = d.get("tipo", "").strip()
         record_id = d.get("record_id", "").strip()
         do_upload = d.get("upload", True)
+        data_only = d.get("data_only", False)  # se True, devolve dados sem gerar PDF
         if not parceiro or not mes_str:
             return jsonify({"error": "parceiro e mes obrigatórios"}), 400
         meses_list = d.get("meses", [])
@@ -1250,6 +1251,20 @@ def gerar_extrato_parceiro():
             ref   = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
             fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
         html_str  = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
+        # data_only: devolve dados + reservas sem gerar PDF (frontend faz render)
+        if data_only:
+            reservas_out = []
+            for r in rows:
+                reservas_out.append({
+                    "ref":    r.get("ref",""),
+                    "nome":   r.get("nome",""),
+                    "ddt":    r.get("ddt",""),
+                    "total":  r.get("total",0),
+                    "com":    r.get("com",0),
+                    "estado": r.get("estado",""),
+                    "dur":    r.get("dur",""),
+                })
+            return jsonify({"success": True, "reservas": reservas_out, "total": round(tots["comiss"],2), "total_fim": round(tots["total_fim"],2), "n_reservas": tots["n"], "parceiro": parceiro, "mes": mes_str})
         pdf_bytes = HTML(string=html_str).write_pdf()
         b64       = base64.b64encode(pdf_bytes).decode()
         uploaded = False
@@ -1332,8 +1347,18 @@ def get_extrato_parceiros():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
-        mes = request.args.get("mes", "")
-        formula = f'{{Mês}} = "{mes}"' if mes else None
+        mes  = request.args.get("mes", "")
+        ano  = request.args.get("ano", "")
+        if mes:
+            formula = f'{{Mês}} = "{mes}"'
+        elif ano:
+            # Carregar todos os meses do ano — ex: "2026" → filtra por ano no campo Mês
+            meses_pt = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                        "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+            or_parts = [f'{{Mês}} = "{m} {ano}"' for m in meses_pt]
+            formula = "OR(" + ",".join(or_parts) + ")"
+        else:
+            formula = None
         records = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO, formula=formula)
         out = []
         for rec in records:
