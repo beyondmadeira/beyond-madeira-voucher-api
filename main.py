@@ -1002,32 +1002,59 @@ def gerar_extrato_parceiro():
 
         mes_nome = meses_pt[mes_num] if 1 <= mes_num <= 12 else str(mes_num)
 
-        recs_rc = airtable_list(BASE_RESERVAS, "tblGc8HoEYOA5uG5Q")
-        recs_at = airtable_list(BASE_RESERVAS, "tblla0uOKTcyboVXU")
+        recs_rc = airtable_list(BASE_RESERVAS, "Rent Car")
+        recs_at = airtable_list(BASE_RESERVAS, "Atividades")
         rows = []
-        for rf in recs_rc + recs_at:
+        for rf in recs_rc:
             f = rf.get("fields", {})
-            par = get_text_f(fget_f(f, "Parceiro", "Empresa", "Rent Car Company") or "")
+            par = f.get("Fornecedor/Parceiro", f.get("Parceiro", ""))
+            if isinstance(par, list): par = ", ".join(str(x) for x in par)
             if par.lower() != parceiro.lower(): continue
-            raw_date = get_text_f(fget_f(f, "Data de Devolução", "Data de Drop Off", "Data de Fim", "Data") or "")
+            raw_date = f.get("Data do Drop Off", f.get("Data Drop-off", ""))
             if not raw_date: continue
             try:
                 from datetime import datetime as _dt
-                dt = _dt.fromisoformat(raw_date[:10])
+                dt = _dt.fromisoformat(str(raw_date)[:10])
                 if dt.month != mes_num or dt.year != ano: continue
             except: continue
-            status_raw = get_text_f(fget_f(f, "Estado de Reserva", "Estado da Reserva") or "")
+            status_raw = f.get("Estado do Reserva", f.get("Estado da Reserva", ""))
             if status_raw in ("Cancelado","Cancelada"): status = "Cancelado"
             elif status_raw == "Devemos": status = "Devemos"
             elif status_raw == "Pago": status = "Pago"
             else: status = "Por Pagar"
-            total = eur_val(fget_f(f, "Preço Total", "Valor da Reserva (€)") or 0)
-            comm  = eur_val(fget_f(f, "Comissão") or 0)
-            client= get_text_f(fget_f(f, "Nome do Cliente", "Nome do cliente") or "")
-            act   = norm_act(fget_f(f, "Atividade", "Modelo de Carro") or "")
-            pax   = get_text_f(fget_f(f, "Nº Pessoas", "Duração") or "")
-            rows.append(dict(date=dt.strftime("%d/%m"), client=client, act=act,
-                             pax=pax, total=total, comm=comm, status=status))
+            total = eur_val(f.get("Valor da Reserva (€)", f.get("Total", 0)))
+            comm  = eur_val(f.get("Comissão", f.get("Comissao", 0)))
+            client= f.get("Nome do cliente", f.get("Nome do Cliente", ""))
+            act   = norm_act(f.get("Modelo de Carro", f.get("Veículo", "")))
+            pax   = str(f.get("Duração", f.get("Duracao", "")))
+            ref_r = f.get("Referência", f.get("Referencia", rf.get("id","")))
+            rows.append(dict(date=dt.strftime("%d/%m"), ref=ref_r, client=client, act=act,
+                             pax=pax, total=total, comm=comm, status=status, ddt=raw_date))
+        for rf in recs_at:
+            f = rf.get("fields", {})
+            par = f.get("Fornecedor/Parceiro", f.get("Parceiro", ""))
+            if isinstance(par, list): par = ", ".join(str(x) for x in par)
+            if par.lower() != parceiro.lower(): continue
+            raw_date = f.get("Data da Atividade", f.get("Data", ""))
+            if not raw_date: continue
+            try:
+                from datetime import datetime as _dt
+                dt = _dt.fromisoformat(str(raw_date)[:10])
+                if dt.month != mes_num or dt.year != ano: continue
+            except: continue
+            status_raw = f.get("Estado da Reserva", "")
+            if status_raw in ("Cancelado","Cancelada"): status = "Cancelado"
+            elif status_raw == "Devemos": status = "Devemos"
+            elif status_raw == "Pago": status = "Pago"
+            else: status = "Por Pagar"
+            total = eur_val(f.get("Preço Total", f.get("Valor da Reserva (€)", 0)))
+            comm  = eur_val(f.get("Comissão", f.get("Comissao", 0)))
+            client= f.get("Nome do Cliente", "")
+            act   = norm_act(f.get("Atividade", ""))
+            pax   = str(f.get("Nº Pessoas", f.get("Pessoas", "")))
+            ref_r = f.get("Referência", f.get("Referencia", rf.get("id","")))
+            rows.append(dict(date=dt.strftime("%d/%m"), ref=ref_r, client=client, act=act,
+                             pax=pax, total=total, comm=comm, status=status, ddt=raw_date))
         rows.sort(key=lambda x: x["date"])
         tots  = calc_totais(rows)
         import re as _re
