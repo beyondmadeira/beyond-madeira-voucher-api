@@ -47,6 +47,7 @@ def cache_clear(key=None):
         _cache.clear()
 API_KEY  = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 BASE_DIR = os.path.dirname(__file__)
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # Airtable
 AT_TOKEN        = os.environ.get("AIRTABLE_TOKEN", "")
@@ -274,456 +275,27 @@ def airtable_patch(base_id, table_name, record_id, fields):
 # =========================================================================
 # RENT CAR
 # =========================================================================
-RC_TEMPLATE = '''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --teal:#0a8f82;--teal-light:#edf7f6;--teal-mid:#c8e8e5;
-  --amber:#b5720e;--amber-light:#fef6e8;--amber-border:#f0ce8a;
-  --text:#171613;--text2:#635e58;--text3:#a8a39c;
-  --border:#e6e2dc;--white:#fff;--bg:#f7f6f2;
-}
-body{font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;padding:0;}
-.page{padding:36px 44px;max-width:740px;margin:0 auto;}
-.ref-band,.act-card,.guest-row,.extras-card,.cancel,.contacts-row,.thankyou,.legal-box{page-break-inside:avoid;break-inside:avoid;}
-.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;page-break-inside:avoid;break-inside:avoid;}
-.logo-wrap img{height:54px;width:auto;}
-.brand-legal{font-size:9px;color:var(--text3);margin-top:7px;}
-.hdr-right{text-align:right;}
-.doc-type{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
-.doc-title{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px;line-height:1;}
-.hdr-rule{height:2px;background:var(--teal);border-radius:1px;margin-bottom:22px;}
-.ref-band{background:var(--teal);border-radius:16px;padding:24px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-.ref-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px;}
-.ref-value{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;}
-.ref-issued{font-size:9px;color:rgba(255,255,255,.5);margin-top:5px;}
-.ref-right{text-align:right;}
-.ref-total-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
-.ref-total{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-.info-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:20px 24px;}
-.info-card.full{grid-column:1/-1;}
-.cell-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
-.cell-value{font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.2px;line-height:1.3;}
-.cell-value.teal{color:var(--teal);}
-.cell-value.sm{font-size:12px;}
-.client-row{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:16px;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}
-.client-cell{flex:1;background:var(--white);padding:18px 22px;border-right:1px solid var(--border);}
-.client-cell:last-child{border-right:none;}
-.client-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
-.client-value{font-size:13px;font-weight:800;color:var(--text);}
-.client-value.sm{font-size:11px;font-weight:500;color:var(--text2);}
-.dates-row{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:16px;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}
-.date-cell{flex:1;background:var(--bg);padding:20px 24px;border-right:1px solid var(--border);}
-.date-cell:last-child{border-right:none;}
-.date-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
-.date-day{font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.4px;margin-bottom:3px;}
-.date-time{font-size:16px;font-weight:800;color:var(--teal);margin-bottom:3px;}
-.date-loc{font-size:11px;color:var(--text2);font-weight:500;}
-.extras-card{background:var(--amber-light);border:1px solid var(--amber-border);border-radius:16px;padding:16px 22px;display:flex;align-items:center;gap:14px;margin-bottom:16px;}
-.extras-dot{width:32px;height:32px;min-width:32px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:#fff;}
-.extras-label{font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
-.extras-value{font-size:12px;font-weight:600;color:#7a4d08;}
-.cancel{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 22px;display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;}
-.cancel-dot{width:22px;height:22px;min-width:22px;border-radius:50%;border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:11px;font-weight:900;color:var(--teal);}
-.cancel-t{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.cancel-b{font-size:11px;color:var(--text2);line-height:1.65;}
-.contacts-row{display:flex;gap:14px;margin-bottom:16px;}
-.contact-card{flex:1;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 20px;}
-.contact-lbl{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
-.contact-name{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;}
-.contact-det{font-size:11px;color:var(--text2);line-height:1.7;}
-.thankyou{background:var(--teal);border-radius:16px;padding:22px 28px;margin-bottom:24px;}
-.ty-title{font-size:14px;font-weight:900;color:#fff;margin-bottom:7px;letter-spacing:-.3px;}
-.ty-text{font-size:11px;color:rgba(255,255,255,.87);line-height:1.75;}
-.footer{border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:space-between;page-break-inside:avoid;break-inside:avoid;}
-.ft-l,.ft-r{font-size:9px;color:var(--text3);line-height:1.8;}
-.ft-r{text-align:right;}
-.ft-teal{color:var(--teal);font-weight:600;}
-.legal{font-size:8px;color:var(--text3);line-height:1.6;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);}
-</style>
-</head>
-<body>
-<div class="page">
-<div class="hdr">
-  <div>
-    <div class="logo-wrap"><img src="{{LOGO_SRC}}" alt="Beyond Madeira"/></div>
-    <div class="brand-legal">RNAVT 13020 &middot; NIPC 518 827 119</div>
-  </div>
-  <div class="hdr-right">
-    <div class="doc-type">Car Rental Voucher</div>
-    <div class="doc-title">Rental<br>Confirmation</div>
-  </div>
-</div>
-<div class="hdr-rule"></div>
-<div class="ref-band">
-  <div>
-    <div class="ref-label">Booking Reference</div>
-    <div class="ref-value">{{referencia}}</div>
-    <div class="ref-issued">Issued by Beyond Madeira &middot; RNAVT 13020</div>
-  </div>
-  <div class="ref-right">
-    <div class="ref-total-label">Total Amount</div>
-    <div class="ref-total">{{total}}</div>
-  </div>
-</div>
-<div class="info-grid">
-  <div class="info-card">
-    <div class="cell-label">Vehicle</div>
-    <div class="cell-value">{{veiculo}} <span style="font-weight:500;font-size:11px;color:var(--text3);">or similar</span></div>
-  </div>
-  <div class="info-card">
-    <div class="cell-label">Rental Company</div>
-    <div class="cell-value teal">{{empresa}}</div>
-  </div>
-</div>
-<div class="client-row">
-  <div class="client-cell">
-    <div class="client-label">Client</div>
-    <div class="client-value">{{cliente}}</div>
-  </div>
-  <div class="client-cell">
-    <div class="client-label">Phone</div>
-    <div class="client-value sm">{{telefone}}</div>
-  </div>
-  <div class="client-cell" style="border-right:none;">
-    <div class="client-label">Email</div>
-    <div class="client-value sm">{{email}}</div>
-  </div>
-</div>
-<div class="dates-row">
-  <div class="date-cell">
-    <div class="date-label">Pick-up</div>
-    <div class="date-day">{{pickup_data}}</div>
-    <div class="date-time">{{pickup_hora}}</div>
-    <div class="date-loc">{{pickup_local}}</div>
-    {{pickup_extra}}
-  </div>
-  <div class="date-cell">
-    <div class="date-label">Drop-off</div>
-    <div class="date-day">{{dropoff_data}}</div>
-    <div class="date-time">{{dropoff_hora}}</div>
-    <div class="date-loc">{{dropoff_local}}</div>
-    {{dropoff_extra}}
-  </div>
-</div>
-<div class="extras-card">
-  <div class="extras-dot">+</div>
-  <div>
-    <div class="extras-label">Extras</div>
-    <div class="extras-value">{{extras}}</div>
-  </div>
-</div>
-<div class="cancel">
-  <div class="cancel-dot">i</div>
-  <div>
-    <div class="cancel-t">Cancellation Policy</div>
-    <div class="cancel-b">Free cancellation up to <strong>24 hours before</strong> pick-up. Late cancellations or no-shows may incur a fee.</div>
-  </div>
-</div>
-<div style="page-break-inside:avoid;break-inside:avoid;">
-{{contacts_row_html}}
-<div class="thankyou">
-  <div class="ty-title">Thank you for booking with Beyond Madeira!</div>
-  <div class="ty-text">Your rental is confirmed. Please present this voucher at vehicle pick-up. All insurance terms and rental conditions are governed solely by the rental company&rsquo;s contract issued at pick-up.<br><br>Questions? <strong>WhatsApp +351 939 566 415</strong> &middot; <strong>booking@beyondmadeira.com</strong></div>
-</div>
-</div>
-<div class="footer">
-  <div class="ft-l">Beyond Madeira &middot; RNAVT 13020 &middot; NIPC 518 827 119<br>Head Office: Largo da Sa&uacute;de n1, 9000-221 Funchal, Madeira, Portugal</div>
-  <div class="ft-r"><span class="ft-teal">beyondmadeira.com</span><br>+351 939 566 415 &middot; booking@beyondmadeira.com</div>
-</div>
-<div class="legal">Beyond Madeira (RNAVT 13020) acts exclusively as a booking intermediary pursuant to Decreto-Lei n.o 61/2011. Beyond Madeira is not a party to the rental agreement and assumes no liability for vehicle condition, insurance, accidents, or disputes. All rental terms are governed by the contract issued by the rental company at pick-up. Personal data processed under GDPR for booking fulfilment only.</div>
-</div>
-</body>
-</html>'''
-
-def build_rc_html(d):
-    tmpl = RC_TEMPLATE
-
-    for field in ["pickup_data", "dropoff_data"]:
-        val = d.get(field, "")
-        if "T" in val or "Z" in val:
-            d[field.replace("data", "hora")] = fmt_time(val)
-            d[field] = fmt_date(val)
-
-    pu_extra = ""
-    if d.get("pickup_voo"):   pu_extra += f'<div class="date-sub">Flight: {d["pickup_voo"]}</div>'
-    if d.get("pickup_hotel"): pu_extra += f'<div class="date-sub">{d["pickup_hotel"]}</div>'
-    do_extra = ""
-    if d.get("dropoff_voo"):   do_extra += f'<div class="date-sub">Flight: {d["dropoff_voo"]}</div>'
-    if d.get("dropoff_hotel"): do_extra += f'<div class="date-sub">{d["dropoff_hotel"]}</div>'
-
-    d["pickup_extra"]  = pu_extra
-    d["dropoff_extra"] = do_extra
-    d.setdefault("extras", "None")
-
-    # Auto-fill operator contacts
-    empresa = d.get("empresa", "")
-    if not d.get("empresa_telefone") and empresa in OPERATOR_CONTACTS:
-        d["empresa_telefone"], d["empresa_email"] = OPERATOR_CONTACTS[empresa]
-    d.setdefault("empresa_telefone", "")
-    d.setdefault("empresa_email", "")
-
-    # Build empresa contact block — only show if there's actual contact info
-    tel = d.get("empresa_telefone", "")
-    eml = d.get("empresa_email", "")
-    if tel or eml:
-        det = ""
-        if tel: det += tel
-        if tel and eml: det += "<br>"
-        if eml: det += eml
-        d["empresa_contact_block"] = f'<div class="contact-card"><div class="contact-lbl">Rental Company</div><div class="contact-name">{empresa}</div><div class="contact-det">{det}</div></div>'
-    else:
-        d["empresa_contact_block"] = ""
-
-    # Build contacts row — full width if no partner contact
-    beyond_card = '<div class="contact-card"><div class="contact-lbl">Beyond Madeira</div><div class="contact-name">Booking Support</div><div class="contact-det">+351 939 566 415<br>booking@beyondmadeira.com</div></div>'
-    if d["empresa_contact_block"]:
-        d["contacts_row_html"] = f'<div class="contacts-row">{d["empresa_contact_block"]}{beyond_card}</div>'
-    else:
-        d["contacts_row_html"] = f'<div class="contacts-row">{beyond_card}</div>'
-
-    tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
-    return fill(tmpl, d)
-
-
-@app.route("/gerar-voucher", methods=["POST"])
-def gerar_voucher():
-    if not check_key():
-        return jsonify({"error": "Unauthorized"}), 401
+# =========================================================================
+# RENT CAR
+# =========================================================================
+def _load_template(fname):
+    """Load HTML template from file next to main.py, fallback to empty string."""
+    import os
+    p = os.path.join(os.path.dirname(__file__), fname)
     try:
-        d = request.get_json()
-        if not d:
-            return jsonify({"error": "JSON body required"}), 400
-        required = ["referencia", "total", "veiculo", "empresa", "cliente",
-                    "telefone", "email", "pickup_data", "pickup_hora",
-                    "pickup_local", "dropoff_data", "dropoff_hora", "dropoff_local"]
-        missing = [f for f in required if not d.get(f)]
-        if missing:
-            return jsonify({"error": f"Missing fields: {missing}"}), 400
-        html  = build_rc_html(d)
-        pdf   = HTML(string=html).write_pdf()
-        b64   = base64.b64encode(pdf).decode()
-        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
-        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+        with open(p, encoding='utf-8') as f:
+            return f.read()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[WARN] Could not load {fname}: {e}")
+        return ""
 
+RC_TEMPLATE = _load_template("voucher_rc_template.html")
 
 # =========================================================================
 # ACTIVITY VOUCHER
 # =========================================================================
-AT_TEMPLATE = '''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --teal:#0a8f82;--teal-light:#edf7f6;--teal-mid:#c8e8e5;
-  --amber:#b5720e;--amber-light:#fef6e8;--amber-border:#f0ce8a;
-  --green:#186640;--green-light:#edf6f1;--green-border:#a7f3d0;
-  --text:#171613;--text2:#635e58;--text3:#a8a39c;
-  --border:#e6e2dc;--white:#fff;--bg:#f7f6f2;
-}
-body{font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;padding:0;}
-.page{padding:44px 48px;max-width:740px;margin:0 auto;}
-.ref-band,.act-card,.guest-row,.pay-alert,.paymethod,.pickup-card,.special-req,.invoice,.inv-total-row,.cancel,.insurance,.contacts-row,.thankyou{page-break-inside:avoid;break-inside:avoid;}
-.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;page-break-inside:avoid;break-inside:avoid;}
-.logo-wrap img{height:54px;width:auto;}
-.brand-legal{font-size:9px;color:var(--text3);margin-top:7px;}
-.hdr-right{text-align:right;}
-.doc-type{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
-.doc-status{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px;line-height:1;}
-.doc-status.awaiting{color:var(--amber);}
-.doc-status.paid{color:var(--green);}
-.hdr-rule{height:2px;background:var(--teal);border-radius:1px;margin-bottom:28px;}
-.ref-band{background:var(--teal);border-radius:16px;padding:24px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
-.ref-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px;}
-.ref-value{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;}
-.ref-bokun{font-size:10px;color:rgba(255,255,255,.5);margin-top:5px;}
-.issued-by{font-size:9px;color:rgba(255,255,255,.5);margin-top:5px;}
-.act-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:20px;}
-.act-name{font-size:21px;font-weight:900;color:var(--text);letter-spacing:-.5px;line-height:1.2;margin-bottom:4px;}
-.act-date{font-size:14px;font-weight:700;color:var(--teal);margin-bottom:22px;}
-.act-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
-.cell-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
-.cell-value{font-size:13px;font-weight:800;color:var(--text);line-height:1.3;}
-.cell-value.accent{color:var(--teal);font-size:19px;}
-.cell-value.tbc{color:var(--text3);font-size:13px;font-style:italic;}
-.guest-row{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:16px;overflow:hidden;}
-.guest-card{flex:1;background:var(--white);padding:20px 24px;border-right:1px solid var(--border);}
-.price-card{padding:18px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:170px;flex-shrink:0;}
-.price-card.cash{background:var(--teal);}
-.price-card.awaiting{background:var(--amber);}
-.price-card.paid{background:var(--green);}
-.sect-lbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
-.sect-lbl.muted{color:var(--text3);}
-.sect-lbl.inv{color:rgba(255,255,255,.65);}
-.guest-name{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-.3px;margin-bottom:4px;}
-.guest-contacts{font-size:11px;color:var(--text2);line-height:1.7;}
-.price-amount{font-size:32px;font-weight:900;color:#fff;letter-spacing:-.8px;line-height:1;text-align:center;}
-.price-note{font-size:9px;color:rgba(255,255,255,.7);margin-top:6px;font-weight:600;text-align:center;}
-.pay-alert{border-radius:14px;padding:16px 20px;display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;}
-.pay-alert.awaiting{background:var(--amber-light);border:1px solid var(--amber-border);}
-.pay-alert.paid{background:var(--green-light);border:1px solid var(--green-border);}
-.pa-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;font-weight:900;color:#fff;margin-top:1px;}
-.pa-dot.awaiting{background:var(--amber);}
-.pa-dot.paid{background:var(--green);}
-.pa-title{font-size:12px;font-weight:800;margin-bottom:4px;}
-.pa-title.awaiting{color:#7a4d08;}
-.pa-title.paid{color:#0f4428;}
-.pa-body{font-size:11px;line-height:1.65;}
-.pa-body.awaiting{color:#7a4d08;}
-.pa-body.paid{color:#0f4428;}
-.paymethod{border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;margin-bottom:20px;background:var(--teal-light);border:1px solid var(--teal-mid);}
-.pm-dot{width:32px;height:32px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:900;color:#fff;}
-.pm-title{font-size:12px;font-weight:800;color:var(--teal);margin-bottom:3px;}
-.pm-body{font-size:11px;color:var(--text2);line-height:1.5;}
-.pickup-card{background:var(--amber-light);border:1px solid var(--amber-border);border-radius:16px;padding:18px 24px;display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;}
-.pickup-dot{width:36px;height:36px;min-width:36px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;color:#fff;font-weight:900;line-height:1;margin-top:1px;}
-.pickup-lbl{font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
-.pickup-loc{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.2px;margin-bottom:3px;}
-.pickup-sub{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:3px;}
-.pickup-note{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5;font-style:italic;}
-.special-req{background:var(--white);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:0 14px 14px 0;padding:14px 20px;margin-bottom:20px;}
-.sr-label{font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
-.sr-text{font-size:11px;color:var(--text2);line-height:1.6;}
-.invoice{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:6px;}
-.inv-hdr{padding:11px 22px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-.inv-hdr-t{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.8px;}
-.inv-hdr-r{font-size:10px;color:var(--text3);}
-.inv-row{padding:13px 22px;display:flex;align-items:center;gap:10px;background:var(--white);border-bottom:1px solid var(--border);}
-.inv-row:last-child{border-bottom:none;}
-.inv-prod{flex:1;}
-.inv-name{font-size:12px;font-weight:700;color:var(--text);}
-.inv-detail{font-size:10px;color:var(--text3);margin-top:2px;}
-.inv-qty{font-size:11px;font-weight:600;color:var(--text2);width:30px;text-align:center;}
-.inv-unit{font-size:11px;color:var(--text3);width:60px;text-align:right;}
-.inv-sub{font-size:12px;font-weight:700;color:var(--text);width:60px;text-align:right;}
-.inv-total-row{padding:13px 22px;display:flex;justify-content:space-between;align-items:center;background:var(--teal-light);border-top:2px solid var(--teal);border-radius:0 0 16px 16px;margin-bottom:20px;}
-.inv-total-l{font-size:12px;font-weight:700;color:var(--text);}
-.inv-total-r{font-size:21px;font-weight:900;color:var(--teal);}
-.cancel{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 22px;display:flex;align-items:flex-start;gap:13px;margin-bottom:20px;}
-.cancel-dot{width:22px;height:22px;min-width:22px;border-radius:50%;border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:11px;font-weight:900;color:var(--teal);}
-.cancel-t{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.cancel-b{font-size:11px;color:var(--text2);line-height:1.65;}
-.insurance{background:var(--teal-light);border:1px solid var(--teal-mid);border-radius:16px;padding:16px 22px;display:flex;align-items:center;gap:13px;margin-bottom:20px;}
-.ins-dot{width:32px;height:32px;min-width:32px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:#fff;}
-.ins-title{font-size:12px;font-weight:800;color:var(--teal);margin-bottom:3px;}
-.ins-body{font-size:11px;color:var(--text2);line-height:1.5;}
-.contacts-row{display:flex;gap:14px;margin-bottom:20px;}
-.contact-card{flex:1;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 20px;}
-.contact-lbl{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
-.contact-name{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;}
-.contact-det{font-size:11px;color:var(--text2);line-height:1.7;}
-.thankyou{background:var(--teal);border-radius:16px;padding:22px 28px;margin-bottom:24px;}
-.ty-title{font-size:14px;font-weight:900;color:#fff;margin-bottom:7px;letter-spacing:-.3px;}
-.ty-text{font-size:11px;color:rgba(255,255,255,.87);line-height:1.75;}
-.footer{border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:space-between;page-break-inside:avoid;break-inside:avoid;}
-.ft-l,.ft-r{font-size:9px;color:var(--text3);line-height:1.8;}
-.ft-r{text-align:right;}
-.ft-teal{color:var(--teal);font-weight:600;}
-.legal{font-size:8px;color:var(--text3);line-height:1.6;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);}
-</style>
-</head>
-<body>
-<div class="page">
-<div class="hdr">
-  <div>
-    <div class="logo-wrap"><img src="{{LOGO_SRC}}" alt="Beyond Madeira"/></div>
-    <div class="brand-legal">RNAVT 13020 &middot; NIPC 518 827 119</div>
-  </div>
-  <div class="hdr-right">
-    <div class="doc-type">Voucher</div>
-    <div class="doc-status {{status_class}}">{{status_label}}</div>
-  </div>
-</div>
-<div class="hdr-rule"></div>
-<div class="ref-band">
-  <div>
-    <div class="ref-label">Booking Reference</div>
-    <div class="ref-value">{{referencia}}</div>
-    <div class="ref-bokun">Bokun: {{bokun_ref}}</div>
-  </div>
-  <div style="text-align:right;">
-    <div class="issued-by">Issued by Beyond Madeira</div>
-  </div>
-</div>
-<div class="act-card">
-  <div class="act-name">{{atividade}}</div>
-  <div class="act-date">{{data}}</div>
-  <div class="act-grid">
-    <div><div class="cell-label">Start Time</div><div class="cell-value {{start_time_class}}">{{hora}}</div></div>
-    <div><div class="cell-label">Participants</div><div class="cell-value">{{pax}}</div></div>
-    <div><div class="cell-label">Tour Type</div><div class="cell-value">{{tipo_tour}}</div></div>
-    <div><div class="cell-label">Operator</div><div class="cell-value" style="color:var(--teal);">{{operador}}</div></div>
-  </div>
-</div>
-<div class="guest-row">
-  <div class="guest-card">
-    <div class="sect-lbl muted">Guest</div>
-    <div class="guest-name">{{cliente}}</div>
-    <div class="guest-contacts">{{email}}<br>{{telefone}}</div>
-  </div>
-  <div class="price-card {{price_class}}">
-    <div class="sect-lbl inv">Total</div>
-    <div class="price-amount">{{total}}&euro;</div>
-    <div class="price-note">{{price_note}}</div>
-  </div>
-</div>
-{{payment_alert_html}}
-{{payment_method_html}}
-{{pickup_html}}
-{{special_requests_html}}
-<div class="invoice">
-  <div class="inv-hdr"><div class="inv-hdr-t">Invoice</div><div class="inv-hdr-r">{{bokun_ref}}</div></div>
-  {{invoice_rows_html}}
-</div>
-<div class="inv-total-row">
-  <div class="inv-total-l">Total Amount</div>
-  <div class="inv-total-r">{{total}}&euro;</div>
-</div>
-<div class="cancel">
-  <div class="cancel-dot">i</div>
-  <div><div class="cancel-t">Cancellation Policy</div><div class="cancel-b">{{cancelamento}}</div></div>
-</div>
-<div class="insurance">
-  <div class="ins-dot">&#10003;</div>
-  <div>
-    <div class="ins-title">Insurance Included</div>
-    <div class="ins-body">This activity includes personal accident insurance provided by the operator. Coverage terms are governed solely by the operator&rsquo;s own insurance policy.</div>
-  </div>
-</div>
-<div class="contacts-row">
-  <div class="contact-card">
-    <div class="contact-lbl">Operator Contact</div>
-    <div class="contact-name">{{operador}}</div>
-    <div class="contact-det">{{operador_telefone}}<br>{{operador_email}}</div>
-  </div>
-  <div class="contact-card">
-    <div class="contact-lbl">Beyond Madeira</div>
-    <div class="contact-name">Booking Support</div>
-    <div class="contact-det">+351 939 566 415<br>booking@beyondmadeira.com</div>
-  </div>
-</div>
-<div class="thankyou">
-  <div class="ty-title">Thank you for booking with Beyond Madeira!</div>
-  <div class="ty-text">{{mensagem_confirmacao}}<br><br>Questions? <strong>WhatsApp +351 939 566 415</strong> &middot; <strong>booking@beyondmadeira.com</strong></div>
-</div>
-<div class="footer">
-  <div class="ft-l">Beyond Madeira &middot; RNAVT 13020 &middot; NIPC 518 827 119<br>Head Office: Largo da Sa&uacute;de n1, 9000-221 Funchal, Madeira, Portugal</div>
-  <div class="ft-r"><span class="ft-teal">beyondmadeira.com</span><br>+351 939 566 415 &middot; booking@beyondmadeira.com</div>
-</div>
-<div class="legal">Beyond Madeira (RNAVT 13020) acts exclusively as a booking intermediary. Beyond Madeira is not a party to the activity agreement and assumes no liability for the activity, accidents, or disputes between the guest and the operator. Personal data processed under GDPR for booking fulfilment only.</div>
-</div>
-</body>
-</html>'''
+AT_TEMPLATE = _load_template("voucher_at_template.html")
+
 
 def build_at_html(d):
     tmpl = AT_TEMPLATE
@@ -1130,7 +702,7 @@ def clear_cache():
 # =========================================================================
 # WAZZUP PROXY  (evita CORS do browser)
 # =========================================================================
-WAZZUP_API_KEY  = os.environ.get("WAZZUP_API_KEY", "9b4f7530810243d387df6c6837568b43")
+WAZZUP_API_KEY  = os.environ.get("WAZZUP_API_KEY", "3c681e9848a14ceaa6c6bb1f27d33880")
 WAZZUP_CHANNEL  = os.environ.get("WAZZUP_CHANNEL", "345da32d-f391-4d42-b22f-660539d73085")
 WAZZUP_BASE     = "https://api.wazzup24.com/v3"
 
@@ -1404,12 +976,30 @@ def gerar_extrato_parceiro():
     try:
         d        = request.get_json() or {}
         parceiro = d.get("parceiro", "")
-        mes_num  = int(d.get("mes", 0))
-        ano      = int(d.get("ano", 0))
         upload   = d.get("upload", False)
         record_id= d.get("record_id", "")
         meses_pt = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                     "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+
+        # Accept mes as "Março 2026" string OR as separate mes/ano integers
+        mes_raw = d.get("mes", "")
+        mes_num = 0
+        ano     = 0
+        from datetime import datetime as _dt2
+        if isinstance(mes_raw, str) and " " in mes_raw:
+            parts = mes_raw.strip().split()
+            if len(parts) == 2:
+                for i, m in enumerate(meses_pt):
+                    if m.lower() == parts[0].lower():
+                        mes_num = i; break
+                try: ano = int(parts[1])
+                except: ano = _dt2.now().year
+        else:
+            try: mes_num = int(mes_raw)
+            except: mes_num = _dt2.now().month
+            try: ano = int(d.get("ano", _dt2.now().year))
+            except: ano = _dt2.now().year
+
         mes_nome = meses_pt[mes_num] if 1 <= mes_num <= 12 else str(mes_num)
 
         recs_rc = airtable_list(BASE_RESERVAS, "tblGc8HoEYOA5uG5Q")
@@ -1451,9 +1041,40 @@ def gerar_extrato_parceiro():
             try:
                 airtable_upload_attachment(BASE_RESERVAS, TAB_EXTRATO, record_id, "Extrato Beyond", pdf_bytes, fname)
             except: pass
-        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64,
+                        "reservas": rows, "total": tots["total_fim"], "total_fim": tots["total_fim"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    if not ANTHROPIC_API_KEY:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 500
+    try:
+        body = request.get_json() or {}
+        messages  = body.get("messages", [])
+        model     = body.get("model", "claude-sonnet-4-20250514")
+        max_tokens= body.get("max_tokens", 1024)
+        system    = body.get("system", "")
+        payload   = {"model": model, "max_tokens": max_tokens, "messages": messages}
+        if system:
+            payload["system"] = system
+        r = req_lib.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json=payload, timeout=60
+        )
+        r.raise_for_status()
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/", methods=["GET"])
 def health():
