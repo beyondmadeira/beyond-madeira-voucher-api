@@ -291,9 +291,54 @@ def _load_template(fname):
 
 RC_TEMPLATE = _load_template("voucher_rc_template.html")
 
-# =========================================================================
-# ACTIVITY VOUCHER
-# =========================================================================
+
+def build_rc_html(d):
+    tmpl = RC_TEMPLATE
+
+    for field in ["pickup_data", "dropoff_data"]:
+        val = d.get(field, "")
+        if "T" in val or "Z" in val:
+            d[field.replace("data", "hora")] = fmt_time(val)
+            d[field] = fmt_date(val)
+
+    pu_extra = ""
+    if d.get("pickup_voo"):   pu_extra += f'<div class="date-sub">Flight: {d["pickup_voo"]}</div>'
+    if d.get("pickup_hotel"): pu_extra += f'<div class="date-sub">{d["pickup_hotel"]}</div>'
+    do_extra = ""
+    if d.get("dropoff_voo"):   do_extra += f'<div class="date-sub">Flight: {d["dropoff_voo"]}</div>'
+    if d.get("dropoff_hotel"): do_extra += f'<div class="date-sub">{d["dropoff_hotel"]}</div>'
+
+    d["pickup_extra"]  = pu_extra
+    d["dropoff_extra"] = do_extra
+    d.setdefault("extras", "None")
+
+    empresa = d.get("empresa", "")
+    if not d.get("empresa_telefone") and empresa in OPERATOR_CONTACTS:
+        d["empresa_telefone"], d["empresa_email"] = OPERATOR_CONTACTS[empresa]
+    d.setdefault("empresa_telefone", "")
+    d.setdefault("empresa_email", "")
+
+    tel = d.get("empresa_telefone", "")
+    eml = d.get("empresa_email", "")
+    if tel or eml:
+        det = ""
+        if tel: det += tel
+        if tel and eml: det += "<br>"
+        if eml: det += eml
+        d["empresa_contact_block"] = f'<div class="contact-card"><div class="contact-lbl">Rental Company</div><div class="contact-name">{empresa}</div><div class="contact-det">{det}</div></div>'
+    else:
+        d["empresa_contact_block"] = ""
+
+    beyond_card = '<div class="contact-card"><div class="contact-lbl">Beyond Madeira</div><div class="contact-name">Booking Support</div><div class="contact-det">+351 939 566 415<br>booking@beyondmadeira.com</div></div>'
+    if d["empresa_contact_block"]:
+        d["contacts_row_html"] = f'<div class="contacts-row">{d["empresa_contact_block"]}{beyond_card}</div>'
+    else:
+        d["contacts_row_html"] = f'<div class="contacts-row">{beyond_card}</div>'
+
+    tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
+    return fill(tmpl, d)
+
+
 AT_TEMPLATE = _load_template("voucher_at_template.html")
 
 
@@ -807,20 +852,24 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
     today = datetime.now().strftime("%d/%m/%Y")
     t = tots
 
-    def _row_html(r, bg):
-        sc = {"Pago":"#166534","Por Pagar":"#111827","Devemos":"#991B1B","Cancelado":"#6B7280"}.get(r["status"],"#6B7280")
-        strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
-        _em = "\u2014"
-        pax = str(r.get("pax") or _em).replace(" Pessoas","").replace(" Pessoa","").strip()
+    def _status_class(s):
+        return {"Pago": "status-pago", "Devemos": "status-devemos", "Cancelado": "status-cancel"}.get(s, "")
+
+    def _row_html(r, bg, strike=False):
+        sc  = _status_class(r["status"])
+        sk  = " strike" if strike else ""
+        pax = str(r.get("pax") or "—").replace(" Pessoas","").replace(" Pessoa","").strip()
+        ref_r = r.get("ref","") or "—"
         return (
             f'<tr style="background:{bg}">'
-            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>'
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or _em)[:32]}</td>'
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or _em)[:28]}</td>'
-            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>'
-            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td>'
-            f'<td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td>'
-            f'<td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td>'
+            f'<td class="muted{sk}">{r["date"]}</td>'
+            f'<td class="muted{sk}" style="font-size:8px;">{ref_r[:14]}</td>'
+            f'<td class="{sk}">{(r["client"] or "—")[:30]}</td>'
+            f'<td class="muted{sk}">{(r["act"] or "—")[:28]}</td>'
+            f'<td class="c muted{sk}">{pax}</td>'
+            f'<td class="r{sk}">€{abs(r["total"]):,.2f}</td>'
+            f'<td class="comm{sk}">€{abs(r["comm"]):,.2f}</td>'
+            f'<td class="c {sc}{sk}">{r["status"]}</td>'
             f'</tr>'
         )
 
@@ -829,118 +878,44 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
         row_idx = 0
         for m_nome_i, m_ano_i, m_rows_i in rows_by_month:
             if not m_rows_i: continue
-            m_tots = calc_totais(m_rows_i)
             rows_html += (
-                f'<tr><td colspan="7" style="padding:8px 8px 4px;background:#f0faf9;border-top:1.5pt solid #0A616B;border-bottom:0.5pt solid #9CA3AF">'
-                f'<span style="font-size:9pt;font-weight:800;color:#0A616B">{m_nome_i} {m_ano_i}</span>'
-                f'<span style="font-size:8pt;color:#6B7280;margin-left:8px">{len(m_rows_i)} reservas</span></td></tr>'
+                f'<tr class="month-sep"><td colspan="8">{m_nome_i} {m_ano_i} — {len(m_rows_i)} reservas</td></tr>'
             )
             for i, r in enumerate(m_rows_i):
-                rows_html += _row_html(r, "#F9FAFB" if (row_idx + i) % 2 == 0 else "#FFFFFF")
+                cancelled = r["status"] == "Cancelado"
+                rows_html += _row_html(r, "#F9FAFB" if (row_idx+i)%2==0 else "#FFFFFF", strike=cancelled)
             row_idx += len(m_rows_i)
-            rows_html += (
-                f'<tr style="background:#f0faf9">'
-                f'<td colspan="4" style="padding:5px 8px;font-size:8pt;color:#374151;font-style:italic">Subtotal {m_nome_i} {m_ano_i}</td>'
-                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;text-align:right">&euro; {abs(m_tots["gt"]):,.2f}</td>'
-                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right">&euro; {abs(m_tots["gc"]):,.2f}</td>'
-                f'<td></td></tr>'
-            )
     else:
         for i, r in enumerate(rows):
-            rows_html += _row_html(r, "#F9FAFB" if i % 2 == 0 else "#FFFFFF")
+            cancelled = r["status"] == "Cancelado"
+            rows_html += _row_html(r, "#F9FAFB" if i%2==0 else "#FFFFFF", strike=cancelled)
 
-    logo_src = logo_b64()
-    title_mes = "&nbsp;+&nbsp;".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"
+    if not rows_html:
+        rows_html = '<tr><td colspan="8" style="padding:14px 8px;color:var(--text3);font-style:italic;">Sem reservas para este período.</td></tr>'
 
-    return f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<style>
-  @page {{ size: A4; margin: 1.8cm 1.8cm 1.6cm 1.8cm; }}
-  * {{ margin:0;padding:0;box-sizing:border-box; }}
-  body {{ font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }}
-  .top-bar {{ position:fixed;top:-1.8cm;left:-1.8cm;right:-1.8cm;height:5mm;background:#0A616B; }}
-  .footer {{ position:fixed;bottom:-1.6cm;left:-1.8cm;right:-1.8cm;border-top:0.5pt solid #E5E7EB;padding:4pt 0; }}
-  .footer-inner {{ display:table;width:100%;padding:0 1.8cm; }}
-  .footer-l {{ display:table-cell;font-size:6.5pt;color:#6B7280; }}
-  .footer-r {{ display:table-cell;font-size:6.5pt;color:#6B7280;text-align:right; }}
-  table.main {{ width:100%;border-collapse:collapse; }}
-  .dt {{ margin-bottom:20pt;width:100%;border-collapse:collapse; }}
-  .dt th {{ font-size:7.5pt;font-weight:700;color:#6B7280;padding:7px 8px;border-bottom:1pt solid #9CA3AF;text-align:left;background:#fff; }}
-  .dt tfoot td {{ border-top:1pt solid #9CA3AF;font-weight:700;background:#F3F4F6; }}
-</style>
-</head><body>
-<div class="top-bar"></div>
-<table class="main" style="margin-bottom:14pt"><tr>
-  <td style="width:45%;vertical-align:top;padding-top:4pt">
-    <img src="{logo_src}" style="height:38pt;margin-bottom:8pt;display:block" alt="Beyond Madeira">
-    <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">Largo da Sa\u00fade 1, 9000-221 Funchal<br>RNAVT 13020 \u00b7 NIPC 518 827 119<br>info@beyondmadeira.com \u00b7 +351 939 566 415</div>
-  </td>
-  <td style="text-align:right;vertical-align:top">
-    <div style="font-size:9pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt">Extrato de Comiss\u00f5es</div>
-    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{title_mes}</div>
-    <div style="font-size:8pt;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.5pt;margin-top:6pt">PARA</div>
-    <div style="font-size:14pt;font-weight:700;color:#0A616B;margin-top:2pt">{parceiro}</div>
-    <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:4pt">Ref. {ref} \u00b7 Emitido a {today}</div>
-  </td>
-</tr></table>
-<hr style="border:none;border-top:1pt solid #111827;margin:0 0 14pt 0">
-<div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Detalhe das Reservas</div>
-<table class="dt">
-  <thead><tr>
-    <th style="width:44pt">Data</th><th style="width:110pt">Cliente</th><th>Atividade / Carro</th>
-    <th style="width:28pt;text-align:center">Pax</th><th style="width:58pt;text-align:right">Total</th>
-    <th style="width:62pt;text-align:right">Comiss\u00e3o</th><th style="width:54pt;text-align:center">Estado</th>
-  </tr></thead>
-  <tbody>{rows_html}</tbody>
-  <tfoot><tr>
-    <td colspan="4" style="padding:7px 8px"></td>
-    <td style="padding:7px 8px;font-size:9pt;color:#111827;text-align:right">\u20ac {abs(t["gt"]):,.2f}</td>
-    <td style="padding:7px 8px;font-size:9pt;color:#0A616B;text-align:right">\u20ac {abs(t["gc"]):,.2f}</td>
-    <td style="padding:7px 8px;font-size:7.5pt;color:#6B7280;text-align:center">TOTAL</td>
-  </tr></tfoot>
-</table>
-<table class="main"><tr>
-  <td style="width:52%;vertical-align:top;padding-right:16pt">
-    <div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Resumo Financeiro</div>
-    <table style="width:100%;border-collapse:collapse">
-      <tr style="background:#fff;border-bottom:0.5pt solid #E5E7EB">
-        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Total faturado</div><div style="font-size:7pt;color:#9CA3AF">{t["n"]} reservas \u00b7 {t["n_can"]} canceladas</div></td>
-        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px;white-space:nowrap">\u20ac {abs(t["gt"]):,.2f}</td>
-      </tr>
-      <tr style="background:#F3F4F6;border-bottom:0.5pt solid #E5E7EB">
-        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Comiss\u00f5es a pagar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_norm"]} reservas \u2014 cliente pagou ao parceiro</div></td>
-        <td style="text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:10px 8px;white-space:nowrap">\u20ac {abs(t["comiss"]):,.2f}</td>
-      </tr>
-      <tr style="background:#fff">
-        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Cr\u00e9dito a descontar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_dev"]} reservas \u2014 cliente pagou \u00e0 Beyond</div></td>
-        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px;white-space:nowrap">\u2212 \u20ac {abs(t["credito"]):,.2f}</td>
-      </tr>
-    </table>
-    <table style="width:100%;border-collapse:collapse;margin-top:8pt;background:#0A616B">
-      <tr>
-        <td style="padding:12px 14px;font-size:10pt;font-weight:700;color:white">TOTAL A RECEBER</td>
-        <td style="padding:12px 14px;font-size:16pt;font-weight:700;color:white;text-align:right;white-space:nowrap">\u20ac {abs(t["total_fim"]):,.2f}</td>
-      </tr>
-    </table>
-  </td>
-  <td style="width:48%;vertical-align:top">
-    <table style="width:100%;border-collapse:collapse;background:#0A616B">
-      <tr><td colspan="2" style="padding:14px 16px 6px;font-size:7pt;font-weight:700;color:#A7F3D0;text-transform:uppercase;letter-spacing:1pt">Dados para Pagamento</td></tr>
-      <tr><td style="padding:5px 16px;font-size:7pt;font-weight:700;color:#A7F3D0;width:70pt">Banco</td><td style="padding:5px 16px;font-size:9pt;color:white">Santander</td></tr>
-      <tr><td style="padding:5px 16px;font-size:7pt;font-weight:700;color:#A7F3D0">IBAN</td><td style="padding:5px 16px;font-size:8.5pt;font-weight:700;color:white">PT50 0018 0003 6587 1568 0201 8</td></tr>
-      <tr><td style="padding:5px 16px;font-size:7pt;font-weight:700;color:#A7F3D0">Titular</td><td style="padding:5px 16px;font-size:9pt;color:white">Milton Quintal Lda</td></tr>
-      <tr><td style="padding:5px 16px 14px;font-size:7pt;font-weight:700;color:#A7F3D0">Refer\u00eancia</td><td style="padding:5px 16px 14px;font-size:9pt;color:white">{ref}</td></tr>
-    </table>
-  </td>
-</tr></table>
-<hr style="border:none;border-top:0.5pt solid #E5E7EB;margin-top:20pt">
-<div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:6pt">Em caso de d\u00favida ou discrepância, contacte-nos antes de efetuar qualquer transfer\u00eancia. Obrigado pela parceria.</div>
-<div class="footer"><div class="footer-inner">
-  <span class="footer-l">Beyond Madeira \u00b7 RNAVT 13020 \u00b7 NIPC 518 827 119 \u00b7 +351 939 566 415</span>
-  <span class="footer-r">Ref. {ref}</span>
-</div></div>
-</body></html>"""
+    title_mes = " + ".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"
 
+    tmpl = _load_template("extrato_template.html")
+    tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
+    replacements = {
+        "{{parceiro}}":    parceiro,
+        "{{ref}}":         ref,
+        "{{today}}":       today,
+        "{{title_mes}}":   title_mes,
+        "{{total_fim}}":   f'{abs(t["total_fim"]):,.2f}',
+        "{{rows_html}}":   rows_html,
+        "{{n_reservas}}":  str(t["n"]),
+        "{{n_canceladas}}":str(t["n_can"]),
+        "{{gt}}":          f'{abs(t["gt"]):,.2f}',
+        "{{gc}}":          f'{abs(t["gc"]):,.2f}',
+        "{{n_norm}}":      str(t["n_norm"]),
+        "{{n_dev}}":       str(t["n_dev"]),
+        "{{comiss}}":      f'{abs(t["comiss"]):,.2f}',
+        "{{credito}}":     f'{abs(t["credito"]):,.2f}',
+    }
+    for k, v in replacements.items():
+        tmpl = tmpl.replace(k, str(v))
+    return tmpl
 
 def eur_val(v):
     try: return float(str(v).replace("€","").replace(",",".").strip())
