@@ -264,6 +264,14 @@ def airtable_list(base_id, table_name, max_records=1000):
     return records
 
 
+
+def airtable_delete(base_id, table, record_id):
+    url = f"https://api.airtable.com/v0/{base_id}/{urllib.parse.quote(table)}/{record_id}"
+    req = urllib.request.Request(url, method="DELETE")
+    req.add_header("Authorization", f"Bearer {AIRTABLE_TOKEN}")
+    with urllib.request.urlopen(req) as r:
+        return json.loads(r.read())
+
 def airtable_patch(base_id, table_name, record_id, fields):
     """Patch a single Airtable record."""
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}/{record_id}"
@@ -779,6 +787,160 @@ def patch_guia(record_id):
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── FAQ CLIENTES ────────────────────────────────────────────
+@app.route("/airtable/faq-clientes", methods=["GET"])
+def get_faq_clientes():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "FAQ Clientes")
+        out = []
+        for rec in records:
+            f = rec.get("fields", {})
+            out.append({
+                "id":       rec["id"],
+                "titulo":   f.get("Answer Title", f.get("Título", f.get("Title", ""))),
+                "trigger":  f.get("Trigger / Customer Question", f.get("Trigger", f.get("Pergunta", ""))),
+                "resposta": f.get("Answer", f.get("Resposta", f.get("Content", ""))),
+                "categoria":f.get("Category", f.get("Categoria", "")),
+                "tags":     f.get("Tags", ""),
+                "ativo":    f.get("Ativo", f.get("Active", True)),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/faq-clientes/contexto", methods=["GET"])
+def get_faq_contexto():
+    """Returns FAQ as plain text for AI agent context injection."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "FAQ Clientes")
+        lines_out = ["=== FAQ CLIENTES BEYOND MADEIRA ===", ""]
+        for rec in records:
+            f = rec.get("fields", {})
+            titulo  = f.get("Answer Title", f.get("Título", ""))
+            trigger = f.get("Trigger / Customer Question", f.get("Trigger", ""))
+            resposta= f.get("Answer", f.get("Resposta", ""))
+            if titulo and (trigger or resposta):
+                lines_out.append(f"Q: {trigger or titulo}")
+                lines_out.append(f"A: {resposta or titulo}")
+                lines_out.append("")
+        return jsonify({"success": True, "texto": "\n".join(lines_out), "n": len(records)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── SITEMAP ─────────────────────────────────────────────────
+@app.route("/airtable/sitemap/contexto", methods=["GET"])
+def get_sitemap_contexto():
+    """Returns Sitemap as plain text for AI agent context."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Sitemap")
+        lines_out = ["=== SITEMAP BEYOND MADEIRA ===", ""]
+        for rec in records:
+            f = rec.get("fields", {})
+            titulo = f.get("Página", f.get("Titulo", f.get("Name", "")))
+            url    = f.get("URL", f.get("Url", ""))
+            desc   = f.get("Descrição", f.get("Descricao", f.get("Description", "")))
+            if titulo:
+                lines_out.append(f"- {titulo}{': '+url if url else ''}{' — '+desc if desc else ''}")
+        return jsonify({"success": True, "texto": "\n".join(lines_out)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── FB POSTS ─────────────────────────────────────────────────
+@app.route("/airtable/fb-posts", methods=["GET"])
+def get_fb_posts():
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Facebook Posts")
+        out = []
+        for rec in records:
+            f = rec.get("fields",{})
+            out.append({"id":rec["id"],"data":f.get("Data",""),"hora":f.get("Hora",""),
+                "copy_en":f.get("Copy EN",f.get("Texto EN","")),"copy_pt":f.get("Copy PT",f.get("Texto PT","")),
+                "copy_es":f.get("Copy ES",""),"copy_de":f.get("Copy DE",""),
+                "imagem":f.get("Imagem",""),"grupos":f.get("Grupos",[]),
+                "status":f.get("Status",f.get("Estado","rascunho")).lower(),
+                "erro_msg":f.get("Erro",""),"notas":f.get("Notas","")})
+        return jsonify({"success":True,"records":out})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+@app.route("/airtable/fb-posts", methods=["POST"])
+def create_fb_post():
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields",{})
+        result = airtable_create(BASE_CONHECIMENTO, "Facebook Posts", fields)
+        return jsonify({"success":True,"record":{"id":result.get("id",""),"fields":result.get("fields",{})}})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+@app.route("/airtable/fb-posts/<record_id>", methods=["PATCH"])
+def patch_fb_post(record_id):
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        fields = (request.get_json() or {}).get("fields",{})
+        result = airtable_patch(BASE_CONHECIMENTO, "Facebook Posts", record_id, fields)
+        return jsonify({"success":True,"record":result})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+@app.route("/airtable/fb-posts/<record_id>", methods=["DELETE"])
+def delete_fb_post(record_id):
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        airtable_delete(BASE_CONHECIMENTO, "Facebook Posts", record_id)
+        return jsonify({"success":True})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+# ── WP POSTS ─────────────────────────────────────────────────
+@app.route("/airtable/wp-posts", methods=["GET"])
+def get_wp_posts():
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        records = airtable_list(BASE_CONHECIMENTO, "Blog Posts")
+        out = []
+        for rec in records:
+            f = rec.get("fields",{})
+            out.append({"id":rec["id"],"seoTitle":f.get("SEO Title",f.get("Título","")),"seoDesc":f.get("SEO Description",""),
+                "excerpt":f.get("Excerpt",f.get("Resumo","")),"imgUrl":f.get("Imagem URL",""),
+                "htmlContent":f.get("Conteúdo HTML",f.get("Conteudo","")),"status":f.get("Status","rascunho").lower(),
+                "createdAt":f.get("Data Criação",""),"publishedAt":f.get("Data Publicação",""),"wpPostId":f.get("WP Post ID","")})
+        return jsonify({"success":True,"records":out})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+@app.route("/airtable/wp-posts", methods=["POST"])
+def create_wp_post():
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields",{})
+        result = airtable_create(BASE_CONHECIMENTO, "Blog Posts", fields)
+        return jsonify({"success":True,"record":{"id":result.get("id",""),"fields":result.get("fields",{})}})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+@app.route("/airtable/wp-posts/<record_id>", methods=["PATCH"])
+def patch_wp_post(record_id):
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        fields = (request.get_json() or {}).get("fields",{})
+        result = airtable_patch(BASE_CONHECIMENTO, "Blog Posts", record_id, fields)
+        return jsonify({"success":True,"record":result})
+    except Exception as e: return jsonify({"error":str(e)}),500
+
+@app.route("/airtable/wp-posts/<record_id>", methods=["DELETE"])
+def delete_wp_post(record_id):
+    if not check_key(): return jsonify({"error":"Unauthorized"}),401
+    try:
+        airtable_delete(BASE_CONHECIMENTO, "Blog Posts", record_id)
+        return jsonify({"success":True})
+    except Exception as e: return jsonify({"error":str(e)}),500
 
 
 # =========================================================================
@@ -1697,6 +1859,87 @@ def gerar_extratos_mes():
                 results.append({"parceiro":par,"success":False,"error":str(e)})
         total_geral = sum(r.get("comissoes",0) for r in results if r.get("success"))
         return jsonify({"success":True,"mes":mes_str,"n_parceiros":len(results),"total_geral":round(total_geral,2),"results":results})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/auto-gerar-extratos-ano", methods=["POST","GET"])
+def auto_gerar_extratos_ano():
+    """Daily job: generate all partner extracts for all months with data this year.
+    Safe to run daily - only regenerates if there are reservations."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        from datetime import datetime
+        import calendar as cal_mod
+        now    = datetime.utcnow()
+        ano    = now.year
+        mes_atual = now.month  # only generate up to current month
+
+        # Get all EXTRATO_PARCEIROS records for this year
+        all_records = airtable_list_table(BASE_EXTRATO, TAB_EXTRATO)
+        # Filter to this year
+        year_records = []
+        for rec in all_records:
+            f = rec.get("fields", {})
+            mes_str = f.get("Mês", "")
+            parts = mes_str.strip().split(" ")
+            if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) == ano:
+                m_num = MESES_IDX.get(parts[0])
+                if m_num and m_num <= mes_atual:
+                    year_records.append((rec, parts[0], m_num, ano))
+
+        results = []
+        errors  = []
+
+        for rec, mes_nome, mes_num, ano_r in year_records:
+            f   = rec.get("fields", {})
+            par = get_text_f(f.get("Parceiro", ""))
+            tip = get_text_f(f.get("Tipo", ""))
+            if not par: continue
+            try:
+                is_rc = tip.lower() in ("rent car", "rc", "rentcar")
+                rows  = get_reservas_parceiro(par, mes_num, ano_r, is_rc)
+                if not rows:
+                    results.append({"parceiro": par, "mes": f"{mes_nome} {ano_r}", "skipped": True, "reason": "sem reservas"})
+                    continue
+                tots  = calc_totais(rows, is_rc=is_rc)
+                if tots["comiss"] <= 0:
+                    results.append({"parceiro": par, "mes": f"{mes_nome} {ano_r}", "skipped": True, "reason": "comissao zero"})
+                    continue
+                sl    = re.sub(r"[^a-zA-Z0-9]", "", par)
+                ref   = f"EXT-{ano_r}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
+                fname = f"BeyondMadeira_{sl}_{mes_nome}{ano_r}.pdf"
+                html_str  = build_extrato_html(par, rows, ref, mes_nome, ano_r, tots)
+                pdf_bytes = HTML(string=html_str).write_pdf()
+                # Upload to Airtable
+                try:
+                    airtable_patch(BASE_EXTRATO, TAB_EXTRATO, rec["id"], {"Extrato Beyond": []})
+                    airtable_upload_attachment(BASE_EXTRATO, rec["id"], "Extrato Beyond", pdf_bytes, fname)
+                    airtable_patch(BASE_EXTRATO, TAB_EXTRATO, rec["id"], {
+                        "Valor do mês (€)": round(tots["comiss"], 2),
+                        "Confirmado pela Beyond Madeira?": True
+                    })
+                    cache_clear("extrato")
+                    results.append({"parceiro": par, "mes": f"{mes_nome} {ano_r}", "success": True,
+                                    "comissoes": round(tots["comiss"], 2), "n_reservas": len(rows)})
+                except Exception as eu:
+                    errors.append({"parceiro": par, "mes": f"{mes_nome} {ano_r}", "error": str(eu)})
+            except Exception as e:
+                errors.append({"parceiro": par, "mes": f"{mes_nome} {ano_r}", "error": str(e)})
+
+        total = sum(r.get("comissoes", 0) for r in results if r.get("success"))
+        return jsonify({
+            "success": True,
+            "ano": ano,
+            "gerados": len([r for r in results if r.get("success")]),
+            "skipped": len([r for r in results if r.get("skipped")]),
+            "erros": len(errors),
+            "total_comissoes": round(total, 2),
+            "results": results,
+            "errors": errors
+        })
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
