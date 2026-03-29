@@ -1311,7 +1311,7 @@ def airtable_diario():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         if request.method == "GET":
-            recs = airtable_list("appOrdG5Fsr7N0RmH", "Registos Di%C3%A1rios")
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Registos Diários")
             out = []
             for r in recs:
                 f = r.get("fields", {})
@@ -1328,7 +1328,7 @@ def airtable_diario():
         elif request.method == "POST":
             body = request.get_json() or {}
             result = req_lib.post(
-                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/Registos%20Di%C3%A1rios",
+                f"https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/{req_lib.utils.quote(chr(82)+chr(101)+chr(103)+chr(105)+chr(115)+chr(116)+chr(111)+chr(115)+chr(32)+chr(68)+chr(105)+ chr(225)+chr(114)+chr(105)+chr(111)+chr(115))}",
                 headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
             )
             result.raise_for_status()
@@ -1343,7 +1343,7 @@ def airtable_diario_patch(record_id):
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
-        result = airtable_patch("appOrdG5Fsr7N0RmH", "Registos Di%C3%A1rios", record_id, body.get("fields", {}))
+        result = airtable_patch("appOrdG5Fsr7N0RmH", "Registos Diários", record_id, body.get("fields", {}))
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1356,7 +1356,7 @@ def airtable_despesas(**kwargs):
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         if request.method == "GET":
-            recs = airtable_list("appOrdG5Fsr7N0RmH", "Despesas Vari%C3%A1veis")
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Despesas Variáveis")
             out = []
             for r in recs:
                 f = r.get("fields", {})
@@ -1380,7 +1380,7 @@ def airtable_despesas(**kwargs):
         elif request.method == "PATCH":
             record_id = kwargs.get("record_id", "")
             body = request.get_json() or {}
-            result = airtable_patch("appOrdG5Fsr7N0RmH", "Despesas Vari%C3%A1veis", record_id, body.get("fields", {}))
+            result = airtable_patch("appOrdG5Fsr7N0RmH", "Despesas Variáveis", record_id, body.get("fields", {}))
             return jsonify({"success": True, "record": result})
         else:
             return jsonify({"success": True})
@@ -1455,7 +1455,7 @@ def airtable_objetivos():
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         if request.method == "GET":
-            recs = airtable_list("appOrdG5Fsr7N0RmH", "Objetivos %26 Crescimento")
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Objetivos & Crescimento")
             out = []
             for r in recs:
                 f = r.get("fields", {})
