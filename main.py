@@ -522,7 +522,13 @@ def gerar_voucher_atividade():
         d = request.get_json()
         if not d:
             return jsonify({"error": "JSON body required"}), 400
-        required = ["referencia", "atividade", "data", "cliente", "total"]
+        # Accept both field name conventions
+        d.setdefault("atividade", d.get("veiculo", ""))
+        d.setdefault("data", d.get("pickup_data", ""))
+        d.setdefault("operador", d.get("empresa", ""))
+        d.setdefault("hora", d.get("pickup_hora", "TBC"))
+        d.setdefault("local", d.get("pickup_local", ""))
+        required = ["referencia", "cliente"]
         missing = [f for f in required if not d.get(f)]
         if missing:
             return jsonify({"error": f"Missing fields: {missing}"}), 400
@@ -530,7 +536,15 @@ def gerar_voucher_atividade():
         pdf   = HTML(string=html).write_pdf()
         b64   = base64.b64encode(pdf).decode()
         fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
-        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+        uploaded = False
+        record_id = d.get("record_id", "")
+        if record_id and record_id.startswith("rec"):
+            try:
+                airtable_upload_attachment(BASE_RESERVAS, record_id, "Voucher PDF", pdf, fname)
+                uploaded = True
+            except Exception:
+                pass
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64, "uploaded": uploaded})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
