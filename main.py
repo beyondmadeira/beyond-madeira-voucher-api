@@ -1353,11 +1353,12 @@ def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
         if not dt: continue
         dt_date = dt.date() if hasattr(dt, "date") else dt
         if not (first_day <= dt_date <= last_day): continue
-        estado = get_text_f(fget_f(rf, "Estado de Reserva") or "") if is_rc else get_text_f(fget_f(rf, "Estado da Reserva") or "")
-        if estado in ("Cancelado","Cancelada"): status = "Cancelado"
-        elif estado == "Devemos": status = "Devemos"
+        estado = get_text_f(fget_f(rf, "Estado do Reserva", "Estado de Reserva", "Estado da Reserva") or "") if is_rc else get_text_f(fget_f(rf, "Estado da Reserva", "Estado de Reserva", "Estado do Reserva") or "")
+        if estado in ("Cancelado","Cancelada","Por Cancelar"): status = "Cancelado"
+        elif estado == "Confirmado": status = "Confirmado"
         elif estado == "Pago": status = "Pago"
-        else: status = "Por Pagar"
+        elif estado == "Devemos": status = "Devemos"
+        else: status = "Por Confirmar"  # anything else doesn't count
         if is_rc:
             total = eur_val(fget_f(rf,"Valor da Reserva (€)") or 0); comm = eur_val(fget_f(rf,"Comissão") or 0)
             client = get_text_f(fget_f(rf,"Nome do cliente") or ""); act = get_text_f(fget_f(rf,"Modelo de Carro") or ""); pax = str(fget_f(rf,"Duração") or "").strip()
@@ -1368,15 +1369,21 @@ def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
     rows.sort(key=lambda x: x["date"])
     return rows
 
-def calc_totais(rows):
+def calc_totais(rows, is_rc=False):
     n_can   = sum(1 for r in rows if r["status"]=="Cancelado")
-    rows_v  = [r for r in rows if r["status"]!="Cancelado"]
+    rows_v  = [r for r in rows if r["status"] == "Confirmado" or r["status"] == "Pago"]
     n_norm  = sum(1 for r in rows_v if r["status"]!="Devemos")
     n_dev   = sum(1 for r in rows_v if r["status"]=="Devemos")
     gt      = sum(r["total"] for r in rows_v)
     gc      = sum(r["comm"] for r in rows_v)
-    comiss  = sum(r["comm"] for r in rows_v if r["status"]!="Devemos")
-    credito = sum(r["total"]-r["comm"] for r in rows_v if r["status"]=="Devemos")
+    # RC: parceiro deve sempre — sem dedução de "Devemos"
+    # AT: pode haver "Devemos" (cliente pagou à Beyond em vez do operador)
+    if is_rc:
+        comiss  = gc  # todas as comissões excepto canceladas
+        credito = 0
+    else:
+        comiss  = sum(r["comm"] for r in rows_v if r["status"]!="Devemos")
+        credito = sum(r["total"]-r["comm"] for r in rows_v if r["status"]=="Devemos")
     return dict(n=len(rows),n_can=n_can,n_norm=n_norm,n_dev=n_dev,gt=gt,gc=gc,comiss=comiss,credito=credito,total_fim=comiss-credito)
 
 @app.route("/airtable/extrato-parceiros", methods=["GET"])
@@ -1390,7 +1397,7 @@ def get_extrato_parceiros():
         out = []
         for rec in records:
             f = rec.get("fields", {})
-            out.append({"id":rec["id"],"parceiro":get_text_f(f.get("Parceiro","")),"mes":f.get("Mês",""),"tipo":get_text_f(f.get("Tipo","")),"valor":eur_val(f.get("Valor do mês (€)",0)),"ajustes":eur_val(f.get("Ajustes / Atrasos (€)",0)),"total":eur_val(f.get("Total a Receber (€)",0)),"confirmadoParceiro":f.get("Confirmado pelo parceiro?")==True,"mailEnviado":f.get("Mail enviado / pedido?")==True,"recebido":f.get("Recebido?")==True,"confirmadoBeyond":bool(f.get("Confirmado pela Beyond Madeira?",False)),"dataRecebimento":f.get("Data de Recebimento",""),"obs":f.get("Observações - Faltou Reservas no papel? E na capa?",""),"categoria":get_text_f(f.get("Categoria Parceiro","")),"comissaoCalc":eur_val(f.get("Comissão Calculada (€)",0))})
+            out.append({"id":rec["id"],"parceiro":get_text_f(f.get("Parceiro","")),"mes":f.get("Mês",""),"tipo":get_text_f(f.get("Tipo","")),"valor":eur_val(f.get("Valor do mês (€)",0)),"ajustes":eur_val(f.get("Ajustes / Atrasos (€)",0)),"total":eur_val(f.get("Total a Receber (€)",0)),"confirmadoParceiro":f.get("Confirmado pelo parceiro?")==True,"mailEnviado":f.get("Mail enviado / pedido?")==True,"recebido":f.get("Recebido?")==True,"confirmadoBeyond":bool(f.get("Confirmado pela Beyond Madeira?",False)),"dataRecebimento":f.get("Data de Recebimento",""),"obs":f.get("Observações - Faltou Reservas no papel? E na capa?",""),"categoria":get_text_f(f.get("Categoria Parceiro","")),"comissaoCalc":eur_val(f.get("Comissão Calculada (€)",0)),"ajustesLabel":f.get("Meses Origem",""),"mesOrigem":f.get("Meses Origem","")})
         return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1427,14 +1434,14 @@ def criar_extrato_mes():
         parceiros_com_reservas = {}
         for rec in airtable_list_table(BASE_RESERVAS, TAB_RC_ID):
             rf = rec.get("fields", {})
-            if rf.get("Estado de Reserva","") == "Cancelado": continue
+            if rf.get("Estado de Reserva", rf.get("Estado do Reserva", rf.get("Estado da Reserva",""))) in ("Cancelado","Cancelada"): continue
             dt = parse_date_ext(str(rf.get("Data do Drop Off","") or ""))
             if not dt or not (first_day <= dt.date() <= last_day): continue
             parceiro = get_text_f(fget_f(rf,"Fornecedor/Parceiro") or "")
             if parceiro and parceiro not in parceiros_com_reservas: parceiros_com_reservas[parceiro] = "Rent Car"
         for rec in airtable_list_table(BASE_RESERVAS, TAB_AT_ID):
             rf = rec.get("fields", {})
-            if rf.get("Estado da Reserva","") == "Cancelado": continue
+            if rf.get("Estado da Reserva", rf.get("Estado de Reserva", rf.get("Estado do Reserva",""))) in ("Cancelado","Cancelada"): continue
             dt = parse_date_ext(str(rf.get("Data da Atividade","") or ""))
             if not dt or not (first_day <= dt.date() <= last_day): continue
             parceiro = get_text_f(fget_f(rf,"Fornecedor/Parceiro") or "")
@@ -1625,7 +1632,7 @@ def gerar_extrato_parceiro():
         rows = []
         for m_nome_i, m_ano_i, m_num_i in parsed_months:
             rows += get_reservas_parceiro(parceiro, m_num_i, m_ano_i, is_rc)
-        tots = calc_totais(rows)
+        tots = calc_totais(rows, is_rc=is_rc)
         sl   = re.sub(r"[^a-zA-Z0-9]","",parceiro)
         if len(parsed_months) > 1:
             ref   = f"EXT-{ano}-{sl[:10].upper()}-ACUMULADO"
@@ -1671,7 +1678,7 @@ def gerar_extratos_mes():
                 mes_parts = mes_str.split(" "); mes_num = MESES_IDX.get(mes_parts[0]); ano = int(mes_parts[1])
                 is_rc = tip.lower() in ("rent car",)
                 rows  = get_reservas_parceiro(par, mes_num, ano, is_rc)
-                tots  = calc_totais(rows)
+                tots  = calc_totais(rows, is_rc=is_rc)
                 sl    = re.sub(r"[^a-zA-Z0-9]","",par)
                 ref   = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
                 fname = f"BeyondMadeira_{sl}_{mes_parts[0]}{ano}.pdf"
@@ -1737,73 +1744,41 @@ def enviar_extrato_email():
         import traceback
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
-def build_at_email_html(body_text, client_name, activity, date_str, ref):
-    """Wrap plain text email body in a beautiful branded HTML template."""
-    from datetime import datetime
-
+def build_at_email_html(body_text, client_name, activity, date_str, ref, obs="", operador="", tel_operador="", pick_up_local="", instrucoes_hotel="", participantes="", total=""):
+    """Build AT confirmation email from template."""
+    import html as html_mod
     first_name = (client_name or 'Guest').split()[0]
-    safe_body = ''
-    if body_text:
-        import html as html_mod
-        safe_body = html_mod.escape(body_text).replace('\n', '<br>')
 
-    # If no body text, use default
-    if not safe_body:
-        safe_body = f"Thank you for booking with Beyond Madeira. Your reservation for <strong>{html_mod.escape(activity or '')}</strong> on {html_mod.escape(date_str or '')} is confirmed."
+    # Build template substitutions
+    template = open(os.path.join(BASE_DIR, "voucher_at_email_template.html")).read() if os.path.exists(os.path.join(BASE_DIR, "voucher_at_email_template.html")) else None
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Booking Confirmation</title>
-</head>
-<body style="margin:0;padding:0;background:#f5f3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
-<div style="max-width:600px;margin:32px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
+    if template:
+        # Replace Make.com style variables with actual values
+        replacements = {
+            "{{26.`Nome do Cliente`}}": html_mod.escape(client_name or "Guest"),
+            "{{26.Atividade}}": html_mod.escape(activity or ""),
+            "{{3.Parceiro}}": html_mod.escape(operador or ""),
+            "{{26._data_fmt}}": html_mod.escape(date_str or ""),
+            "{{26.`Nº Pessoas`}}": html_mod.escape(str(participantes or "")),
+            "{{26.`Preço Total`}}": html_mod.escape(str(total or "")),
+            "{{26.`Pick-up local`}}": html_mod.escape(pick_up_local or ""),
+            "{{3.`Instruções Hotel`}}": html_mod.escape(instrucoes_hotel or ""),
+            "{{26.`Observação`}}": html_mod.escape(obs or "—"),
+            "{{3.`Contacto Telefone`}}": tel_operador.replace("+","").replace(" ","") if tel_operador else "",
+        }
+        template = template.replace('{{formatDate(26.`Data da Atividade`; "DD/MM/YYYY"; "UTC")}}', html_mod.escape(date_str or ""))
+        for key, val in replacements.items():
+            template = template.replace(key, val)
+        return template
 
-  <!-- HEADER -->
-  <div style="background:#0A616B;padding:28px 40px 0;">
-    <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">Beyond Madeira</div>
-    <div style="font-size:11px;font-weight:700;color:#A7F3D0;letter-spacing:.1em;text-transform:uppercase;margin-top:4px;padding-bottom:24px;">Booking Confirmation</div>
-  </div>
-
-  <!-- HERO -->
-  <div style="background:#0A616B;padding:0 40px 32px;">
-    <div style="font-size:24px;font-weight:800;color:#ffffff;line-height:1.25;">{activity or 'Activity Booking'}</div>
-    <div style="font-size:14px;font-weight:600;color:#A7F3D0;margin-top:6px;">{date_str or ''}</div>
-  </div>
-  <div style="height:4px;background:linear-gradient(90deg,#0A616B,#22D3EE);"></div>
-
-  <!-- BODY -->
-  <div style="padding:32px 40px;">
-    <p style="font-size:16px;color:#374151;margin:0 0 20px;line-height:1.6;">Hi <strong>{first_name}</strong>,</p>
-    <div style="font-size:14.5px;color:#374151;line-height:1.8;white-space:pre-wrap;">{safe_body}</div>
-
-    <!-- REFERENCE BOX -->
-    <div style="background:#F0FAF9;border:1.5px solid #A7F3D0;border-radius:12px;padding:18px 22px;margin:28px 0 0;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0A616B;margin-bottom:4px;">Booking Reference</div>
-      <div style="font-size:20px;font-weight:800;color:#0A616B;">{ref or ''}</div>
-      <div style="font-size:12px;color:#6B7280;margin-top:4px;">Please keep this reference for your records</div>
-    </div>
-
-    <!-- CTA -->
-    <div style="background:#0A616B;border-radius:10px;padding:18px 24px;text-align:center;margin:28px 0 0;">
-      <p style="color:#A7F3D0;font-size:13px;margin:0 0 6px;">Questions? We're always here to help.</p>
-      <div style="color:#ffffff;font-size:15px;font-weight:700;">📱 +351 939 566 415 &nbsp;·&nbsp; ✉️ booking@beyondmadeira.com</div>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:20px 40px;text-align:center;">
-    <p style="font-size:12px;color:#9CA3AF;line-height:1.8;margin:0;">
-      Beyond Madeira · RNAVT 13020<br>
-      Largo da Saúde 1, 9000-221 Funchal, Madeira<br>
-      <a href="https://beyondmadeira.com" style="color:#0A616B;text-decoration:none;">beyondmadeira.com</a>
-    </p>
-  </div>
-</div>
-</body>
-</html>"""
+    # Fallback: simple HTML
+    return f"""<!DOCTYPE html><html><body style="font-family:sans-serif;padding:20px">
+<h2 style="color:#0d6e7a">{html_mod.escape(activity or 'Activity')} — Confirmed</h2>
+<p>Hi {html_mod.escape(first_name)},</p>
+<p>Your activity is confirmed for {html_mod.escape(date_str or '')}.</p>
+<p>Operator: {html_mod.escape(operador or '')}<br>Contact: +{tel_operador or ''}</p>
+<p>Total to pay on the day: {html_mod.escape(str(total or ''))} €</p>
+</body></html>"""
 
 
 @app.route("/enviar-voucher-email", methods=["POST"])
@@ -1823,6 +1798,14 @@ def enviar_voucher_email():
         pdf_b64      = d.get("pdf_base64","")
         pdf_filename = d.get("pdf_filename") or "Voucher_BeyondMadeira.pdf"
         record_id    = d.get("record_id","")
+        operador       = d.get("operador","")
+        tel_operador   = d.get("operador_telefone","")
+        pick_up_local  = d.get("pick_up_local","") or d.get("local","")
+        instrucoes_hotel = d.get("instrucoes_hotel","")
+        participantes  = d.get("participantes","") or d.get("pax","")
+        total          = d.get("total","")
+        obs            = d.get("obs","") or d.get("observacao","")
+        referencia     = d.get("referencia","") or d.get("ref","")
         if not to: return jsonify({"error": "Email do cliente obrigatorio"}), 400
         gmail_user = os.environ.get("GMAIL_USER","")
         gmail_pass = os.environ.get("GMAIL_APP_PASSWORD","")
@@ -1840,7 +1823,12 @@ def enviar_voucher_email():
         # Plain text fallback
         msg.attach(MIMEText(body, "plain", "utf-8"))
         # HTML version
-        html_body = build_at_email_html(body, cliente, atividade, data_str, d.get("pdf_filename","").replace("Voucher_","").replace(".pdf",""))
+        html_body = build_at_email_html(
+            body_text=body, client_name=cliente, activity=atividade, date_str=data_str,
+            ref=referencia, obs=obs, operador=operador, tel_operador=tel_operador,
+            pick_up_local=pick_up_local, instrucoes_hotel=instrucoes_hotel,
+            participantes=participantes, total=total
+        )
         msg.attach(MIMEText(html_body, "html", "utf-8"))
         if pdf_b64:
             att = MIMEApplication(base64.b64decode(pdf_b64), _subtype="pdf")
