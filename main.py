@@ -111,25 +111,29 @@ OPERATOR_CONTACTS = {
 # ACTIVITY RULES  (keyword-based auto-detection)
 # =========================================================================
 TIPS_TEXT = {
-    "warm":       "Dress very warmly — it can be very cold at high altitude.",
-    "jacket":     "Bring a light jacket — temperatures change quickly in the mountains.",
-    "swimsuit":   "Bring swimsuit and towel.",
+    "warm":       "Dress very warmly — temperatures at high altitude can drop below 0°C, even in summer.",
+    "jacket":     "Bring a jacket — mountain weather changes rapidly and it can get very cold.",
+    "swimsuit":   "Bring a swimsuit and towel.",
     "sunscreen":  "Don't forget sunscreen.",
     "water":      "Bring water.",
     "snack":      "Bring a snack.",
-    "shoes":      "Wear comfortable walking shoes.",
-    "flashlight": "Bring a flashlight/torch — essential for tunnel sections.",
+    "shoes":      "Wear sturdy, comfortable walking shoes or hiking boots.",
+    "flashlight": "Bring a torch/flashlight — essential for tunnel sections.",
+    "layers":     "Dress in layers — it may be warm at sea level but cold in the mountains.",
+    "boots":      "Wear proper hiking boots — trail surfaces can be wet and uneven.",
+    "payment_hike": "The entrance fee for the levada/trail is NOT included in the activity price — payable directly on site.",
+    "operator_books": "Your operator will make the reservation directly with the site. You will receive confirmation closer to the date.",
 }
 
 ACTIVITY_RULES = [
     {"kw": ["sunrise", "pico areeiro"],
      "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["warm", "water", "snack", "shoes"],
+     "tips": ["warm", "layers", "boots", "water", "snack"],
      "note": "Dress very warmly — Pico Areeiro can be below 0°C at sunrise."},
 
     {"kw": ["caldeirao verde", "caldeirão verde"],
      "payment": "cash", "pickup": "pickup_hotel",
-     "tips": ["jacket", "water", "flashlight", "snack", "shoes"],
+     "tips": ["layers", "jacket", "boots", "water", "flashlight", "snack"],
      "note": "A flashlight is essential for the tunnel section of the trail."},
 
     {"kw": ["west", "jeep"],
@@ -171,7 +175,7 @@ ACTIVITY_RULES = [
 
     {"kw": ["hike", "levada", "stairway to heaven"],
      "payment": "cash", "pickup": "pickup_day_before",
-     "tips": ["jacket", "water", "snack", "shoes"], "note": ""},
+     "tips": ["layers", "jacket", "boots", "water", "snack"], "note": ""},
 
     {"kw": ["buggy", "quad"],
      "payment": "cash_card", "pickup": "pickup_hotel",
@@ -369,6 +373,28 @@ def build_rc_html(d):
     else:
         d["contacts_row_html"] = f'<div class="contacts-row">{beyond_card}</div>'
 
+    # Auto-shrink total font for 4+ digit values
+    _total_str = str(d.get("total",""))
+    _digits = len(''.join(c for c in _total_str if c.isdigit()))
+    if _digits >= 5:
+        d.setdefault("total_font_size", "1.6rem")
+    elif _digits == 4:
+        d.setdefault("total_font_size", "1.9rem")
+    else:
+        d.setdefault("total_font_size", "2.4rem")
+    d.setdefault("total_style", f'font-size:{d["total_font_size"]};')
+    # Map common field aliases so template placeholders always resolve
+    d.setdefault("participantes", d.get("extras", d.get("pax", d.get("pessoas", ""))))
+    d.setdefault("tipo_tour", d.get("categoria", d.get("cat", d.get("atividade", ""))))
+    d.setdefault("num_pessoas", d.get("extras", d.get("pax", "")))
+    d.setdefault("operador_nome", d.get("operador", ""))
+    d.setdefault("nome_cliente", d.get("cliente", ""))
+    d.setdefault("data_atividade", d.get("data", d.get("pickup_data", "")))
+    d.setdefault("hora_atividade", d.get("hora", d.get("pickup_hora", "TBC")))
+    d.setdefault("local_atividade", d.get("local", d.get("pickup_local", "")))
+    d.setdefault("notas", d.get("obs", d.get("pedido_especial", "")))
+    d.setdefault("referencia_bokun", d.get("bokun_ref", ""))
+    # Ensure no {{...}} placeholders remain in output
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
     return fill(tmpl, d)
 
@@ -390,7 +416,10 @@ def gerar_voucher():
         html  = build_rc_html(d)
         pdf   = HTML(string=html).write_pdf()
         b64   = base64.b64encode(pdf).decode()
-        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
+        # Clean client name: remove spaces/special chars
+        _cname = re.sub(r'[^a-zA-Z0-9]', '_', d.get('cliente','Client')).strip('_')
+        _ref   = d.get('referencia','').replace(' ','_')
+        fname  = f"BeyondMadeira_{_ref}_{_cname}.pdf"
         return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -402,6 +431,14 @@ def gerar_voucher():
 def build_at_html(d):
     with open(os.path.join(BASE_DIR, "voucher_at_template.html")) as f:
         tmpl = f.read()
+    # Fix: large totals (4+ digits) overflow the price box — reduce font and use fit-content
+    tmpl = tmpl.replace(
+        'class="price-num"',
+        'class="price-num" style="font-size:clamp(1.4rem,4vw,2.2rem);word-break:break-word;overflow-wrap:anywhere;min-width:0"'
+    )
+    # Also patch inline large font if present
+    import re as _re
+    tmpl = _re.sub(r'(class="price-amount"[^>]*font-size:\s*)[\d.]+px', r'\g<1>clamp(22px,5vw,32px)', tmpl)
 
     rule = detect_activity(d.get("atividade", ""))
 
@@ -510,6 +547,28 @@ def build_at_html(d):
     d.setdefault("mensagem_confirmacao", "Your reservation is confirmed &mdash; no payment required at this stage. The total amount is to be paid in cash on the day of the activity. You will receive further details closer to the date, including your exact pick-up time.")
     d.setdefault("bokun_ref", "")
 
+    # Auto-shrink total font for 4+ digit values
+    _total_str = str(d.get("total",""))
+    _digits = len(''.join(c for c in _total_str if c.isdigit()))
+    if _digits >= 5:
+        d.setdefault("total_font_size", "1.6rem")
+    elif _digits == 4:
+        d.setdefault("total_font_size", "1.9rem")
+    else:
+        d.setdefault("total_font_size", "2.4rem")
+    d.setdefault("total_style", f'font-size:{d["total_font_size"]};')
+    # Map common field aliases so template placeholders always resolve
+    d.setdefault("participantes", d.get("extras", d.get("pax", d.get("pessoas", ""))))
+    d.setdefault("tipo_tour", d.get("categoria", d.get("cat", d.get("atividade", ""))))
+    d.setdefault("num_pessoas", d.get("extras", d.get("pax", "")))
+    d.setdefault("operador_nome", d.get("operador", ""))
+    d.setdefault("nome_cliente", d.get("cliente", ""))
+    d.setdefault("data_atividade", d.get("data", d.get("pickup_data", "")))
+    d.setdefault("hora_atividade", d.get("hora", d.get("pickup_hora", "TBC")))
+    d.setdefault("local_atividade", d.get("local", d.get("pickup_local", "")))
+    d.setdefault("notas", d.get("obs", d.get("pedido_especial", "")))
+    d.setdefault("referencia_bokun", d.get("bokun_ref", ""))
+    # Ensure no {{...}} placeholders remain in output
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
     return fill(tmpl, d)
 
@@ -535,7 +594,9 @@ def gerar_voucher_atividade():
         html  = build_at_html(d)
         pdf   = HTML(string=html).write_pdf()
         b64   = base64.b64encode(pdf).decode()
-        fname = f"Voucher_{d['referencia']}_{d['cliente'].replace(' ','_')}.pdf"
+        _cname2 = re.sub(r'[^a-zA-Z0-9]', '_', d.get('cliente','Client')).strip('_')
+        _ref2   = d.get('referencia','').replace(' ','_')
+        fname   = f"BeyondMadeira_{_ref2}_{_cname2}.pdf"
         uploaded = False
         record_id = d.get("record_id", "")
         if record_id and record_id.startswith("rec"):
@@ -958,6 +1019,105 @@ def delete_wp_post(record_id):
 
 
 # =========================================================================
+# DEBUG — field inspection (temp, useful for validating extrato)
+# =========================================================================
+
+@app.route("/debug/reservas-parceiro", methods=["GET"])
+def debug_reservas_parceiro():
+    """Returns raw fields for a partner's records — use to validate field names."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        parceiro = request.args.get("parceiro", "").strip()
+        mes = request.args.get("mes", "").strip()  # e.g. "Março 2026"
+        is_rc = request.args.get("tipo", "rc").lower() in ("rc","rent car")
+        if not parceiro:
+            return jsonify({"error": "parceiro param required"}), 400
+        sn = slug_norm_p(parceiro)
+        fonte = airtable_list_table(BASE_RESERVAS, TAB_RC_ID if is_rc else TAB_AT_ID)
+        matched = []
+        for rec in fonte:
+            rf = rec.get("fields", {})
+            pname = get_text_f(fget_f(rf, "Fornecedor/Parceiro", "Parceiro", "Fornecedor") or "")
+            if slug_norm_p(pname) != sn:
+                continue
+            matched.append({
+                "id": rec["id"],
+                "fields_available": list(rf.keys()),
+                "partner_field": pname,
+                "date_rc": rf.get("Data do Drop Off"),
+                "date_at": rf.get("Data da Atividade"),
+                "estado_do": rf.get("Estado do Reserva"),
+                "estado_da": rf.get("Estado da Reserva"),
+                "comissao": rf.get("Comissão") or rf.get("Comissao"),
+                "total_rc": rf.get("Valor da Reserva (€)"),
+                "total_at": rf.get("Preço Total"),
+                "cliente_rc": rf.get("Nome do cliente"),
+                "cliente_at": rf.get("Nome do Cliente"),
+            })
+        # If mes provided, filter
+        if mes:
+            from datetime import date
+            import calendar as cal_mod
+            parts = mes.strip().split(" ")
+            m_num = MESES_IDX.get(parts[0]) if len(parts)==2 else None
+            ano = int(parts[1]) if len(parts)==2 and parts[1].isdigit() else None
+            if m_num and ano:
+                first_day = date(ano, m_num, 1)
+                last_day = date(ano, m_num, cal_mod.monthrange(ano, m_num)[1])
+                filtered = []
+                for r in matched:
+                    d_raw = r["date_rc"] if is_rc else r["date_at"]
+                    dt = parse_date_ext(str(d_raw or ""))
+                    if dt:
+                        dt_d = dt.date() if hasattr(dt,"date") else dt
+                        if first_day <= dt_d <= last_day:
+                            filtered.append(r)
+                matched = filtered
+        return jsonify({"success": True, "parceiro": parceiro, "slug": sn, "is_rc": is_rc, "n": len(matched), "records": matched[:20]})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+# =========================================================================
+# BOOKING REFERENCE COUNTER  (BYD1700, BYD1701, …)
+# =========================================================================
+
+import threading
+_ref_lock = threading.Lock()
+_REF_FILE = os.path.join(BASE_DIR, "booking_counter.txt")
+
+def _read_counter():
+    try:
+        with open(_REF_FILE) as f:
+            return int(f.read().strip())
+    except:
+        return 1700  # starting value
+
+def _write_counter(n):
+    with open(_REF_FILE, "w") as f:
+        f.write(str(n))
+
+@app.route("/next-booking-ref", methods=["GET"])
+def next_booking_ref():
+    """Returns next BYD reference and increments counter."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    with _ref_lock:
+        n = _read_counter()
+        _write_counter(n + 1)
+    return jsonify({"success": True, "ref": f"BYD{n}", "next": n + 1})
+
+@app.route("/peek-booking-ref", methods=["GET"])
+def peek_booking_ref():
+    """Returns current counter without incrementing."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    n = _read_counter()
+    return jsonify({"success": True, "ref": f"BYD{n}", "current": n})
+
+# =========================================================================
 # HEALTH
 # =========================================================================
 
@@ -1015,7 +1175,15 @@ def create_diario():
         return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
-        fields = body.get("fields", {})
+        raw = body.get("fields", {})
+        # Only send simple fields — "Resumo Mensal" is a linked record, can't send as text
+        fields = {}
+        if raw.get("Faturação Diária") is not None:
+            fields["Faturação Diária"] = float(raw["Faturação Diária"])
+        if raw.get("Data"):
+            fields["Data"] = str(raw["Data"])  # ISO format: "2026-03-01"
+        if raw.get("Notas do Dia"):
+            fields["Notas do Dia"] = str(raw["Notas do Dia"])
         result = airtable_create(BASE_FINANCEIRO, "Registos Diários", fields)
         cache_clear("diario")
         return jsonify({"success": True, "record": {"id": result.get("id",""), "fields": result.get("fields",{})}})
@@ -1028,7 +1196,9 @@ def patch_diario(record_id):
         return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
-        fields = body.get("fields", {})
+        raw = body.get("fields", {})
+        # Strip linked record fields that can't be patched as plain text
+        fields = {k: v for k, v in raw.items() if k not in ("Resumo Mensal",)}
         result = airtable_patch(BASE_FINANCEIRO, "Registos Diários", record_id, fields)
         cache_clear("diario")
         return jsonify({"success": True, "record": result})
@@ -1522,26 +1692,57 @@ def get_reservas_parceiro(parceiro, mes_num, ano, is_rc):
     rows = []
     for rec in fonte:
         rf = rec.get("fields", {})
-        pname = get_text_f(fget_f(rf, "Fornecedor/Parceiro") or "")
-        if slug_norm_p(pname) != sn_parc: continue
-        date_raw = fget_f(rf, "Data do Drop Off") if is_rc else fget_f(rf, "Data da Atividade")
-        dt = parse_date_ext(date_raw)
-        if not dt: continue
-        dt_date = dt.date() if hasattr(dt, "date") else dt
-        if not (first_day <= dt_date <= last_day): continue
-        estado = get_text_f(fget_f(rf, "Estado do Reserva", "Estado de Reserva", "Estado da Reserva") or "") if is_rc else get_text_f(fget_f(rf, "Estado da Reserva", "Estado de Reserva", "Estado do Reserva") or "")
-        if estado in ("Cancelado","Cancelada","Por Cancelar"): status = "Cancelado"
-        elif estado == "Confirmado": status = "Confirmado"
-        elif estado == "Pago": status = "Pago"
-        elif estado == "Devemos": status = "Devemos"
-        else: status = "Por Confirmar"  # anything else doesn't count
+        # Partner field — try all known variants
+        pname = get_text_f(fget_f(rf, "Fornecedor/Parceiro", "Parceiro", "Fornecedor") or "")
+        if not pname or slug_norm_p(pname) != sn_parc:
+            continue
+        # Date field
         if is_rc:
-            total = eur_val(fget_f(rf,"Valor da Reserva (€)") or 0); comm = eur_val(fget_f(rf,"Comissão") or 0)
-            client = get_text_f(fget_f(rf,"Nome do cliente") or ""); act = get_text_f(fget_f(rf,"Modelo de Carro") or ""); pax = str(fget_f(rf,"Duração") or "").strip()
+            date_raw = fget_f(rf, "Data do Drop Off", "Data Drop-off", "Data de Drop Off", "Data do Dropp Off")
         else:
-            total = eur_val(fget_f(rf,"Preço Total") or 0); comm = eur_val(fget_f(rf,"Comissão") or 0)
-            client = get_text_f(fget_f(rf,"Nome do Cliente") or ""); act = norm_act(fget_f(rf,"Atividade") or ""); pax = str(fget_f(rf,"Nº Pessoas") or "").strip()
-        rows.append({"date":dt.strftime("%d/%m"),"client":client,"act":act,"pax":pax,"total":total,"comm":comm,"status":status})
+            date_raw = fget_f(rf, "Data da Atividade", "Data Atividade", "Data da Actividade", "Data")
+        dt = parse_date_ext(date_raw)
+        if not dt:
+            continue
+        dt_date = dt.date() if hasattr(dt, "date") else dt
+        if not (first_day <= dt_date <= last_day):
+            continue
+        # Status field — RC and AT use different field names
+        if is_rc:
+            estado_raw = fget_f(rf, "Estado do Reserva", "Estado da Reserva", "Estado de Reserva", "Estado") or ""
+        else:
+            estado_raw = fget_f(rf, "Estado da Reserva", "Estado do Reserva", "Estado de Reserva", "Estado") or ""
+        estado = get_text_f(estado_raw).strip()
+        if estado in ("Cancelado","Cancelada","Por Cancelar","Cancelled"): status = "Cancelado"
+        elif estado in ("Confirmado","Confirmed"): status = "Confirmado"
+        elif estado in ("Pago","Paid"): status = "Pago"
+        elif estado in ("Devemos",): status = "Devemos"
+        else: status = "Por Confirmar"
+        # Values — try multiple field name variants
+        if is_rc:
+            total = eur_val(fget_f(rf,"Valor da Reserva (€)","Valor da Reserva","Valor Total","Total") or 0)
+            comm  = eur_val(fget_f(rf,"Comissão","Comissao","Comissao (€)","Comissão (€)") or 0)
+            client = get_text_f(fget_f(rf,"Nome do cliente","Nome do Cliente","Cliente") or "")
+            act    = get_text_f(fget_f(rf,"Modelo de Carro","Veiculo","Veículo","Carro") or "")
+            pax    = str(fget_f(rf,"Duração","Duracao","Dias") or "").strip()
+            ref    = get_text_f(fget_f(rf,"Referência","Referencia","Ref") or rec.get("id",""))
+        else:
+            total = eur_val(fget_f(rf,"Preço Total","Valor da Reserva (€)","Valor Total","Total") or 0)
+            comm  = eur_val(fget_f(rf,"Comissão","Comissao","Comissao (€)","Comissão (€)") or 0)
+            client = get_text_f(fget_f(rf,"Nome do Cliente","Nome do cliente","Cliente") or "")
+            act    = norm_act(fget_f(rf,"Atividade","Actividade","Atividade (texto)") or "")
+            pax    = str(fget_f(rf,"Nº Pessoas","Numero Pessoas","Pessoas","Pax") or "").strip()
+            ref    = get_text_f(fget_f(rf,"Referência","Referencia","Ref") or rec.get("id",""))
+        rows.append({
+            "date":   dt.strftime("%d/%m"),
+            "client": client,
+            "act":    act,
+            "pax":    pax,
+            "total":  total,
+            "comm":   comm,
+            "status": status,
+            "ref":    ref,
+        })
     rows.sort(key=lambda x: x["date"])
     return rows
 
