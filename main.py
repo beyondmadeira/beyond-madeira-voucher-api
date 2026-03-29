@@ -275,148 +275,171 @@ def airtable_patch(base_id, table_name, record_id, fields):
 # RENT CAR
 # =========================================================================
 RC_TEMPLATE = '''<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <style>
-@page { size: A4; margin: 1.6cm 1.8cm 1.5cm 1.8cm; }
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }
-.header { background:#0A616B; color:white; padding:18px 22px 16px; margin:-1.6cm -1.8cm 0; }
-.header-inner { display:table; width:100%; }
-.header-l { display:table-cell; vertical-align:middle; }
-.header-r { display:table-cell; vertical-align:middle; text-align:right; }
-.brand { font-size:8pt; font-weight:700; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1pt; }
-.voucher-type { font-size:18pt; font-weight:800; color:white; line-height:1.1; margin-top:2pt; }
-.ref-tag { display:inline-block; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:4pt; padding:3px 8px; font-size:7.5pt; font-weight:700; color:white; margin-top:6pt; }
-.logo-img { height:36pt; }
-.section { margin-top:14pt; }
-.section-title { font-size:6.5pt; font-weight:800; color:#6B7280; text-transform:uppercase; letter-spacing:1pt; margin-bottom:6pt; border-bottom:0.5pt solid #E5E7EB; padding-bottom:4pt; }
-.grid2 { display:table; width:100%; border-collapse:collapse; }
-.col { display:table-cell; width:50%; vertical-align:top; padding-right:12pt; }
-.col:last-child { padding-right:0; }
-.info-card { background:#F9FAFB; border:0.5pt solid #E5E7EB; border-radius:6pt; padding:10px 12px; }
-.info-lbl { font-size:6.5pt; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:.5pt; margin-bottom:3pt; }
-.info-val { font-size:9.5pt; font-weight:700; color:#111827; }
-.info-sub { font-size:8pt; color:#6B7280; margin-top:2pt; }
-.date-sub { font-size:7.5pt; color:#6B7280; margin-top:1pt; }
-.client-block { background:#F0FAF9; border:1pt solid #A7F3D0; border-radius:6pt; padding:10px 14px; margin-top:14pt; }
-.client-table { display:table; width:100%; }
-.client-col { display:table-cell; vertical-align:top; width:50%; }
-.client-name { font-size:13pt; font-weight:800; color:#0A616B; }
-.client-lbl { font-size:6.5pt; color:#6B7280; font-weight:700; text-transform:uppercase; letter-spacing:.5pt; margin-bottom:2pt; }
-.client-contact { font-size:8pt; color:#374151; margin-top:2pt; }
-.vehicle-block { background:#111827; border-radius:6pt; padding:12px 16px; margin-top:14pt; }
-.vehicle-name { font-size:14pt; font-weight:800; color:white; }
-.vehicle-co { font-size:8pt; color:rgba(255,255,255,0.6); margin-top:2pt; }
-.vehicle-extras { font-size:8pt; color:rgba(255,255,255,0.75); margin-top:6pt; }
-.price-badge { display:inline-block; background:#0A616B; color:white; font-size:14pt; font-weight:800; padding:6px 14px; border-radius:5pt; margin-top:6pt; }
-.itinerary { margin-top:14pt; }
-.itin-table { display:table; width:100%; border-collapse:collapse; }
-.itin-col { display:table-cell; width:50%; vertical-align:top; padding-right:12pt; }
-.itin-col:last-child { padding-right:0; }
-.itin-card { border:0.5pt solid #E5E7EB; border-radius:6pt; overflow:hidden; }
-.itin-head { background:#0A616B; padding:7px 12px; }
-.itin-head-lbl { font-size:6.5pt; font-weight:800; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:.5pt; }
-.itin-head-date { font-size:11pt; font-weight:800; color:white; margin-top:1pt; }
-.itin-head-time { font-size:9pt; color:rgba(255,255,255,0.85); font-weight:600; }
-.itin-body { padding:8px 12px; background:#F9FAFB; }
-.itin-loc-lbl { font-size:6.5pt; color:#6B7280; font-weight:700; text-transform:uppercase; letter-spacing:.5pt; }
-.itin-loc { font-size:9pt; font-weight:700; color:#111827; margin-top:2pt; }
-.contacts-row { display:table; width:100%; border-collapse:separate; border-spacing:8pt 0; margin-top:14pt; }
-.contact-card { display:table-cell; border:0.5pt solid #E5E7EB; border-radius:6pt; padding:8px 12px; }
-.contact-lbl { font-size:6.5pt; color:#6B7280; font-weight:700; text-transform:uppercase; letter-spacing:.5pt; }
-.contact-name { font-size:9pt; font-weight:700; color:#111827; margin-top:2pt; }
-.contact-det { font-size:8pt; color:#6B7280; margin-top:2pt; }
-.footer { position:fixed; bottom:-1.5cm; left:-1.8cm; right:-1.8cm; border-top:0.5pt solid #E5E7EB; padding:4pt 1.8cm; display:table; }
-.footer-l { display:table-cell; font-size:6.5pt; color:#9CA3AF; }
-.footer-r { display:table-cell; font-size:6.5pt; color:#9CA3AF; text-align:right; }
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --teal:#0a8f82;--teal-light:#edf7f6;--teal-mid:#c8e8e5;
+  --amber:#b5720e;--amber-light:#fef6e8;--amber-border:#f0ce8a;
+  --text:#171613;--text2:#635e58;--text3:#a8a39c;
+  --border:#e6e2dc;--white:#fff;--bg:#f7f6f2;
+}
+body{font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;padding:0;}
+.page{padding:36px 44px;max-width:740px;margin:0 auto;}
+.ref-band,.act-card,.guest-row,.extras-card,.cancel,.contacts-row,.thankyou,.legal-box{page-break-inside:avoid;break-inside:avoid;}
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;page-break-inside:avoid;break-inside:avoid;}
+.logo-wrap img{height:54px;width:auto;}
+.brand-legal{font-size:9px;color:var(--text3);margin-top:7px;}
+.hdr-right{text-align:right;}
+.doc-type{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.doc-title{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px;line-height:1;}
+.hdr-rule{height:2px;background:var(--teal);border-radius:1px;margin-bottom:22px;}
+.ref-band{background:var(--teal);border-radius:16px;padding:24px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.ref-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px;}
+.ref-value{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;}
+.ref-issued{font-size:9px;color:rgba(255,255,255,.5);margin-top:5px;}
+.ref-right{text-align:right;}
+.ref-total-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.ref-total{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.info-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:20px 24px;}
+.info-card.full{grid-column:1/-1;}
+.cell-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.cell-value{font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.2px;line-height:1.3;}
+.cell-value.teal{color:var(--teal);}
+.cell-value.sm{font-size:12px;}
+.client-row{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:16px;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}
+.client-cell{flex:1;background:var(--white);padding:18px 22px;border-right:1px solid var(--border);}
+.client-cell:last-child{border-right:none;}
+.client-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.client-value{font-size:13px;font-weight:800;color:var(--text);}
+.client-value.sm{font-size:11px;font-weight:500;color:var(--text2);}
+.dates-row{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:16px;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}
+.date-cell{flex:1;background:var(--bg);padding:20px 24px;border-right:1px solid var(--border);}
+.date-cell:last-child{border-right:none;}
+.date-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.date-day{font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.4px;margin-bottom:3px;}
+.date-time{font-size:16px;font-weight:800;color:var(--teal);margin-bottom:3px;}
+.date-loc{font-size:11px;color:var(--text2);font-weight:500;}
+.extras-card{background:var(--amber-light);border:1px solid var(--amber-border);border-radius:16px;padding:16px 22px;display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.extras-dot{width:32px;height:32px;min-width:32px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:#fff;}
+.extras-label{font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.extras-value{font-size:12px;font-weight:600;color:#7a4d08;}
+.cancel{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 22px;display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;}
+.cancel-dot{width:22px;height:22px;min-width:22px;border-radius:50%;border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:11px;font-weight:900;color:var(--teal);}
+.cancel-t{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.cancel-b{font-size:11px;color:var(--text2);line-height:1.65;}
+.contacts-row{display:flex;gap:14px;margin-bottom:16px;}
+.contact-card{flex:1;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 20px;}
+.contact-lbl{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.contact-name{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.contact-det{font-size:11px;color:var(--text2);line-height:1.7;}
+.thankyou{background:var(--teal);border-radius:16px;padding:22px 28px;margin-bottom:24px;}
+.ty-title{font-size:14px;font-weight:900;color:#fff;margin-bottom:7px;letter-spacing:-.3px;}
+.ty-text{font-size:11px;color:rgba(255,255,255,.87);line-height:1.75;}
+.footer{border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:space-between;page-break-inside:avoid;break-inside:avoid;}
+.ft-l,.ft-r{font-size:9px;color:var(--text3);line-height:1.8;}
+.ft-r{text-align:right;}
+.ft-teal{color:var(--teal);font-weight:600;}
+.legal{font-size:8px;color:var(--text3);line-height:1.6;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-inner">
-    <div class="header-l">
-      <div class="brand">Beyond Madeira</div>
-      <div class="voucher-type">Car Rental<br>Voucher</div>
-      <div class="ref-tag">Ref: {{referencia}}</div>
-    </div>
-    <div class="header-r">
-      <img src="{{LOGO_SRC}}" class="logo-img" alt="Beyond Madeira">
-    </div>
+<div class="page">
+<div class="hdr">
+  <div>
+    <div class="logo-wrap"><img src="{{LOGO_SRC}}" alt="Beyond Madeira"/></div>
+    <div class="brand-legal">RNAVT 13020 &middot; NIPC 518 827 119</div>
+  </div>
+  <div class="hdr-right">
+    <div class="doc-type">Car Rental Voucher</div>
+    <div class="doc-title">Rental<br>Confirmation</div>
   </div>
 </div>
-
-<div class="client-block">
-  <div class="client-table">
-    <div class="client-col">
-      <div class="client-lbl">Guest</div>
-      <div class="client-name">{{cliente}}</div>
-    </div>
-    <div class="client-col">
-      <div class="client-lbl">Contact</div>
-      <div class="client-contact">{{telefone}}<br>{{email}}</div>
-    </div>
+<div class="hdr-rule"></div>
+<div class="ref-band">
+  <div>
+    <div class="ref-label">Booking Reference</div>
+    <div class="ref-value">{{referencia}}</div>
+    <div class="ref-issued">Issued by Beyond Madeira &middot; RNAVT 13020</div>
+  </div>
+  <div class="ref-right">
+    <div class="ref-total-label">Total Amount</div>
+    <div class="ref-total">{{total}}</div>
   </div>
 </div>
-
-<div class="vehicle-block">
-  <div style="display:table;width:100%">
-    <div style="display:table-cell;vertical-align:middle">
-      <div class="vehicle-name">{{veiculo}}</div>
-      <div class="vehicle-co">{{empresa}}</div>
-      <div class="vehicle-extras">{{extras}}</div>
-    </div>
-    <div style="display:table-cell;vertical-align:middle;text-align:right">
-      <div class="price-badge">&euro;{{total}}</div>
-    </div>
+<div class="info-grid">
+  <div class="info-card">
+    <div class="cell-label">Vehicle</div>
+    <div class="cell-value">{{veiculo}} <span style="font-weight:500;font-size:11px;color:var(--text3);">or similar</span></div>
+  </div>
+  <div class="info-card">
+    <div class="cell-label">Rental Company</div>
+    <div class="cell-value teal">{{empresa}}</div>
   </div>
 </div>
-
-<div class="itinerary">
-  <div class="section-title">Rental Period</div>
-  <div class="itin-table">
-    <div class="itin-col">
-      <div class="itin-card">
-        <div class="itin-head">
-          <div class="itin-head-lbl">Pick-Up</div>
-          <div class="itin-head-date">{{pickup_data}}</div>
-          <div class="itin-head-time">{{pickup_hora}}</div>
-        </div>
-        <div class="itin-body">
-          <div class="itin-loc-lbl">Location</div>
-          <div class="itin-loc">{{pickup_local}}</div>
-          {{pickup_extra}}
-        </div>
-      </div>
-    </div>
-    <div class="itin-col">
-      <div class="itin-card">
-        <div class="itin-head">
-          <div class="itin-head-lbl">Drop-Off</div>
-          <div class="itin-head-date">{{dropoff_data}}</div>
-          <div class="itin-head-time">{{dropoff_hora}}</div>
-        </div>
-        <div class="itin-body">
-          <div class="itin-loc-lbl">Location</div>
-          <div class="itin-loc">{{dropoff_local}}</div>
-          {{dropoff_extra}}
-        </div>
-      </div>
-    </div>
+<div class="client-row">
+  <div class="client-cell">
+    <div class="client-label">Client</div>
+    <div class="client-value">{{cliente}}</div>
+  </div>
+  <div class="client-cell">
+    <div class="client-label">Phone</div>
+    <div class="client-value sm">{{telefone}}</div>
+  </div>
+  <div class="client-cell" style="border-right:none;">
+    <div class="client-label">Email</div>
+    <div class="client-value sm">{{email}}</div>
   </div>
 </div>
-
+<div class="dates-row">
+  <div class="date-cell">
+    <div class="date-label">Pick-up</div>
+    <div class="date-day">{{pickup_data}}</div>
+    <div class="date-time">{{pickup_hora}}</div>
+    <div class="date-loc">{{pickup_local}}</div>
+    {{pickup_extra}}
+  </div>
+  <div class="date-cell">
+    <div class="date-label">Drop-off</div>
+    <div class="date-day">{{dropoff_data}}</div>
+    <div class="date-time">{{dropoff_hora}}</div>
+    <div class="date-loc">{{dropoff_local}}</div>
+    {{dropoff_extra}}
+  </div>
+</div>
+<div class="extras-card">
+  <div class="extras-dot">+</div>
+  <div>
+    <div class="extras-label">Extras</div>
+    <div class="extras-value">{{extras}}</div>
+  </div>
+</div>
+<div class="cancel">
+  <div class="cancel-dot">i</div>
+  <div>
+    <div class="cancel-t">Cancellation Policy</div>
+    <div class="cancel-b">Free cancellation up to <strong>24 hours before</strong> pick-up. Late cancellations or no-shows may incur a fee.</div>
+  </div>
+</div>
+<div style="page-break-inside:avoid;break-inside:avoid;">
 {{contacts_row_html}}
-
-<div style="margin-top:14pt;background:#FEF9C3;border:0.5pt solid #FDE047;border-radius:6pt;padding:8px 12px;">
-  <div style="font-size:7pt;font-weight:800;color:#854D0E;text-transform:uppercase;letter-spacing:.5pt;margin-bottom:3pt;">Required Documents</div>
-  <div style="font-size:8pt;color:#713F12;">Passport or ID card &middot; Driving licence &middot; Credit card (for deposit)</div>
+<div class="thankyou">
+  <div class="ty-title">Thank you for booking with Beyond Madeira!</div>
+  <div class="ty-text">Your rental is confirmed. Please present this voucher at vehicle pick-up. All insurance terms and rental conditions are governed solely by the rental company&rsquo;s contract issued at pick-up.<br><br>Questions? <strong>WhatsApp +351 939 566 415</strong> &middot; <strong>booking@beyondmadeira.com</strong></div>
 </div>
-
+</div>
 <div class="footer">
-  <span class="footer-l">Beyond Madeira &middot; RNAVT 13020 &middot; +351 939 566 415 &middot; booking@beyondmadeira.com</span>
-  <span class="footer-r">Ref. {{referencia}}</span>
+  <div class="ft-l">Beyond Madeira &middot; RNAVT 13020 &middot; NIPC 518 827 119<br>Head Office: Largo da Sa&uacute;de n1, 9000-221 Funchal, Madeira, Portugal</div>
+  <div class="ft-r"><span class="ft-teal">beyondmadeira.com</span><br>+351 939 566 415 &middot; booking@beyondmadeira.com</div>
 </div>
-</body></html>'''
+<div class="legal">Beyond Madeira (RNAVT 13020) acts exclusively as a booking intermediary pursuant to Decreto-Lei n.o 61/2011. Beyond Madeira is not a party to the rental agreement and assumes no liability for vehicle condition, insurance, accidents, or disputes. All rental terms are governed by the contract issued by the rental company at pick-up. Personal data processed under GDPR for booking fulfilment only.</div>
+</div>
+</body>
+</html>'''
 
 def build_rc_html(d):
     tmpl = RC_TEMPLATE
@@ -495,160 +518,212 @@ def gerar_voucher():
 # ACTIVITY VOUCHER
 # =========================================================================
 AT_TEMPLATE = '''<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <style>
-@page { size: A4; margin: 1.6cm 1.8cm 1.5cm 1.8cm; }
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }
-.header { background:#1a3c6e; color:white; padding:18px 22px 16px; margin:-1.6cm -1.8cm 0; }
-.header-inner { display:table; width:100%; }
-.header-l { display:table-cell; vertical-align:middle; }
-.header-r { display:table-cell; vertical-align:middle; text-align:right; }
-.brand { font-size:8pt; font-weight:700; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1pt; }
-.voucher-type { font-size:18pt; font-weight:800; color:white; line-height:1.1; margin-top:2pt; }
-.ref-tag { display:inline-block; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:4pt; padding:3px 8px; font-size:7.5pt; font-weight:700; color:white; margin-top:6pt; }
-.logo-img { height:36pt; }
-.section-title { font-size:6.5pt; font-weight:800; color:#6B7280; text-transform:uppercase; letter-spacing:1pt; margin-bottom:6pt; border-bottom:0.5pt solid #E5E7EB; padding-bottom:4pt; margin-top:14pt; }
-.status-bar { display:table; width:100%; background:#F9FAFB; border:0.5pt solid #E5E7EB; border-radius:6pt; padding:10px 14px; margin-top:14pt; border-collapse:collapse; }
-.status-col { display:table-cell; vertical-align:middle; }
-.status-badge { display:inline-block; background:#15803D; color:white; font-size:7pt; font-weight:800; padding:3px 10px; border-radius:20pt; text-transform:uppercase; letter-spacing:.5pt; }
-.status-badge.awaiting { background:#B45309; }
-.status-badge.paid { background:#15803D; }
-.activity-block { background:#1a3c6e; border-radius:6pt; padding:14px 18px; margin-top:14pt; }
-.activity-name { font-size:14pt; font-weight:800; color:white; }
-.activity-op { font-size:8pt; color:rgba(255,255,255,0.65); margin-top:2pt; }
-.activity-details { display:table; width:100%; margin-top:10pt; border-collapse:collapse; }
-.activity-det-col { display:table-cell; vertical-align:top; padding-right:16pt; }
-.activity-det-col:last-child { padding-right:0; }
-.det-lbl { font-size:6.5pt; color:rgba(255,255,255,0.6); font-weight:700; text-transform:uppercase; letter-spacing:.5pt; }
-.det-val { font-size:11pt; font-weight:800; color:white; margin-top:2pt; }
-.det-val.accent { color:#60D0FF; }
-.det-val.tbc { color:rgba(255,255,255,0.5); font-style:italic; }
-.price-right { text-align:right; }
-.price-val { font-size:18pt; font-weight:800; color:white; }
-.price-note-txt { font-size:7pt; color:rgba(255,255,255,0.6); margin-top:2pt; }
-.price-note-txt.cash { color:#86EFAC; }
-.price-note-txt.awaiting { color:#FCD34D; }
-.price-note-txt.paid { color:#86EFAC; }
-.pay-alert { display:table; width:100%; border-radius:6pt; padding:10px 14px; margin-top:14pt; border-collapse:collapse; }
-.pay-alert.awaiting { background:#FEF3C7; border:0.5pt solid #FCD34D; }
-.pay-alert.paid { background:#DCFCE7; border:0.5pt solid #86EFAC; }
-.pa-dot { display:table-cell; width:20pt; font-size:14pt; font-weight:900; vertical-align:middle; }
-.pa-dot.awaiting { color:#B45309; }
-.pa-dot.paid { color:#15803D; }
-.pa-title { font-size:8.5pt; font-weight:800; }
-.pa-title.awaiting { color:#92400E; }
-.pa-title.paid { color:#14532D; }
-.pa-body { font-size:8pt; margin-top:2pt; }
-.pa-body.awaiting { color:#78350F; }
-.pa-body.paid { color:#166534; }
-.paymethod { display:table; width:100%; border:0.5pt solid #E5E7EB; border-radius:6pt; padding:10px 14px; margin-top:14pt; background:#F9FAFB; border-collapse:collapse; }
-.pm-dot { display:table-cell; font-size:14pt; width:22pt; color:#1a3c6e; vertical-align:middle; font-weight:900; }
-.pm-title { font-size:8.5pt; font-weight:800; color:#1a3c6e; }
-.pm-body { font-size:8pt; color:#6B7280; margin-top:2pt; }
-.pickup-card { display:table; width:100%; border:0.5pt solid #BFDBFE; background:#EFF6FF; border-radius:6pt; padding:10px 14px; margin-top:14pt; border-collapse:collapse; }
-.pickup-dot { display:table-cell; width:16pt; font-size:10pt; color:#1D4ED8; vertical-align:top; padding-top:2pt; }
-.pickup-lbl { font-size:6.5pt; font-weight:800; color:#1E40AF; text-transform:uppercase; letter-spacing:.5pt; }
-.pickup-loc { font-size:9.5pt; font-weight:700; color:#1E3A8A; margin-top:2pt; }
-.pickup-sub { font-size:8pt; color:#3B82F6; margin-top:1pt; }
-.pickup-note { font-size:7.5pt; color:#60A5FA; margin-top:4pt; }
-.inv-row { display:table; width:100%; border-bottom:0.5pt solid #F3F4F6; padding:7px 0; border-collapse:collapse; }
-.inv-prod { display:table-cell; vertical-align:middle; }
-.inv-name { font-size:9pt; font-weight:700; color:#111827; }
-.inv-detail { font-size:7.5pt; color:#6B7280; margin-top:1pt; }
-.inv-qty { display:table-cell; width:40pt; text-align:center; font-size:8.5pt; color:#6B7280; vertical-align:middle; }
-.inv-unit { display:table-cell; width:55pt; text-align:right; font-size:8.5pt; color:#6B7280; vertical-align:middle; }
-.inv-sub { display:table-cell; width:60pt; text-align:right; font-size:9pt; font-weight:700; color:#111827; vertical-align:middle; }
-.inv-total { display:table; width:100%; border-collapse:collapse; padding:8px 0; }
-.inv-total-lbl { display:table-cell; font-size:9pt; font-weight:800; color:#111827; }
-.inv-total-val { display:table-cell; text-align:right; font-size:11pt; font-weight:800; color:#1a3c6e; }
-.special-req { background:#F9FAFB; border:0.5pt solid #E5E7EB; border-radius:6pt; padding:8px 12px; margin-top:8pt; }
-.sr-label { font-size:6.5pt; font-weight:800; color:#6B7280; text-transform:uppercase; letter-spacing:.5pt; margin-bottom:3pt; }
-.sr-text { font-size:8pt; color:#374151; line-height:1.5; }
-.msg-box { background:#F0F9FF; border:0.5pt solid #BAE6FD; border-radius:6pt; padding:8px 12px; margin-top:14pt; }
-.cancel-box { background:#FFF7ED; border:0.5pt solid #FED7AA; border-radius:6pt; padding:8px 12px; margin-top:8pt; }
-.box-lbl { font-size:6.5pt; font-weight:800; color:#6B7280; text-transform:uppercase; letter-spacing:.5pt; margin-bottom:3pt; }
-.box-txt { font-size:8pt; color:#374151; line-height:1.5; }
-.footer { position:fixed; bottom:-1.5cm; left:-1.8cm; right:-1.8cm; border-top:0.5pt solid #E5E7EB; padding:4pt 1.8cm; display:table; }
-.footer-l { display:table-cell; font-size:6.5pt; color:#9CA3AF; }
-.footer-r { display:table-cell; font-size:6.5pt; color:#9CA3AF; text-align:right; }
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --teal:#0a8f82;--teal-light:#edf7f6;--teal-mid:#c8e8e5;
+  --amber:#b5720e;--amber-light:#fef6e8;--amber-border:#f0ce8a;
+  --green:#186640;--green-light:#edf6f1;--green-border:#a7f3d0;
+  --text:#171613;--text2:#635e58;--text3:#a8a39c;
+  --border:#e6e2dc;--white:#fff;--bg:#f7f6f2;
+}
+body{font-family:'Montserrat',sans-serif;background:var(--white);color:var(--text);font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;padding:0;}
+.page{padding:44px 48px;max-width:740px;margin:0 auto;}
+.ref-band,.act-card,.guest-row,.pay-alert,.paymethod,.pickup-card,.special-req,.invoice,.inv-total-row,.cancel,.insurance,.contacts-row,.thankyou{page-break-inside:avoid;break-inside:avoid;}
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;page-break-inside:avoid;break-inside:avoid;}
+.logo-wrap img{height:54px;width:auto;}
+.brand-legal{font-size:9px;color:var(--text3);margin-top:7px;}
+.hdr-right{text-align:right;}
+.doc-type{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.doc-status{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-.8px;line-height:1;}
+.doc-status.awaiting{color:var(--amber);}
+.doc-status.paid{color:var(--green);}
+.hdr-rule{height:2px;background:var(--teal);border-radius:1px;margin-bottom:28px;}
+.ref-band{background:var(--teal);border-radius:16px;padding:24px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.ref-label{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:7px;}
+.ref-value{font-size:28px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1;}
+.ref-bokun{font-size:10px;color:rgba(255,255,255,.5);margin-top:5px;}
+.issued-by{font-size:9px;color:rgba(255,255,255,.5);margin-top:5px;}
+.act-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:20px;}
+.act-name{font-size:21px;font-weight:900;color:var(--text);letter-spacing:-.5px;line-height:1.2;margin-bottom:4px;}
+.act-date{font-size:14px;font-weight:700;color:var(--teal);margin-bottom:22px;}
+.act-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+.cell-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.cell-value{font-size:13px;font-weight:800;color:var(--text);line-height:1.3;}
+.cell-value.accent{color:var(--teal);font-size:19px;}
+.cell-value.tbc{color:var(--text3);font-size:13px;font-style:italic;}
+.guest-row{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.guest-card{flex:1;background:var(--white);padding:20px 24px;border-right:1px solid var(--border);}
+.price-card{padding:18px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;width:170px;flex-shrink:0;}
+.price-card.cash{background:var(--teal);}
+.price-card.awaiting{background:var(--amber);}
+.price-card.paid{background:var(--green);}
+.sect-lbl{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.sect-lbl.muted{color:var(--text3);}
+.sect-lbl.inv{color:rgba(255,255,255,.65);}
+.guest-name{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-.3px;margin-bottom:4px;}
+.guest-contacts{font-size:11px;color:var(--text2);line-height:1.7;}
+.price-amount{font-size:32px;font-weight:900;color:#fff;letter-spacing:-.8px;line-height:1;text-align:center;}
+.price-note{font-size:9px;color:rgba(255,255,255,.7);margin-top:6px;font-weight:600;text-align:center;}
+.pay-alert{border-radius:14px;padding:16px 20px;display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;}
+.pay-alert.awaiting{background:var(--amber-light);border:1px solid var(--amber-border);}
+.pay-alert.paid{background:var(--green-light);border:1px solid var(--green-border);}
+.pa-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;font-weight:900;color:#fff;margin-top:1px;}
+.pa-dot.awaiting{background:var(--amber);}
+.pa-dot.paid{background:var(--green);}
+.pa-title{font-size:12px;font-weight:800;margin-bottom:4px;}
+.pa-title.awaiting{color:#7a4d08;}
+.pa-title.paid{color:#0f4428;}
+.pa-body{font-size:11px;line-height:1.65;}
+.pa-body.awaiting{color:#7a4d08;}
+.pa-body.paid{color:#0f4428;}
+.paymethod{border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;margin-bottom:20px;background:var(--teal-light);border:1px solid var(--teal-mid);}
+.pm-dot{width:32px;height:32px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:900;color:#fff;}
+.pm-title{font-size:12px;font-weight:800;color:var(--teal);margin-bottom:3px;}
+.pm-body{font-size:11px;color:var(--text2);line-height:1.5;}
+.pickup-card{background:var(--amber-light);border:1px solid var(--amber-border);border-radius:16px;padding:18px 24px;display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;}
+.pickup-dot{width:36px;height:36px;min-width:36px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;color:#fff;font-weight:900;line-height:1;margin-top:1px;}
+.pickup-lbl{font-size:9px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.pickup-loc{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.2px;margin-bottom:3px;}
+.pickup-sub{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:3px;}
+.pickup-note{font-size:10px;color:var(--text3);margin-top:2px;line-height:1.5;font-style:italic;}
+.special-req{background:var(--white);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:0 14px 14px 0;padding:14px 20px;margin-bottom:20px;}
+.sr-label{font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.sr-text{font-size:11px;color:var(--text2);line-height:1.6;}
+.invoice{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:6px;}
+.inv-hdr{padding:11px 22px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.inv-hdr-t{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.8px;}
+.inv-hdr-r{font-size:10px;color:var(--text3);}
+.inv-row{padding:13px 22px;display:flex;align-items:center;gap:10px;background:var(--white);border-bottom:1px solid var(--border);}
+.inv-row:last-child{border-bottom:none;}
+.inv-prod{flex:1;}
+.inv-name{font-size:12px;font-weight:700;color:var(--text);}
+.inv-detail{font-size:10px;color:var(--text3);margin-top:2px;}
+.inv-qty{font-size:11px;font-weight:600;color:var(--text2);width:30px;text-align:center;}
+.inv-unit{font-size:11px;color:var(--text3);width:60px;text-align:right;}
+.inv-sub{font-size:12px;font-weight:700;color:var(--text);width:60px;text-align:right;}
+.inv-total-row{padding:13px 22px;display:flex;justify-content:space-between;align-items:center;background:var(--teal-light);border-top:2px solid var(--teal);border-radius:0 0 16px 16px;margin-bottom:20px;}
+.inv-total-l{font-size:12px;font-weight:700;color:var(--text);}
+.inv-total-r{font-size:21px;font-weight:900;color:var(--teal);}
+.cancel{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 22px;display:flex;align-items:flex-start;gap:13px;margin-bottom:20px;}
+.cancel-dot{width:22px;height:22px;min-width:22px;border-radius:50%;border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:11px;font-weight:900;color:var(--teal);}
+.cancel-t{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.cancel-b{font-size:11px;color:var(--text2);line-height:1.65;}
+.insurance{background:var(--teal-light);border:1px solid var(--teal-mid);border-radius:16px;padding:16px 22px;display:flex;align-items:center;gap:13px;margin-bottom:20px;}
+.ins-dot{width:32px;height:32px;min-width:32px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:#fff;}
+.ins-title{font-size:12px;font-weight:800;color:var(--teal);margin-bottom:3px;}
+.ins-body{font-size:11px;color:var(--text2);line-height:1.5;}
+.contacts-row{display:flex;gap:14px;margin-bottom:20px;}
+.contact-card{flex:1;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:16px 20px;}
+.contact-lbl{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.contact-name{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.contact-det{font-size:11px;color:var(--text2);line-height:1.7;}
+.thankyou{background:var(--teal);border-radius:16px;padding:22px 28px;margin-bottom:24px;}
+.ty-title{font-size:14px;font-weight:900;color:#fff;margin-bottom:7px;letter-spacing:-.3px;}
+.ty-text{font-size:11px;color:rgba(255,255,255,.87);line-height:1.75;}
+.footer{border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:space-between;page-break-inside:avoid;break-inside:avoid;}
+.ft-l,.ft-r{font-size:9px;color:var(--text3);line-height:1.8;}
+.ft-r{text-align:right;}
+.ft-teal{color:var(--teal);font-weight:600;}
+.legal{font-size:8px;color:var(--text3);line-height:1.6;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-inner">
-    <div class="header-l">
-      <div class="brand">Beyond Madeira</div>
-      <div class="voucher-type">Activity<br>Voucher</div>
-      <div class="ref-tag">Ref: {{referencia}}</div>
-    </div>
-    <div class="header-r">
-      <img src="{{LOGO_SRC}}" class="logo-img" alt="Beyond Madeira">
-    </div>
+<div class="page">
+<div class="hdr">
+  <div>
+    <div class="logo-wrap"><img src="{{LOGO_SRC}}" alt="Beyond Madeira"/></div>
+    <div class="brand-legal">RNAVT 13020 &middot; NIPC 518 827 119</div>
+  </div>
+  <div class="hdr-right">
+    <div class="doc-type">Voucher</div>
+    <div class="doc-status {{status_class}}">{{status_label}}</div>
   </div>
 </div>
-
-<div class="status-bar">
-  <div class="status-col">
-    <span class="status-badge {{status_class}}">{{status_label}}</span>
+<div class="hdr-rule"></div>
+<div class="ref-band">
+  <div>
+    <div class="ref-label">Booking Reference</div>
+    <div class="ref-value">{{referencia}}</div>
+    <div class="ref-bokun">Bokun: {{bokun_ref}}</div>
   </div>
-  <div class="status-col" style="text-align:right">
-    <span style="font-size:8pt;color:#6B7280;">Guest: <strong>{{cliente}}</strong></span>
-  </div>
-</div>
-
-<div class="activity-block">
-  <div class="activity-name">{{atividade}}</div>
-  <div class="activity-op">{{operador}}</div>
-  <div class="activity-details">
-    <div class="activity-det-col">
-      <div class="det-lbl">Date</div>
-      <div class="det-val">{{data}}</div>
-    </div>
-    <div class="activity-det-col">
-      <div class="det-lbl">Time</div>
-      <div class="det-val {{start_time_class}}">{{hora}}</div>
-    </div>
-    <div class="activity-det-col">
-      <div class="det-lbl">Guests</div>
-      <div class="det-val">{{pax}}</div>
-    </div>
-    <div class="activity-det-col price-right">
-      <div class="det-lbl">Total</div>
-      <div class="price-val">&euro;{{total}}</div>
-      <div class="price-note-txt {{price_class}}">{{price_note}}</div>
-    </div>
+  <div style="text-align:right;">
+    <div class="issued-by">Issued by Beyond Madeira</div>
   </div>
 </div>
-
+<div class="act-card">
+  <div class="act-name">{{atividade}}</div>
+  <div class="act-date">{{data}}</div>
+  <div class="act-grid">
+    <div><div class="cell-label">Start Time</div><div class="cell-value {{start_time_class}}">{{hora}}</div></div>
+    <div><div class="cell-label">Participants</div><div class="cell-value">{{pax}}</div></div>
+    <div><div class="cell-label">Tour Type</div><div class="cell-value">{{tipo_tour}}</div></div>
+    <div><div class="cell-label">Operator</div><div class="cell-value" style="color:var(--teal);">{{operador}}</div></div>
+  </div>
+</div>
+<div class="guest-row">
+  <div class="guest-card">
+    <div class="sect-lbl muted">Guest</div>
+    <div class="guest-name">{{cliente}}</div>
+    <div class="guest-contacts">{{email}}<br>{{telefone}}</div>
+  </div>
+  <div class="price-card {{price_class}}">
+    <div class="sect-lbl inv">Total</div>
+    <div class="price-amount">{{total}}&euro;</div>
+    <div class="price-note">{{price_note}}</div>
+  </div>
+</div>
 {{payment_alert_html}}
 {{payment_method_html}}
 {{pickup_html}}
-
-<div class="section-title">Booking Details</div>
-{{invoice_rows_html}}
-<div class="inv-total">
-  <div class="inv-total-lbl">Total</div>
-  <div class="inv-total-val">&euro;{{total}}</div>
-</div>
-
 {{special_requests_html}}
-
-<div class="msg-box">
-  <div class="box-lbl">Confirmation Message</div>
-  <div class="box-txt">{{mensagem_confirmacao}}</div>
+<div class="invoice">
+  <div class="inv-hdr"><div class="inv-hdr-t">Invoice</div><div class="inv-hdr-r">{{bokun_ref}}</div></div>
+  {{invoice_rows_html}}
 </div>
-
-<div class="cancel-box">
-  <div class="box-lbl">Cancellation Policy</div>
-  <div class="box-txt">{{cancelamento}}</div>
+<div class="inv-total-row">
+  <div class="inv-total-l">Total Amount</div>
+  <div class="inv-total-r">{{total}}&euro;</div>
 </div>
-
+<div class="cancel">
+  <div class="cancel-dot">i</div>
+  <div><div class="cancel-t">Cancellation Policy</div><div class="cancel-b">{{cancelamento}}</div></div>
+</div>
+<div class="insurance">
+  <div class="ins-dot">&#10003;</div>
+  <div>
+    <div class="ins-title">Insurance Included</div>
+    <div class="ins-body">This activity includes personal accident insurance provided by the operator. Coverage terms are governed solely by the operator&rsquo;s own insurance policy.</div>
+  </div>
+</div>
+<div class="contacts-row">
+  <div class="contact-card">
+    <div class="contact-lbl">Operator Contact</div>
+    <div class="contact-name">{{operador}}</div>
+    <div class="contact-det">{{operador_telefone}}<br>{{operador_email}}</div>
+  </div>
+  <div class="contact-card">
+    <div class="contact-lbl">Beyond Madeira</div>
+    <div class="contact-name">Booking Support</div>
+    <div class="contact-det">+351 939 566 415<br>booking@beyondmadeira.com</div>
+  </div>
+</div>
+<div class="thankyou">
+  <div class="ty-title">Thank you for booking with Beyond Madeira!</div>
+  <div class="ty-text">{{mensagem_confirmacao}}<br><br>Questions? <strong>WhatsApp +351 939 566 415</strong> &middot; <strong>booking@beyondmadeira.com</strong></div>
+</div>
 <div class="footer">
-  <span class="footer-l">Beyond Madeira &middot; RNAVT 13020 &middot; +351 939 566 415 &middot; booking@beyondmadeira.com</span>
-  <span class="footer-r">Ref. {{referencia}}</span>
+  <div class="ft-l">Beyond Madeira &middot; RNAVT 13020 &middot; NIPC 518 827 119<br>Head Office: Largo da Sa&uacute;de n1, 9000-221 Funchal, Madeira, Portugal</div>
+  <div class="ft-r"><span class="ft-teal">beyondmadeira.com</span><br>+351 939 566 415 &middot; booking@beyondmadeira.com</div>
 </div>
-</body></html>'''
+<div class="legal">Beyond Madeira (RNAVT 13020) acts exclusively as a booking intermediary. Beyond Madeira is not a party to the activity agreement and assumes no liability for the activity, accidents, or disputes between the guest and the operator. Personal data processed under GDPR for booking fulfilment only.</div>
+</div>
+</body>
+</html>'''
 
 def build_at_html(d):
     tmpl = AT_TEMPLATE
@@ -1131,6 +1206,252 @@ def wazzup_send():
         )
         r.raise_for_status()
         return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+# =========================================================================
+# EXTRATO DE COMISSÕES (WeasyPrint - server side, tabela sem flex)
+# =========================================================================
+BASE_EXTRATO  = "appRGJjirAzgEe46q"
+TAB_EXTRATO   = "tblHmWDHM64Dy4iwi"
+
+def calc_totais(rows):
+    rows_v    = [r for r in rows if r["status"] != "Cancelado"]
+    n_can     = sum(1 for r in rows if r["status"] == "Cancelado")
+    n_norm    = sum(1 for r in rows_v if r["status"] != "Devemos")
+    n_dev     = sum(1 for r in rows_v if r["status"] == "Devemos")
+    comiss    = sum(r["comm"]  for r in rows_v if r["status"] != "Devemos")
+    credito   = sum(r["total"] - r["comm"] for r in rows_v if r["status"] == "Devemos")
+    gt        = sum(r["total"] for r in rows_v)
+    gc        = sum(r["comm"]  for r in rows_v if r["status"] != "Devemos")
+    total_fim = comiss - credito
+    return dict(n=len(rows), n_can=n_can, n_norm=n_norm, n_dev=n_dev,
+                comiss=comiss, credito=credito, gt=gt, gc=gc, total_fim=total_fim)
+
+def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=None):
+    from datetime import datetime
+    today = datetime.now().strftime("%d/%m/%Y")
+    t = tots
+
+    def _row_html(r, bg):
+        sc = {"Pago":"#166534","Por Pagar":"#111827","Devemos":"#991B1B","Cancelado":"#6B7280"}.get(r["status"],"#6B7280")
+        strike = "text-decoration:line-through;opacity:0.5;" if r["status"]=="Cancelado" else ""
+        _em = "\u2014"
+        pax = str(r.get("pax") or _em).replace(" Pessoas","").replace(" Pessoa","").strip()
+        return (
+            f'<tr style="background:{bg}">'
+            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;{strike}">{r["date"]}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;{strike}">{(r["client"] or _em)[:32]}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#374151;{strike}">{(r["act"] or _em)[:28]}</td>'
+            f'<td style="padding:7px 8px;font-size:8pt;color:#6B7280;text-align:center">{pax}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;color:#111827;text-align:right;{strike}">&euro; {abs(r["total"]):,.2f}</td>'
+            f'<td style="padding:7px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right;{strike}">&euro; {abs(r["comm"]):,.2f}</td>'
+            f'<td style="padding:7px 8px;font-size:7.5pt;color:{sc};text-align:center;font-weight:600">{r["status"]}</td>'
+            f'</tr>'
+        )
+
+    rows_html = ""
+    if rows_by_month and len(rows_by_month) > 1:
+        row_idx = 0
+        for m_nome_i, m_ano_i, m_rows_i in rows_by_month:
+            if not m_rows_i: continue
+            m_tots = calc_totais(m_rows_i)
+            rows_html += (
+                f'<tr><td colspan="7" style="padding:8px 8px 4px;background:#f0faf9;border-top:1.5pt solid #0A616B;border-bottom:0.5pt solid #9CA3AF">'
+                f'<span style="font-size:9pt;font-weight:800;color:#0A616B">{m_nome_i} {m_ano_i}</span>'
+                f'<span style="font-size:8pt;color:#6B7280;margin-left:8px">{len(m_rows_i)} reservas</span></td></tr>'
+            )
+            for i, r in enumerate(m_rows_i):
+                rows_html += _row_html(r, "#F9FAFB" if (row_idx + i) % 2 == 0 else "#FFFFFF")
+            row_idx += len(m_rows_i)
+            rows_html += (
+                f'<tr style="background:#f0faf9">'
+                f'<td colspan="4" style="padding:5px 8px;font-size:8pt;color:#374151;font-style:italic">Subtotal {m_nome_i} {m_ano_i}</td>'
+                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;text-align:right">&euro; {abs(m_tots["gt"]):,.2f}</td>'
+                f'<td style="padding:5px 8px;font-size:8.5pt;font-weight:700;color:#0A616B;text-align:right">&euro; {abs(m_tots["gc"]):,.2f}</td>'
+                f'<td></td></tr>'
+            )
+    else:
+        for i, r in enumerate(rows):
+            rows_html += _row_html(r, "#F9FAFB" if i % 2 == 0 else "#FFFFFF")
+
+    logo_src = logo_b64()
+    title_mes = "&nbsp;+&nbsp;".join([f"{mn} {my}" for mn,my,_ in rows_by_month]) if rows_by_month and len(rows_by_month)>1 else f"{mes_nome} {ano}"
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page {{ size: A4; margin: 1.8cm 1.8cm 1.6cm 1.8cm; }}
+  * {{ margin:0;padding:0;box-sizing:border-box; }}
+  body {{ font-family: Helvetica, Arial, sans-serif; color:#111827; font-size:9pt; }}
+  .top-bar {{ position:fixed;top:-1.8cm;left:-1.8cm;right:-1.8cm;height:5mm;background:#0A616B; }}
+  .footer {{ position:fixed;bottom:-1.6cm;left:-1.8cm;right:-1.8cm;border-top:0.5pt solid #E5E7EB;padding:4pt 0; }}
+  .footer-inner {{ display:table;width:100%;padding:0 1.8cm; }}
+  .footer-l {{ display:table-cell;font-size:6.5pt;color:#6B7280; }}
+  .footer-r {{ display:table-cell;font-size:6.5pt;color:#6B7280;text-align:right; }}
+  table.main {{ width:100%;border-collapse:collapse; }}
+  .dt {{ margin-bottom:20pt;width:100%;border-collapse:collapse; }}
+  .dt th {{ font-size:7.5pt;font-weight:700;color:#6B7280;padding:7px 8px;border-bottom:1pt solid #9CA3AF;text-align:left;background:#fff; }}
+  .dt tfoot td {{ border-top:1pt solid #9CA3AF;font-weight:700;background:#F3F4F6; }}
+</style>
+</head><body>
+<div class="top-bar"></div>
+<table class="main" style="margin-bottom:14pt"><tr>
+  <td style="width:45%;vertical-align:top;padding-top:4pt">
+    <img src="{logo_src}" style="height:38pt;margin-bottom:8pt;display:block" alt="Beyond Madeira">
+    <div style="font-size:7.5pt;color:#6B7280;line-height:1.8">Largo da Sa\u00fade 1, 9000-221 Funchal<br>RNAVT 13020 \u00b7 NIPC 518 827 119<br>info@beyondmadeira.com \u00b7 +351 939 566 415</div>
+  </td>
+  <td style="text-align:right;vertical-align:top">
+    <div style="font-size:9pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt">Extrato de Comiss\u00f5es</div>
+    <div style="font-size:20pt;font-weight:700;color:#111827;line-height:1.2;margin:4pt 0">{title_mes}</div>
+    <div style="font-size:8pt;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:0.5pt;margin-top:6pt">PARA</div>
+    <div style="font-size:14pt;font-weight:700;color:#0A616B;margin-top:2pt">{parceiro}</div>
+    <div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:4pt">Ref. {ref} \u00b7 Emitido a {today}</div>
+  </td>
+</tr></table>
+<hr style="border:none;border-top:1pt solid #111827;margin:0 0 14pt 0">
+<div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Detalhe das Reservas</div>
+<table class="dt">
+  <thead><tr>
+    <th style="width:44pt">Data</th><th style="width:110pt">Cliente</th><th>Atividade / Carro</th>
+    <th style="width:28pt;text-align:center">Pax</th><th style="width:58pt;text-align:right">Total</th>
+    <th style="width:62pt;text-align:right">Comiss\u00e3o</th><th style="width:54pt;text-align:center">Estado</th>
+  </tr></thead>
+  <tbody>{rows_html}</tbody>
+  <tfoot><tr>
+    <td colspan="4" style="padding:7px 8px"></td>
+    <td style="padding:7px 8px;font-size:9pt;color:#111827;text-align:right">\u20ac {abs(t["gt"]):,.2f}</td>
+    <td style="padding:7px 8px;font-size:9pt;color:#0A616B;text-align:right">\u20ac {abs(t["gc"]):,.2f}</td>
+    <td style="padding:7px 8px;font-size:7.5pt;color:#6B7280;text-align:center">TOTAL</td>
+  </tr></tfoot>
+</table>
+<table class="main"><tr>
+  <td style="width:52%;vertical-align:top;padding-right:16pt">
+    <div style="font-size:7pt;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1pt;margin-bottom:5pt">Resumo Financeiro</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr style="background:#fff;border-bottom:0.5pt solid #E5E7EB">
+        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Total faturado</div><div style="font-size:7pt;color:#9CA3AF">{t["n"]} reservas \u00b7 {t["n_can"]} canceladas</div></td>
+        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px;white-space:nowrap">\u20ac {abs(t["gt"]):,.2f}</td>
+      </tr>
+      <tr style="background:#F3F4F6;border-bottom:0.5pt solid #E5E7EB">
+        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Comiss\u00f5es a pagar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_norm"]} reservas \u2014 cliente pagou ao parceiro</div></td>
+        <td style="text-align:right;font-size:9pt;font-weight:700;color:#0A616B;padding:10px 8px;white-space:nowrap">\u20ac {abs(t["comiss"]):,.2f}</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:10px 8px"><div style="font-weight:700;font-size:9pt">Cr\u00e9dito a descontar</div><div style="font-size:7pt;color:#9CA3AF">{t["n_dev"]} reservas \u2014 cliente pagou \u00e0 Beyond</div></td>
+        <td style="text-align:right;font-size:9pt;color:#6B7280;padding:10px 8px;white-space:nowrap">\u2212 \u20ac {abs(t["credito"]):,.2f}</td>
+      </tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;margin-top:8pt;background:#0A616B">
+      <tr>
+        <td style="padding:12px 14px;font-size:10pt;font-weight:700;color:white">TOTAL A RECEBER</td>
+        <td style="padding:12px 14px;font-size:16pt;font-weight:700;color:white;text-align:right;white-space:nowrap">\u20ac {abs(t["total_fim"]):,.2f}</td>
+      </tr>
+    </table>
+  </td>
+  <td style="width:48%;vertical-align:top">
+    <table style="width:100%;border-collapse:collapse;background:#0A616B">
+      <tr><td colspan="2" style="padding:14px 16px 6px;font-size:7pt;font-weight:700;color:#A7F3D0;text-transform:uppercase;letter-spacing:1pt">Dados para Pagamento</td></tr>
+      <tr><td style="padding:5px 16px;font-size:7pt;font-weight:700;color:#A7F3D0;width:70pt">Banco</td><td style="padding:5px 16px;font-size:9pt;color:white">Santander</td></tr>
+      <tr><td style="padding:5px 16px;font-size:7pt;font-weight:700;color:#A7F3D0">IBAN</td><td style="padding:5px 16px;font-size:8.5pt;font-weight:700;color:white">PT50 0018 0003 6587 1568 0201 8</td></tr>
+      <tr><td style="padding:5px 16px;font-size:7pt;font-weight:700;color:#A7F3D0">Titular</td><td style="padding:5px 16px;font-size:9pt;color:white">Milton Quintal Lda</td></tr>
+      <tr><td style="padding:5px 16px 14px;font-size:7pt;font-weight:700;color:#A7F3D0">Refer\u00eancia</td><td style="padding:5px 16px 14px;font-size:9pt;color:white">{ref}</td></tr>
+    </table>
+  </td>
+</tr></table>
+<hr style="border:none;border-top:0.5pt solid #E5E7EB;margin-top:20pt">
+<div style="font-size:7.5pt;color:#6B7280;font-style:italic;margin-top:6pt">Em caso de d\u00favida ou discrepância, contacte-nos antes de efetuar qualquer transfer\u00eancia. Obrigado pela parceria.</div>
+<div class="footer"><div class="footer-inner">
+  <span class="footer-l">Beyond Madeira \u00b7 RNAVT 13020 \u00b7 NIPC 518 827 119 \u00b7 +351 939 566 415</span>
+  <span class="footer-r">Ref. {ref}</span>
+</div></div>
+</body></html>"""
+
+
+def eur_val(v):
+    try: return float(str(v).replace("€","").replace(",",".").strip())
+    except: return 0.0
+
+def get_text_f(v):
+    if isinstance(v, list): return ", ".join(str(x) for x in v)
+    return str(v) if v else ""
+
+def fget_f(rec, *keys):
+    for k in keys:
+        if k in rec and rec[k] not in (None, "", []):
+            return rec[k]
+    return None
+
+def norm_act(v):
+    s = get_text_f(v)
+    if len(s) > 35: s = s[:33] + "…"
+    return s
+
+def airtable_upload_attachment(base_id, table_name, record_id, field_name, pdf_bytes, fname):
+    import base64
+    url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}/{record_id}/files/{req_lib.utils.quote(field_name)}"
+    r = req_lib.post(url, headers={"Authorization": f"Bearer {AT_TOKEN}"},
+        json={"file": base64.b64encode(pdf_bytes).decode(), "filename": fname}, timeout=30)
+    r.raise_for_status()
+
+
+@app.route("/gerar-extrato-parceiro", methods=["POST"])
+def gerar_extrato_parceiro():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d        = request.get_json() or {}
+        parceiro = d.get("parceiro", "")
+        mes_num  = int(d.get("mes", 0))
+        ano      = int(d.get("ano", 0))
+        upload   = d.get("upload", False)
+        record_id= d.get("record_id", "")
+        meses_pt = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+        mes_nome = meses_pt[mes_num] if 1 <= mes_num <= 12 else str(mes_num)
+
+        recs_rc = airtable_list(BASE_RESERVAS, "tblGc8HoEYOA5uG5Q")
+        recs_at = airtable_list(BASE_RESERVAS, "tblla0uOKTcyboVXU")
+        rows = []
+        for rf in recs_rc + recs_at:
+            f = rf.get("fields", {})
+            par = get_text_f(fget_f(f, "Parceiro", "Empresa", "Rent Car Company") or "")
+            if par.lower() != parceiro.lower(): continue
+            raw_date = get_text_f(fget_f(f, "Data de Devolução", "Data de Drop Off", "Data de Fim", "Data") or "")
+            if not raw_date: continue
+            try:
+                from datetime import datetime as _dt
+                dt = _dt.fromisoformat(raw_date[:10])
+                if dt.month != mes_num or dt.year != ano: continue
+            except: continue
+            status_raw = get_text_f(fget_f(f, "Estado de Reserva", "Estado da Reserva") or "")
+            if status_raw in ("Cancelado","Cancelada"): status = "Cancelado"
+            elif status_raw == "Devemos": status = "Devemos"
+            elif status_raw == "Pago": status = "Pago"
+            else: status = "Por Pagar"
+            total = eur_val(fget_f(f, "Preço Total", "Valor da Reserva (€)") or 0)
+            comm  = eur_val(fget_f(f, "Comissão") or 0)
+            client= get_text_f(fget_f(f, "Nome do Cliente", "Nome do cliente") or "")
+            act   = norm_act(fget_f(f, "Atividade", "Modelo de Carro") or "")
+            pax   = get_text_f(fget_f(f, "Nº Pessoas", "Duração") or "")
+            rows.append(dict(date=dt.strftime("%d/%m"), client=client, act=act,
+                             pax=pax, total=total, comm=comm, status=status))
+        rows.sort(key=lambda x: x["date"])
+        tots  = calc_totais(rows)
+        import re as _re
+        sl    = _re.sub(r'[^a-zA-Z0-9]', '', parceiro)
+        ref   = f'EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}'
+        fname = f'BeyondMadeira_{sl}_{mes_nome}{ano}.pdf'
+        html_str = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
+        pdf_bytes = HTML(string=html_str).write_pdf()
+        b64 = base64.b64encode(pdf_bytes).decode()
+        if upload and record_id and record_id.startswith("rec"):
+            try:
+                airtable_upload_attachment(BASE_RESERVAS, TAB_EXTRATO, record_id, "Extrato Beyond", pdf_bytes, fname)
+            except: pass
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
