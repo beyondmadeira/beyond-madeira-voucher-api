@@ -528,7 +528,7 @@ def get_rc():
                 "idade":       f.get("Idade", ""),
                 "parceiro":    f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
                 "carro":       f.get("Modelo de Carro", f.get("Veículo", f.get("Veiculo", ""))),
-                "estado":      f.get("Estado do Reserva", f.get("Estado da Reserva", f.get("Estado", f.get("Status", f.get("Estado Reserva", ""))))),
+                "estado":      f.get("Estado de Reserva", f.get("Estado do Reserva", f.get("Estado da Reserva", ""))),
                 "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
                 "pdt":         f.get("Data da Pick-up", f.get("Data Pick-up", "")),
                 "ploc":        f.get("Localização Pick-up", f.get("Local Pick-up", "")),
@@ -1302,6 +1302,330 @@ def debug_rc_fields():
         records = airtable_list(BASE_RESERVAS, "Rent Car")
         sample = [{"id": r["id"], "fields": list(r.get("fields", {}).keys())} for r in records[:3]]
         return jsonify({"success": True, "sample": sample})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/airtable/diario", methods=["GET", "POST", "PATCH"])
+def airtable_diario():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "GET":
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Registos Di%C3%A1rios")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({
+                    "id": r["id"],
+                    "data": f.get("Data", f.get("Date", "")),
+                    "fat":  float(f.get("Faturação Diária", f.get("Faturacao Diaria", 0)) or 0),
+                    "fatRC": float(f.get("Faturação RC", 0) or 0),
+                    "fatAT": float(f.get("Faturação AT", 0) or 0),
+                    "obs":  f.get("Notas do Dia", ""),
+                    "resp": f.get("Responsável", ""),
+                })
+            return jsonify({"success": True, "records": out})
+        elif request.method == "POST":
+            body = request.get_json() or {}
+            result = req_lib.post(
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/Registos%20Di%C3%A1rios",
+                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+        else:
+            return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/diario/<record_id>", methods=["PATCH"])
+def airtable_diario_patch(record_id):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        result = airtable_patch("appOrdG5Fsr7N0RmH", "Registos Di%C3%A1rios", record_id, body.get("fields", {}))
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/despesas-fixas", methods=["GET"])
+@app.route("/airtable/despesas-variaveis", methods=["GET"])
+@app.route("/airtable/financeiro/despesas", methods=["GET", "POST"])
+@app.route("/airtable/financeiro/despesas/<record_id>", methods=["PATCH", "DELETE"])
+def airtable_despesas(**kwargs):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "GET":
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Despesas Vari%C3%A1veis")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({
+                    "id":        r["id"],
+                    "descricao": f.get("Descrição", f.get("Descricao", f.get("Nome", ""))),
+                    "valor":     float(f.get("Valor", f.get("Montante", 0)) or 0),
+                    "mes":       f.get("Mês", f.get("Mes", f.get("Data", ""))),
+                    "categoria": f.get("Categoria", ""),
+                    "tipo":      f.get("Tipo", "variavel"),
+                })
+            return jsonify({"success": True, "records": out})
+        elif request.method == "POST":
+            body = request.get_json() or {}
+            result = req_lib.post(
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/Despesas%20Vari%C3%A1veis",
+                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+        elif request.method == "PATCH":
+            record_id = kwargs.get("record_id", "")
+            body = request.get_json() or {}
+            result = airtable_patch("appOrdG5Fsr7N0RmH", "Despesas Vari%C3%A1veis", record_id, body.get("fields", {}))
+            return jsonify({"success": True, "record": result})
+        else:
+            return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/parceiros", methods=["GET"])
+def airtable_parceiros():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        cached = cache_get("parceiros")
+        if cached: return jsonify({"success": True, "records": cached, "cached": True})
+        recs = airtable_list(BASE_RESERVAS, "Parceiros")
+        out = []
+        for r in recs:
+            f = r.get("fields", {})
+            out.append({
+                "id":       r["id"],
+                "nome":     f.get("Nome", f.get("Name", "")),
+                "email":    f.get("Email", ""),
+                "telefone": f.get("Telefone", f.get("Tel", "")),
+                "tipo":     f.get("Tipo", f.get("Categoria", "")),
+                "ativo":    f.get("Ativo", f.get("Active", True)),
+            })
+        cache_set("parceiros", out)
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/tarefas", methods=["GET", "POST"])
+def airtable_tarefas():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "GET":
+            recs = airtable_list(BASE_RESERVAS, "Tarefas")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({
+                    "id":       r["id"],
+                    "desc":     f.get("Descrição", f.get("Descricao", f.get("Tarefa", ""))),
+                    "status":   f.get("Status", f.get("Estado", "pendente")),
+                    "pri":      f.get("Prioridade", f.get("Priority", "media")),
+                    "resp":     f.get("Responsável", f.get("Responsavel", "")),
+                    "data":     f.get("Data", ""),
+                    "feita":    bool(f.get("Feita", f.get("Done", False))),
+                })
+            return jsonify({"success": True, "records": out})
+        else:
+            body = request.get_json() or {}
+            result = req_lib.post(
+                f"https://api.airtable.com/v0/{BASE_RESERVAS}/Tarefas",
+                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/tarefas/<record_id>", methods=["PATCH"])
+def airtable_tarefas_patch(record_id):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        body = request.get_json() or {}
+        result = airtable_patch(BASE_RESERVAS, "Tarefas", record_id, body.get("fields", {}))
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/objetivos", methods=["GET", "POST"])
+def airtable_objetivos():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "GET":
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Objetivos %26 Crescimento")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({
+                    "id":  r["id"],
+                    "mes": f.get("Mês", f.get("Mes", 0)),
+                    "ano": f.get("Ano", 0),
+                    "fat": float(f.get("Faturação", f.get("Faturacao", f.get("Objetivo", 0))) or 0),
+                })
+            return jsonify({"success": True, "records": out})
+        else:
+            body = request.get_json() or {}
+            result = req_lib.post(
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/Objetivos%20%26%20Crescimento",
+                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/notas", methods=["GET", "POST"])
+def airtable_notas():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "GET":
+            recs = airtable_list(BASE_RESERVAS, "Notas")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({
+                    "id":       r["id"],
+                    "titulo":   f.get("Título", f.get("Titulo", f.get("Nome", ""))),
+                    "texto":    f.get("Texto", f.get("Nota", f.get("Conteúdo", ""))),
+                    "data":     f.get("Data", f.get("Created", "")),
+                    "cor":      f.get("Cor", ""),
+                })
+            return jsonify({"success": True, "records": out})
+        else:
+            body = request.get_json() or {}
+            result = req_lib.post(
+                f"https://api.airtable.com/v0/{BASE_RESERVAS}/Notas",
+                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/notas/<record_id>", methods=["PATCH", "DELETE"])
+def airtable_notas_patch(record_id):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "DELETE":
+            r = req_lib.delete(
+                f"https://api.airtable.com/v0/{BASE_RESERVAS}/Notas/{record_id}",
+                headers=AT_HEADERS(), timeout=15
+            )
+            r.raise_for_status()
+            return jsonify({"success": True})
+        body = request.get_json() or {}
+        result = airtable_patch(BASE_RESERVAS, "Notas", record_id, body.get("fields", {}))
+        return jsonify({"success": True, "record": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/wa-templates", methods=["GET"])
+def airtable_wa_templates():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        recs = airtable_list("appKhPwEBxolWaO9r", "Templates Mensagens")
+        out = []
+        for r in recs:
+            f = r.get("fields", {})
+            out.append({
+                "id":        r["id"],
+                "nome":      f.get("Nome", f.get("Name", "")),
+                "mensagem":  f.get("Mensagem", f.get("Texto", f.get("Template", ""))),
+                "categoria": f.get("Categoria", ""),
+                "idioma":    f.get("Idioma", "PT"),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/extrato-parceiros", methods=["GET"])
+@app.route("/airtable/extrato-parceiros/<record_id>", methods=["GET", "PATCH"])
+@app.route("/airtable/extrato-parceiros/criar-mes", methods=["POST"])
+def airtable_extrato_parceiros(**kwargs):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        BASE_EP = "appRGJjirAzgEe46q"
+        if request.method == "GET":
+            mes = request.args.get("mes", "")
+            ano = request.args.get("ano", "")
+            params = {}
+            if mes:
+                params["filterByFormula"] = f"{{Mês}}='{mes}'"
+            elif ano:
+                params["filterByFormula"] = f"FIND('{ano}',{{Mês}})>0"
+            recs = airtable_list(BASE_EP, "Extrato Parceiros", max_records=500)
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                mes_val = f.get("Mês", f.get("Mes", ""))
+                if mes and mes_val != mes: continue
+                if ano and str(ano) not in str(mes_val): continue
+                out.append({
+                    "id":          r["id"],
+                    "parceiro":    f.get("Parceiro", ""),
+                    "mes":         mes_val,
+                    "total":       float(f.get("Total", f.get("Valor", 0)) or 0),
+                    "mailEnviado": bool(f.get("Mail enviado / pedido?", False)),
+                    "pago":        bool(f.get("Pago", False)),
+                })
+            return jsonify({"success": True, "records": out})
+        elif request.method == "PATCH":
+            record_id = kwargs.get("record_id", "")
+            body = request.get_json() or {}
+            result = airtable_patch(BASE_EP, "Extrato Parceiros", record_id, body.get("fields", {}))
+            return jsonify({"success": True, "record": result})
+        else:
+            return jsonify({"success": True, "records": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/resumos-mensais", methods=["GET"])
+def airtable_resumos_mensais():
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        recs = airtable_list("appOrdG5Fsr7N0RmH", "Resumos Mensais")
+        out = []
+        for r in recs:
+            f = r.get("fields", {})
+            out.append({
+                "id":  r["id"],
+                "mes": f.get("Mês", f.get("Mes", "")),
+                "fat": float(f.get("Faturação", f.get("Faturacao", 0)) or 0),
+                "com": float(f.get("Comissões", f.get("Comissoes", 0)) or 0),
+                "desp": float(f.get("Despesas", 0) or 0),
+            })
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/caixa-mensal", methods=["GET", "POST"])
+@app.route("/airtable/caixa-mensal/<record_id>", methods=["PATCH"])
+def airtable_caixa_mensal(**kwargs):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        if request.method == "GET":
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Caixa Mensal")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({"id": r["id"], **{k: v for k, v in f.items()}})
+            return jsonify({"success": True, "records": out})
+        elif request.method == "POST":
+            body = request.get_json() or {}
+            result = req_lib.post(
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/Caixa%20Mensal",
+                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+        else:
+            record_id = kwargs.get("record_id", "")
+            body = request.get_json() or {}
+            result = airtable_patch("appOrdG5Fsr7N0RmH", "Caixa Mensal", record_id, body.get("fields", {}))
+            return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
