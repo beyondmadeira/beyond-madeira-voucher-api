@@ -279,12 +279,19 @@ def airtable_patch(base_id, table_name, record_id, fields):
 # RENT CAR
 # =========================================================================
 def _load_template(fname):
-    """Load HTML template from file next to main.py, fallback to empty string."""
-    import os
+    """Load HTML template from file next to main.py, strip external font imports for speed."""
+    import os, re
     p = os.path.join(os.path.dirname(__file__), fname)
     try:
         with open(p, encoding='utf-8') as f:
-            return f.read()
+            html = f.read()
+        # Remove Google Fonts imports (causes 30-60s delay in WeasyPrint)
+        html = re.sub(r"@import url\('https://fonts\.googleapis\.com/[^']*'\);?", "", html)
+        html = re.sub(r'<link[^>]*fonts\.googleapis\.com[^>]*>', "", html)
+        # Replace Montserrat with system font
+        html = html.replace("'Montserrat',", "'Liberation Sans',")
+        html = html.replace('"Montserrat",', '"Liberation Sans",')
+        return html
     except Exception as e:
         print(f"[WARN] Could not load {fname}: {e}")
         return ""
@@ -454,6 +461,25 @@ def build_at_html(d):
 
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
     return fill(tmpl, d)
+
+
+@app.route("/gerar-voucher", methods=["POST"])
+def gerar_voucher():
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d = request.get_json()
+        if not d:
+            return jsonify({"error": "JSON body required"}), 400
+        html  = build_rc_html(d)
+        pdf   = HTML(string=html).write_pdf()
+        b64   = base64.b64encode(pdf).decode()
+        ref   = d.get("referencia", "voucher")
+        cli   = d.get("cliente", "").replace(" ", "_")
+        fname = f"Voucher_{ref}_{cli}.pdf"
+        return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/gerar-voucher-atividade", methods=["POST"])
@@ -1074,6 +1100,195 @@ def api_chat():
         )
         r.raise_for_status()
         return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/enviar-voucher-email", methods=["POST"])
+def enviar_voucher_email():
+    """Send voucher PDF by email via Gmail API or SMTP fallback."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d          = request.get_json() or {}
+        to         = d.get("to", "")
+        subject    = d.get("email_subject", d.get("subject", "Your Booking Confirmation — Beyond Madeira"))
+        body_text  = d.get("email_body", d.get("body", "Please find your voucher attached."))
+        pdf_b64    = d.get("pdf_base64", "")
+        pdf_fname  = d.get("pdf_filename", "voucher.pdf")
+        cliente    = d.get("cliente", "")
+        if not to:
+            return jsonify({"error": "Missing 'to' email"}), 400
+        # Try Gmail API first, fallback to SMTP
+        import smtplib, ssl
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        SMTP_USER = os.environ.get("SMTP_USER", "booking@beyondmadeira.com")
+        SMTP_PASS = os.environ.get("SMTP_PASS", "")
+        SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+        SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+        msg = MIMEMultipart()
+        msg["From"]    = SMTP_USER
+        msg["To"]      = to
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body_text, "plain"))
+        if pdf_b64:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(base64.b64decode(pdf_b64))
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f'attachment; filename="{pdf_fname}"')
+            msg.attach(part)
+        if SMTP_PASS:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+                s.starttls(context=ctx)
+                s.login(SMTP_USER, SMTP_PASS)
+                s.sendmail(SMTP_USER, to, msg.as_string())
+            return jsonify({"success": True, "method": "smtp"})
+        else:
+            return jsonify({"success": False, "error": "SMTP_PASS not configured — set env var"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/enviar-extrato-email", methods=["POST"])
+def enviar_extrato_email():
+    """Generate extrato PDF and send by email."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d        = request.get_json() or {}
+        to       = d.get("to", "")
+        subject  = d.get("subject", "Extrato de Comissões — Beyond Madeira")
+        body_txt = d.get("body", "Segue em anexo o extrato de comissões.")
+        pdf_b64  = d.get("pdf_base64", "")
+        pdf_fname= d.get("pdf_filename", "extrato.pdf")
+        if not to:
+            return jsonify({"error": "Missing 'to' email"}), 400
+        import smtplib, ssl
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        SMTP_USER = os.environ.get("SMTP_USER", "booking@beyondmadeira.com")
+        SMTP_PASS = os.environ.get("SMTP_PASS", "")
+        SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+        SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+        msg = MIMEMultipart()
+        msg["From"]    = SMTP_USER
+        msg["To"]      = to
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body_txt, "plain"))
+        if pdf_b64:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(base64.b64decode(pdf_b64))
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f'attachment; filename="{pdf_fname}"')
+            msg.attach(part)
+        if SMTP_PASS:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+                s.starttls(context=ctx)
+                s.login(SMTP_USER, SMTP_PASS)
+                s.sendmail(SMTP_USER, to, msg.as_string())
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "SMTP_PASS not configured"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/gerar-extratos-mes", methods=["POST"])
+def gerar_extratos_mes():
+    """Generate all partner extratos for a given month."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d      = request.get_json() or {}
+        mes_str= d.get("mes", "")
+        meses_pt = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+        mes_num, ano = 0, 0
+        from datetime import datetime as _dt2
+        if " " in mes_str:
+            parts = mes_str.strip().split()
+            for i, m in enumerate(meses_pt):
+                if m.lower() == parts[0].lower(): mes_num = i; break
+            try: ano = int(parts[1])
+            except: ano = _dt2.now().year
+        if not mes_num:
+            return jsonify({"error": "Invalid mes format. Use 'Março 2026'"}), 400
+        mes_nome = meses_pt[mes_num]
+        # Get all records and group by partner
+        from collections import defaultdict
+        recs_rc = airtable_list(BASE_RESERVAS, "Rent Car")
+        recs_at = airtable_list(BASE_RESERVAS, "Atividades")
+        parceiros = defaultdict(list)
+        for rf in recs_rc:
+            f = rf.get("fields", {})
+            par = f.get("Fornecedor/Parceiro", f.get("Parceiro", ""))
+            if isinstance(par, list): par = ", ".join(str(x) for x in par)
+            if not par: continue
+            raw = f.get("Data do Drop Off", f.get("Data Drop-off", ""))
+            if not raw: continue
+            try:
+                from datetime import datetime as _dt
+                dt = _dt.fromisoformat(str(raw)[:10])
+                if dt.month != mes_num or dt.year != ano: continue
+            except: continue
+            parceiros[par].append(rf)
+        for rf in recs_at:
+            f = rf.get("fields", {})
+            par = f.get("Fornecedor/Parceiro", f.get("Parceiro", ""))
+            if isinstance(par, list): par = ", ".join(str(x) for x in par)
+            if not par: continue
+            raw = f.get("Data da Atividade", f.get("Data", ""))
+            if not raw: continue
+            try:
+                from datetime import datetime as _dt
+                dt = _dt.fromisoformat(str(raw)[:10])
+                if dt.month != mes_num or dt.year != ano: continue
+            except: continue
+            parceiros[par].append(rf)
+        results = []
+        total_geral = 0
+        import re as _re
+        for par, rfs in parceiros.items():
+            try:
+                rows = []
+                for rf in rfs:
+                    f = rf.get("fields", {})
+                    raw_d = f.get("Data do Drop Off", f.get("Data da Atividade", f.get("Data", "")))
+                    dt = __import__("datetime").datetime.fromisoformat(str(raw_d)[:10])
+                    status_raw = f.get("Estado do Reserva", f.get("Estado da Reserva", ""))
+                    if status_raw in ("Cancelado","Cancelada"): status = "Cancelado"
+                    elif status_raw == "Devemos": status = "Devemos"
+                    elif status_raw == "Pago": status = "Pago"
+                    else: status = "Por Pagar"
+                    total = eur_val(f.get("Valor da Reserva (€)", f.get("Preço Total", 0)))
+                    comm  = eur_val(f.get("Comissão", f.get("Comissao", 0)))
+                    client= f.get("Nome do cliente", f.get("Nome do Cliente", ""))
+                    act   = norm_act(f.get("Modelo de Carro", f.get("Atividade", "")))
+                    pax   = str(f.get("Duração", f.get("Nº Pessoas", "")))
+                    ref_r = f.get("Referência", rf.get("id",""))
+                    rows.append(dict(date=dt.strftime("%d/%m"), ref=ref_r, client=client, act=act,
+                                     pax=pax, total=total, comm=comm, status=status, ddt=raw_d))
+                rows.sort(key=lambda x: x["date"])
+                tots  = calc_totais(rows)
+                sl    = _re.sub(r'[^a-zA-Z0-9]', '', par)
+                ref   = f'EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}'
+                fname = f'BeyondMadeira_{sl}_{mes_nome}{ano}.pdf'
+                html_str = build_extrato_html(par, rows, ref, mes_nome, ano, tots)
+                pdf_bytes = HTML(string=html_str).write_pdf()
+                b64 = base64.b64encode(pdf_bytes).decode()
+                total_geral += abs(tots["total_fim"])
+                results.append({"parceiro": par, "success": True, "filename": fname,
+                                 "pdf_base64": b64, "total": tots["total_fim"]})
+            except Exception as ep:
+                results.append({"parceiro": par, "success": False, "error": str(ep)})
+        return jsonify({"success": True, "results": results, "total_geral": total_geral})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
