@@ -528,7 +528,7 @@ def get_rc():
                 "idade":       f.get("Idade", ""),
                 "parceiro":    f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
                 "carro":       f.get("Modelo de Carro", f.get("Veículo", f.get("Veiculo", ""))),
-                "estado":      f.get("Estado do Reserva", f.get("Estado da Reserva", "")),
+                "estado":      f.get("Estado do Reserva", f.get("Estado da Reserva", f.get("Estado", f.get("Status", f.get("Estado Reserva", ""))))),
                 "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
                 "pdt":         f.get("Data da Pick-up", f.get("Data Pick-up", "")),
                 "ploc":        f.get("Localização Pick-up", f.get("Local Pick-up", "")),
@@ -1289,6 +1289,19 @@ def gerar_extratos_mes():
             except Exception as ep:
                 results.append({"parceiro": par, "success": False, "error": str(ep)})
         return jsonify({"success": True, "results": results, "total_geral": total_geral})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/debug/rc-fields", methods=["GET"])
+def debug_rc_fields():
+    """Returns raw field names from first 3 RC records — use to check Airtable field names."""
+    if not check_key():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        records = airtable_list(BASE_RESERVAS, "Rent Car")
+        sample = [{"id": r["id"], "fields": list(r.get("fields", {}).keys())} for r in records[:3]]
+        return jsonify({"success": True, "sample": sample})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
