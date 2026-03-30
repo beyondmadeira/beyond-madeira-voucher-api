@@ -1580,9 +1580,12 @@ def airtable_diario():
             return jsonify({"success": True, "records": out})
         elif request.method == "POST":
             body = request.get_json() or {}
+            fields = body.get("fields", {})
+            if "Faturação Diária" in fields and not str(fields["Faturação Diária"]).startswith("€"):
+                fields["Faturação Diária"] = "€" + str(int(float(fields["Faturação Diária"])))
             result = req_lib.post(
                 "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/" + req_lib.utils.quote("Registos Diários"),
-                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+                headers=AT_HEADERS(), json={"fields": fields}, timeout=15
             )
             result.raise_for_status()
             return jsonify({"success": True, "record": result.json()})
