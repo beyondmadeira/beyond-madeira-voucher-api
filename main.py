@@ -1599,7 +1599,10 @@ def airtable_diario_patch(record_id):
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
         body = request.get_json() or {}
-        result = airtable_patch("appOrdG5Fsr7N0RmH", "Registos Diários", record_id, body.get("fields", {}))
+        fields = body.get("fields", {})
+        if "Faturação Diária" in fields and not str(fields["Faturação Diária"]).startswith("€"):
+            fields["Faturação Diária"] = "€" + str(int(float(fields["Faturação Diária"])))
+        result = airtable_patch("appOrdG5Fsr7N0RmH", "Registos Diários", record_id, fields)
         return jsonify({"success": True, "record": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
