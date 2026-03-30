@@ -602,6 +602,7 @@ def get_at():
                 "total":       f.get("Preço Total", f.get("Valor da Reserva (€)", f.get("Total", 0))),
                 "com":         f.get("Comissão", f.get("Comissao", 0)),
                 "estado":      f.get("Estado da Reserva", ""),
+                "estado_res":  f.get("Estado da Reserva", ""),
                 "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
                 "obs":         f.get("Observação", f.get("Observacoes", "")),
                 "local":       f.get("Pick-up local", f.get("Local", "")),
@@ -1088,14 +1089,40 @@ def api_chat():
     if not ANTHROPIC_API_KEY:
         return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 500
     try:
-        body = request.get_json() or {}
+        body      = request.get_json() or {}
         messages  = body.get("messages", [])
         model     = body.get("model", "claude-sonnet-4-20250514")
         max_tokens= body.get("max_tokens", 1024)
         system    = body.get("system", "")
+        stream    = body.get("stream", False)
         payload   = {"model": model, "max_tokens": max_tokens, "messages": messages}
         if system:
             payload["system"] = system
+
+        if stream:
+            payload["stream"] = True
+            from flask import Response, stream_with_context
+            def generate():
+                with req_lib.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": ANTHROPIC_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json"
+                    },
+                    json=payload, stream=True, timeout=60
+                ) as resp:
+                    for line in resp.iter_lines():
+                        if line:
+                            decoded = line.decode("utf-8")
+                            if decoded.startswith("data: "):
+                                yield decoded + "\n\n"
+            return Response(
+                stream_with_context(generate()),
+                mimetype="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+            )
+
         r = req_lib.post(
             "https://api.anthropic.com/v1/messages",
             headers={
@@ -1548,7 +1575,7 @@ def airtable_diario():
         elif request.method == "POST":
             body = request.get_json() or {}
             result = req_lib.post(
-                f"https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/{req_lib.utils.quote(chr(82)+chr(101)+chr(103)+chr(105)+chr(115)+chr(116)+chr(111)+chr(115)+chr(32)+chr(68)+chr(105)+ chr(225)+chr(114)+chr(105)+chr(111)+chr(115))}",
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/" + req_lib.utils.quote("Registos Diários"),
                 headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
             )
             result.raise_for_status()
@@ -1568,13 +1595,74 @@ def airtable_diario_patch(record_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/airtable/despesas-fixas", methods=["GET"])
-@app.route("/airtable/despesas-variaveis", methods=["GET"])
+@app.route("/airtable/despesas-fixas", methods=["GET", "POST"])
+@app.route("/airtable/despesas-fixas/<record_id>", methods=["PATCH", "DELETE"])
+def airtable_despesas_fixas(**kwargs):
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        record_id = kwargs.get("record_id", "")
+        if request.method == "GET":
+            recs = airtable_list("appOrdG5Fsr7N0RmH", "Despesas Fixas")
+            out = []
+            for r in recs:
+                f = r.get("fields", {})
+                out.append({
+                    "id":        r["id"],
+                    "nome":      f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))),
+                    "descricao": f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))),
+                    "valor":     float(f.get("Valor", 0) or 0),
+                    "mes":       f.get("Mês", f.get("Mes", f.get("Notas", ""))),
+                    "categoria": f.get("Categoria", ""),
+                    "pago":      bool(f.get("Pago?", f.get("Pago", False))),
+                    "fatura":    bool(f.get("Fatura?", f.get("Fatura", False))),
+                    "tipo":      "fixa",
+                })
+            return jsonify({"success": True, "records": out})
+        elif request.method == "POST":
+            body = request.get_json() or {}
+            fields = body.get("fields", body)
+            # Map frontend fields to Airtable fields
+            at_fields = {
+                "Fornecedor": fields.get("Fornecedor", fields.get("nome", fields.get("descricao", ""))),
+                "Valor": float(fields.get("Valor", fields.get("valor", 0)) or 0),
+                "Categoria": fields.get("Categoria", fields.get("categoria", "")),
+                "Pago?": bool(fields.get("Pago?", fields.get("pago", False))),
+            }
+            if fields.get("Notas") or fields.get("mes"): at_fields["Notas"] = fields.get("Notas", fields.get("mes", ""))
+            result = req_lib.post(
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/" + req_lib.utils.quote("Despesas Fixas"),
+                headers=AT_HEADERS(), json={"fields": at_fields}, timeout=15
+            )
+            result.raise_for_status()
+            return jsonify({"success": True, "record": result.json()})
+        elif request.method == "PATCH":
+            body = request.get_json() or {}
+            fields = body.get("fields", body)
+            at_fields = {}
+            if "pago" in fields or "Pago?" in fields: at_fields["Pago?"] = bool(fields.get("Pago?", fields.get("pago", False)))
+            if "valor" in fields or "Valor" in fields: at_fields["Valor"] = float(fields.get("Valor", fields.get("valor", 0)) or 0)
+            if "nome" in fields or "Fornecedor" in fields: at_fields["Fornecedor"] = fields.get("Fornecedor", fields.get("nome", ""))
+            if not at_fields: at_fields = fields
+            result = airtable_patch("appOrdG5Fsr7N0RmH", "Despesas Fixas", record_id, at_fields)
+            return jsonify({"success": True, "record": result})
+        elif request.method == "DELETE":
+            r = req_lib.delete(
+                f"https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/{req_lib.utils.quote('Despesas Fixas')}/{record_id}",
+                headers=AT_HEADERS(), timeout=15
+            )
+            r.raise_for_status()
+            return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/airtable/despesas-variaveis", methods=["GET", "POST"])
+@app.route("/airtable/despesas-variaveis/<record_id>", methods=["PATCH", "DELETE"])
 @app.route("/airtable/financeiro/despesas", methods=["GET", "POST"])
 @app.route("/airtable/financeiro/despesas/<record_id>", methods=["PATCH", "DELETE"])
 def airtable_despesas(**kwargs):
     if not check_key(): return jsonify({"error": "Unauthorized"}), 401
     try:
+        record_id = kwargs.get("record_id", "")
         if request.method == "GET":
             recs = airtable_list("appOrdG5Fsr7N0RmH", "Despesas Variáveis")
             out = []
@@ -1582,27 +1670,48 @@ def airtable_despesas(**kwargs):
                 f = r.get("fields", {})
                 out.append({
                     "id":        r["id"],
-                    "descricao": f.get("Descrição", f.get("Descricao", f.get("Nome", ""))),
-                    "valor":     float(f.get("Valor", f.get("Montante", 0)) or 0),
-                    "mes":       f.get("Mês", f.get("Mes", f.get("Data", ""))),
+                    "nome":      f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))),
+                    "descricao": f.get("Fornecedor", f.get("Nome", f.get("Descrição", ""))),
+                    "valor":     float(f.get("Valor", 0) or 0),
+                    "mes":       f.get("Mês", f.get("Mes", f.get("Notas", ""))),
                     "categoria": f.get("Categoria", ""),
-                    "tipo":      f.get("Tipo", "variavel"),
+                    "pago":      bool(f.get("Pago?", f.get("Pago", False))),
+                    "fatura":    bool(f.get("Fatura?", f.get("Fatura", False))),
+                    "tipo":      "variavel",
                 })
             return jsonify({"success": True, "records": out})
         elif request.method == "POST":
             body = request.get_json() or {}
+            fields = body.get("fields", body)
+            at_fields = {
+                "Fornecedor": fields.get("Fornecedor", fields.get("nome", fields.get("descricao", ""))),
+                "Valor": float(fields.get("Valor", fields.get("valor", 0)) or 0),
+                "Categoria": fields.get("Categoria", fields.get("categoria", "")),
+                "Pago?": bool(fields.get("Pago?", fields.get("pago", False))),
+            }
+            if fields.get("Notas") or fields.get("mes"): at_fields["Notas"] = fields.get("Notas", fields.get("mes", ""))
             result = req_lib.post(
-                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/Despesas%20Vari%C3%A1veis",
-                headers=AT_HEADERS(), json={"fields": body.get("fields", {})}, timeout=15
+                "https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/" + req_lib.utils.quote("Despesas Variáveis"),
+                headers=AT_HEADERS(), json={"fields": at_fields}, timeout=15
             )
             result.raise_for_status()
             return jsonify({"success": True, "record": result.json()})
         elif request.method == "PATCH":
-            record_id = kwargs.get("record_id", "")
             body = request.get_json() or {}
-            result = airtable_patch("appOrdG5Fsr7N0RmH", "Despesas Variáveis", record_id, body.get("fields", {}))
+            fields = body.get("fields", body)
+            at_fields = {}
+            if "pago" in fields or "Pago?" in fields: at_fields["Pago?"] = bool(fields.get("Pago?", fields.get("pago", False)))
+            if "valor" in fields or "Valor" in fields: at_fields["Valor"] = float(fields.get("Valor", fields.get("valor", 0)) or 0)
+            if "nome" in fields or "Fornecedor" in fields: at_fields["Fornecedor"] = fields.get("Fornecedor", fields.get("nome", ""))
+            if not at_fields: at_fields = fields
+            result = airtable_patch("appOrdG5Fsr7N0RmH", "Despesas Variáveis", record_id, at_fields)
             return jsonify({"success": True, "record": result})
-        else:
+        elif request.method == "DELETE":
+            r = req_lib.delete(
+                f"https://api.airtable.com/v0/appOrdG5Fsr7N0RmH/{req_lib.utils.quote('Despesas Variáveis')}/{record_id}",
+                headers=AT_HEADERS(), timeout=15
+            )
+            r.raise_for_status()
             return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
