@@ -802,9 +802,10 @@ def wazzup_iframe():
         )
         r.raise_for_status()
         data = r.json()
-        return jsonify({"url": data.get("url", "")})
+        return jsonify({"url": data.get("url", ""), "iframeUrl": data.get("iframeUrl", data.get("url", ""))})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
 
 
 @app.route("/wazzup/chats", methods=["GET"])
