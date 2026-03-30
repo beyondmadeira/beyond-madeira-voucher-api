@@ -520,7 +520,10 @@ def get_rc():
         cached = cache_get("rc")
         if cached is not None:
             return jsonify({"success": True, "records": cached, "cached": True})
+        print(f"[DEBUG] AT_TOKEN: {AT_TOKEN[:10] if AT_TOKEN else 'EMPTY'}")
+        print(f"[DEBUG] BASE_RESERVAS: {BASE_RESERVAS}")
         records = airtable_list(BASE_RESERVAS, "Rent Car")
+        print(f"[DEBUG] RC records fetched: {len(records)}")
         out = []
         for rec in records:
             f = rec.get("fields", {})
@@ -556,7 +559,10 @@ def get_rc():
         cache_set("rc", out)
         return jsonify({"success": True, "records": out})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(f"[ERROR] RC: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 @app.route("/airtable/rc/<record_id>", methods=["PATCH"])
