@@ -1571,7 +1571,7 @@ def airtable_diario():
                 out.append({
                     "id": r["id"],
                     "data": f.get("Data", f.get("Date", "")),
-                    "fat":  float(f.get("Faturação Diária", f.get("Faturacao Diaria", 0)) or 0),
+                    "fat":  float(str(f.get("Faturação Diária", f.get("Faturacao Diaria", 0)) or 0).replace(chr(8364),"").replace(",",".").strip() or 0),
                     "fatRC": float(f.get("Faturação RC", 0) or 0),
                     "fatAT": float(f.get("Faturação AT", 0) or 0),
                     "obs":  f.get("Notas do Dia", ""),
