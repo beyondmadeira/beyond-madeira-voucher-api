@@ -521,7 +521,7 @@ def get_rc():
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
-                "ref":         f.get("Referência", f.get("Referencia", "")),
+                "ref":         ("BYD" + str(int(f["Referência"]) + 1728)) if f.get("Referência") else f.get("Referencia", ""),
                 "nome":        f.get("Nome do cliente", f.get("Nome do Cliente", "")),
                 "tel":         f.get("Número de Telemovel", f.get("Telefone", "")),
                 "email":       f.get("Email do cliente", f.get("Email", "")),
@@ -584,7 +584,7 @@ def get_at():
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
-                "ref":         f.get("Referência", f.get("Referencia", str(rec.get("id","")))),
+                "ref":         ("BYD" + str(int(f["Referência"]) + 1728)) if f.get("Referência") else f.get("Referencia", ""),
                 "nome":        f.get("Nome do Cliente", ""),
                 "tel":         f.get("Contacto Telefonico", f.get("Telefone", "")),
                 "email":       f.get("Email Clientes", f.get("Email", "")),
@@ -1104,22 +1104,226 @@ def api_chat():
         return jsonify({"error": str(e)}), 500
 
 
+
+# ── ACTIVITY TIPS DATABASE ────────────────────────────────────────────────────
+ACTIVITY_TIPS = {
+    "hike": {
+        "bring": ["Comfortable hiking shoes","Water (min 1.5L)","Sunscreen & sunglasses","Light rain jacket","Snacks","Small backpack"],
+        "not_included": [],
+        "tips": ["Wear layers — mornings can be cool","Start well-rested and hydrated"],
+    },
+    "sunrise": {
+        "bring": ["Warm layers (near 0°C at altitude)","Headlamp or phone torch","Water & snacks","Camera / tripod"],
+        "not_included": [],
+        "tips": ["Set multiple alarms — departure is very early","Dress warmer than you think"],
+    },
+    "cabo girao": {
+        "bring": ["Comfortable shoes","Camera"],
+        "not_included": ["Cabo Girão skywalk entry — €5 per person (cash or card on site)"],
+        "tips": ["Entry paid on site — bring cash as backup"],
+    },
+    "queimadas": {
+        "bring": ["Warm layers","Waterproof jacket — often misty","Water 1.5L"],
+        "not_included": [],
+        "tips": ["Waterproof shoes recommended — path can be muddy"],
+    },
+    "caldeirão verde": {
+        "bring": ["Headlamp (MANDATORY — tunnel sections)","Waterproof jacket","Water 1.5L"],
+        "not_included": [],
+        "tips": ["You MUST bring a headlamp — tunnels are pitch dark","Trail shoes strongly recommended"],
+    },
+    "pico ruivo": {
+        "bring": ["Warm layers — summit above 1800m","Sunscreen","Water 2L","Energy snacks"],
+        "not_included": [],
+        "tips": ["Weather changes fast at altitude — always bring a jacket","No water points on trail"],
+    },
+    "island tour": {
+        "bring": ["Sunscreen","Camera","Light jacket","Water","Comfortable walking shoes"],
+        "not_included": ["Lunch (unless specified)","Entry fees to attractions (if any)"],
+        "tips": ["Bring cash for optional stops","Confirm pick-up point the day before"],
+    },
+    "jeep": {
+        "bring": ["Sunscreen","Camera","Light jacket","Water"],
+        "not_included": ["Lunch (unless specified)"],
+        "tips": ["Off-road sections can be bumpy — avoid if back issues","Bring cash for food stops"],
+    },
+    "mini van": {
+        "bring": ["Sunscreen","Camera","Comfortable shoes","Water"],
+        "not_included": ["Lunch (unless specified)","Entry fees if applicable"],
+        "tips": ["Confirm pick-up location the night before"],
+    },
+    "boat": {
+        "bring": ["Swimwear","Towel","Waterproof sunscreen","Change of clothes","Seasickness tablets if needed"],
+        "not_included": [],
+        "tips": ["Take seasickness medication 30min before if prone","Bring a waterproof bag for your phone"],
+    },
+    "dolphin": {
+        "bring": ["Sunscreen","Warm layer for sea breeze","Seasickness tablets if needed","Camera"],
+        "not_included": [],
+        "tips": ["Sightings are very likely but not 100% guaranteed — it's nature","Confirm departure marina"],
+    },
+    "whale": {
+        "bring": ["Warm windproof layer","Sunscreen","Seasickness tablets (strongly recommended)","Binoculars"],
+        "not_included": [],
+        "tips": ["Boats go further offshore — sea can be rough","Sightings not guaranteed but likelihood high"],
+    },
+    "canyoning": {
+        "bring": ["Swimwear (worn under wetsuit)","Old trainers or water shoes","Towel & change of clothes"],
+        "not_included": ["Wetsuit and all equipment are provided"],
+        "tips": ["Do not eat heavy 2h before","Inform operator of any health issues"],
+    },
+    "surf": {
+        "bring": ["Swimwear","Towel","Waterproof sunscreen","Change of clothes"],
+        "not_included": ["Surfboard and wetsuit included"],
+        "tips": ["No experience needed for beginner lessons","Arrive 15min early for briefing"],
+    },
+    "paragliding": {
+        "bring": ["Comfortable clothes (no skirts)","Closed-toe shoes","Sunglasses"],
+        "not_included": ["Photos/video package (optional extra — ask operator)"],
+        "tips": ["Weight limit ~100-110kg — confirm with operator","Flights are weather dependent — confirmed morning of"],
+    },
+    "quad": {
+        "bring": ["Clothes you don't mind getting dusty","Closed-toe shoes","Sunglasses","Sunscreen"],
+        "not_included": ["Helmet provided"],
+        "tips": ["Minimum age may apply — confirm with operator"],
+    },
+    "via ferrata": {
+        "bring": ["Sport clothing","Trail shoes or hiking boots","Water 1.5L","Sunscreen"],
+        "not_included": ["Harness, helmet and via ferrata kit all provided"],
+        "tips": ["Some upper body strength required","Not suitable for severe fear of heights"],
+    },
+    "default": {
+        "bring": ["Comfortable clothes for outdoor activity","Sunscreen & sunglasses","Water","Camera","Cash for optional extras"],
+        "not_included": [],
+        "tips": ["Confirm meeting point the day before","Arrive 10 minutes early"],
+    },
+}
+
+def get_activity_tips(atividade_str, categoria_str=""):
+    """Return tips dict for a given activity string."""
+    search = (atividade_str + " " + categoria_str).lower()
+    # Specific matches first (longer strings win)
+    for key in ["caldeirão verde", "cabo girao", "queimadas", "pico ruivo",
+                "via ferrata", "island tour", "mini van",
+                "dolphin", "canyoning", "paragliding", "sunrise",
+                "whale", "boat", "surf", "hike", "jeep", "quad"]:
+        if key in search:
+            return ACTIVITY_TIPS[key]
+    return ACTIVITY_TIPS["default"]
+
+def build_tips_html(tips):
+    """Build HTML block for tips section in email."""
+    html = ""
+
+    if tips.get("bring"):
+        items = "".join(f'<li style="margin:0 0 6px;font-size:13px;color:#2a2a2a;">{i}</li>' for i in tips["bring"])
+        html += f"""
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+          <tr>
+            <td style="background:#f2f9fa;border-radius:10px;padding:18px 22px;">
+              <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">🎒 What to Bring</p>
+              <ul style="margin:0;padding-left:18px;">{items}</ul>
+            </td>
+          </tr>
+        </table>"""
+
+    if tips.get("not_included"):
+        items = "".join(f'<li style="margin:0 0 6px;font-size:13px;color:#7a5c00;">{i}</li>' for i in tips["not_included"])
+        html += f"""
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+          <tr>
+            <td style="background:#fffbf0;border-radius:10px;padding:18px 22px;">
+              <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#b45309;text-transform:uppercase;">⚠️ Not Included / Extra Costs</p>
+              <ul style="margin:0;padding-left:18px;">{items}</ul>
+            </td>
+          </tr>
+        </table>"""
+
+    if tips.get("tips"):
+        items = "".join(f'<li style="margin:0 0 6px;font-size:13px;color:#2a2a2a;">{i}</li>' for i in tips["tips"])
+        html += f"""
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+          <tr>
+            <td style="background:#e8f6f7;border-radius:10px;padding:18px 22px;">
+              <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">💡 Tips</p>
+              <ul style="margin:0;padding-left:18px;">{items}</ul>
+            </td>
+          </tr>
+        </table>"""
+
+    return html
+
+
+
 @app.route("/enviar-voucher-email", methods=["POST"])
 def enviar_voucher_email():
-    """Send voucher PDF by email via Gmail API or SMTP fallback."""
+    """Send voucher PDF by email with HTML template."""
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
-        d          = request.get_json() or {}
-        to         = d.get("to", "")
-        subject    = d.get("email_subject", d.get("subject", "Your Booking Confirmation — Beyond Madeira"))
-        body_text  = d.get("email_body", d.get("body", "Please find your voucher attached."))
-        pdf_b64    = d.get("pdf_base64", "")
-        pdf_fname  = d.get("pdf_filename", "voucher.pdf")
-        cliente    = d.get("cliente", "")
+        d         = request.get_json() or {}
+        to        = d.get("to", "")
+        pdf_b64   = d.get("pdf_base64", "")
+        pdf_fname = d.get("pdf_filename", "voucher.pdf")
+        tipo      = d.get("tipo", "rc")  # "rc" or "at"
         if not to:
             return jsonify({"error": "Missing 'to' email"}), 400
-        # Try Gmail API first, fallback to SMTP
+
+        # Build HTML email from template
+        if tipo == "at":
+            tmpl = _load_template("email_at_template.html")
+            atividade   = d.get("atividade", "")
+            operador    = d.get("operador", "")
+            # Meeting point block
+            pickup_local = d.get("pickup_local", "")
+            if pickup_local:
+                pickup_block = f'''<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+              <tr>
+                <td style="background:#f2f9fa;border-left:4px solid #0d6e7a;border-radius:0 8px 8px 0;padding:20px 22px;">
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">📍 Meeting Point</p>
+                  <p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">{pickup_local}</p>
+                </td>
+              </tr>
+            </table>'''
+            else:
+                pickup_block = ""
+            pagamento = d.get("pagamento", "cash")
+            payment_note = "Cash on the day of the activity." if "cash" in pagamento else "Payment by card on the day." if "card" in pagamento else "To be confirmed."
+            subject = d.get("email_subject", f"Your Activity is Confirmed — {atividade} | Beyond Madeira")
+            replacements = {
+                "{{cliente}}":      d.get("cliente", ""),
+                "{{atividade}}":    atividade,
+                "{{data}}":         d.get("data", ""),
+                "{{hora}}":         d.get("hora", "TBC"),
+                "{{participantes}}":d.get("participantes", ""),
+                "{{operador}}":     operador,
+                "{{referencia}}":   d.get("referencia", ""),
+                "{{total}}":        str(d.get("total", "")),
+                "{{pickup_block}}": pickup_block,
+                "{{payment_note}}": payment_note,
+            "{{tips_block}}":    build_tips_html(get_activity_tips(atividade, d.get("categoria", ""))),
+            }
+        else:
+            tmpl = _load_template("email_rc_template.html")
+            empresa = d.get("empresa", "")
+            subject = d.get("email_subject", f"Your Car Rental is Confirmed — Beyond Madeira")
+            replacements = {
+                "{{cliente}}":      d.get("cliente", ""),
+                "{{empresa}}":      empresa,
+                "{{veiculo}}":      d.get("veiculo", ""),
+                "{{referencia}}":   d.get("referencia", ""),
+                "{{total}}":        str(d.get("total", "")),
+                "{{pickup_data}}":  d.get("pickup_data", ""),
+                "{{pickup_hora}}":  d.get("pickup_hora", ""),
+                "{{pickup_local}}": d.get("pickup_local", ""),
+                "{{dropoff_data}}": d.get("dropoff_data", ""),
+                "{{dropoff_hora}}": d.get("dropoff_hora", ""),
+                "{{dropoff_local}}":d.get("dropoff_local", ""),
+            }
+
+        for k, v in replacements.items():
+            tmpl = tmpl.replace(k, str(v) if v else "")
+
         import smtplib, ssl
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
@@ -1129,17 +1333,26 @@ def enviar_voucher_email():
         SMTP_PASS = os.environ.get("SMTP_PASS", "")
         SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
         SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-        msg = MIMEMultipart()
-        msg["From"]    = SMTP_USER
+
+        msg = MIMEMultipart("mixed")
+        msg["From"]    = f"Beyond Madeira <{SMTP_USER}>"
         msg["To"]      = to
         msg["Subject"] = subject
-        msg.attach(MIMEText(body_text, "plain"))
+
+        # HTML body
+        alt = MIMEMultipart("alternative")
+        alt.attach(MIMEText("Please view this email in an HTML-capable client.", "plain"))
+        alt.attach(MIMEText(tmpl, "html"))
+        msg.attach(alt)
+
+        # PDF attachment
         if pdf_b64:
             part = MIMEBase("application", "octet-stream")
             part.set_payload(base64.b64decode(pdf_b64))
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f'attachment; filename="{pdf_fname}"')
             msg.attach(part)
+
         if SMTP_PASS:
             ctx = ssl.create_default_context()
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
@@ -1148,7 +1361,7 @@ def enviar_voucher_email():
                 s.sendmail(SMTP_USER, to, msg.as_string())
             return jsonify({"success": True, "method": "smtp"})
         else:
-            return jsonify({"success": False, "error": "SMTP_PASS not configured — set env var"}), 500
+            return jsonify({"success": False, "error": "SMTP_PASS not configured"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1530,12 +1743,37 @@ def airtable_wa_templates():
         out = []
         for r in recs:
             f = r.get("fields", {})
+            # Real field names from Airtable: Name, Categoria, Empresa, Tópico, Contexto, Subject 🇬🇧, Message 🇬🇧
+            name     = f.get("Name", f.get("Nome", ""))
+            empresa  = f.get("Empresa", "")
+            if isinstance(empresa, list): empresa = empresa[0] if empresa else ""
+            cat      = f.get("Categoria", "")
+            if isinstance(cat, list): cat = cat[0] if cat else ""
+            contexto = f.get("Contexto", f.get("Tópico", f.get("Topico", "")))
+            # Message fields — try both emoji and plain versions
+            msg_en   = f.get("Message 🇬🇧", f.get("Message", f.get("Mensagem EN", "")))
+            msg_pt   = f.get("Message 🇵🇹", f.get("Mensagem PT", f.get("Mensagem", "")))
+            msg_fr   = f.get("Message 🇫🇷", f.get("Mensagem FR", ""))
+            subj_en  = f.get("Subject 🇬🇧", f.get("Subject", f.get("Assunto EN", "")))
+            subj_pt  = f.get("Subject 🇵🇹", f.get("Assunto PT", f.get("Assunto", "")))
             out.append({
                 "id":        r["id"],
-                "nome":      f.get("Nome", f.get("Name", "")),
-                "mensagem":  f.get("Mensagem", f.get("Texto", f.get("Template", ""))),
-                "categoria": f.get("Categoria", ""),
-                "idioma":    f.get("Idioma", "PT"),
+                "name":      name,
+                "nome":      name,
+                "label":     name,
+                "empresa":   empresa,
+                "categoria": cat,
+                "contexto":  contexto,
+                "msg_en":    msg_en,
+                "msg_pt":    msg_pt,
+                "msg_fr":    msg_fr,
+                "subj_en":   subj_en,
+                "subj_pt":   subj_pt,
+                "text_en":   msg_en,
+                "text_pt":   msg_pt,
+                "text":      msg_pt or msg_en,
+                "subject":   subj_pt or subj_en,
+                "idioma":    f.get("Idioma", "EN"),
             })
         return jsonify({"success": True, "records": out})
     except Exception as e:
