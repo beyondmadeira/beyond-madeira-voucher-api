@@ -529,13 +529,13 @@ def get_rc():
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
-                "ref":         ("BYD" + str(int(f["Referência"]) + 1728)) if f.get("Referência") else f.get("Referencia", ""),
+                "ref":         f.get("Referência", f.get("Referencia", "")),
                 "nome":        f.get("Nome do cliente", f.get("Nome do Cliente", "")),
                 "tel":         f.get("Número de Telemovel", f.get("Telefone", "")),
                 "email":       f.get("Email do cliente", f.get("Email", "")),
                 "idade":       f.get("Idade", ""),
-                "parceiro":    f.get("Fornecedor/Parceiro", f.get("Parceiro", "")),
-                "carro":       f.get("Modelo de Carro", f.get("Veículo", f.get("Veiculo", ""))),
+                "parceiro":    (f["Fornecedor/Parceiro"][0] if isinstance(f.get("Fornecedor/Parceiro"), list) else f.get("Fornecedor/Parceiro", f.get("Parceiro", ""))),
+                "carro":       (f["Carro"][0] if isinstance(f.get("Carro"), list) else f.get("Carro", f.get("Modelo de Carro", f.get("Veículo", "")))),
                 "estado":      f.get("Estado de Reserva", f.get("Estado do Reserva", f.get("Estado da Reserva", ""))),
                 "pagamento":   f.get("Estado de Pagamento", f.get("Pagamento", "")),
                 "pdt":         f.get("Data da Pick-up", f.get("Data Pick-up", "")),
@@ -595,7 +595,7 @@ def get_at():
             f = rec.get("fields", {})
             out.append({
                 "id":          rec["id"],
-                "ref":         ("BYD" + str(int(f["Referência"]) + 1728)) if f.get("Referência") else f.get("Referencia", ""),
+                "ref":         f.get("Referência", f.get("Referencia", "")),
                 "nome":        f.get("Nome do Cliente", ""),
                 "tel":         f.get("Contacto Telefonico", f.get("Telefone", "")),
                 "email":       f.get("Email Clientes", f.get("Email", "")),
