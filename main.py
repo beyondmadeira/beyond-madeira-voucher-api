@@ -219,8 +219,12 @@ def detect_activity(nome):
 # HELPERS
 # =========================================================================
 def logo_b64():
-    with open(os.path.join(BASE_DIR, "logo_clean.png"), "rb") as f:
-        return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    try:
+        with open(os.path.join(BASE_DIR, "logo_clean.png"), "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    except:
+        # Fallback: return empty string if logo not found
+        return "https://res.cloudinary.com/dvrzzxu5b/image/upload/v1772828506/logo-beyond-madeira-_rvh6zt.png"
 
 def fill(tmpl, data):
     for k, v in data.items():
@@ -479,7 +483,8 @@ def gerar_voucher():
         fname = f"Voucher_{ref}_{cli}.pdf"
         return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 @app.route("/gerar-voucher-atividade", methods=["POST"])
@@ -1072,7 +1077,8 @@ def gerar_extrato_parceiro():
         return jsonify({"success": True, "filename": fname, "pdf_base64": b64,
                         "reservas": rows, "total": tots["total_fim"], "total_fim": tots["total_fim"]})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
@@ -1867,6 +1873,68 @@ def airtable_caixa_mensal(**kwargs):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+
+@app.route("/preview-email", methods=["POST"])
+def preview_email():
+    """Return rendered HTML email for preview."""
+    if not check_key(): return jsonify({"error": "Unauthorized"}), 401
+    try:
+        d    = request.get_json() or {}
+        tipo = d.get("tipo", "rc")
+
+        if tipo == "at":
+            tmpl     = _load_template("email_at_template.html")
+            atividade = d.get("atividade", "")
+            operador  = d.get("operador", "")
+            pickup_local = d.get("pickup_local", "")
+            pickup_block = f'''<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+              <tr><td style="background:#f2f9fa;border-left:4px solid #0d6e7a;border-radius:0 8px 8px 0;padding:20px 22px;">
+                <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">📍 Meeting Point</p>
+                <p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">{pickup_local}</p>
+              </td></tr></table>''' if pickup_local else ""
+            pagamento    = d.get("pagamento", "cash")
+            payment_note = "Cash on the day of the activity." if "cash" in pagamento else "Payment by card on the day." if "card" in pagamento else "To be confirmed."
+            tips_html    = build_tips_html(get_activity_tips(atividade, d.get("categoria", "")))
+            replacements = {
+                "{{cliente}}":      d.get("cliente", "Guest"),
+                "{{atividade}}":    atividade,
+                "{{data}}":         d.get("data", ""),
+                "{{hora}}":         d.get("hora", "TBC"),
+                "{{participantes}}":str(d.get("participantes", "")),
+                "{{operador}}":     operador,
+                "{{referencia}}":   d.get("referencia", ""),
+                "{{total}}":        str(d.get("total", "")),
+                "{{pickup_instrucoes}}": d.get("pickup_instrucoes", pickup_local),
+                "{{payment_note}}": payment_note,
+                "{{tips_block}}":   tips_html,
+                "{{parceiro_tel}}": d.get("parceiro_tel", ""),
+            }
+        else:
+            tmpl = _load_template("email_rc_template.html")
+            replacements = {
+                "{{cliente}}":      d.get("cliente", "Guest"),
+                "{{empresa}}":      d.get("empresa", ""),
+                "{{veiculo}}":      d.get("veiculo", ""),
+                "{{referencia}}":   d.get("referencia", ""),
+                "{{total}}":        str(d.get("total", "")),
+                "{{pickup_data}}":  d.get("pickup_data", ""),
+                "{{pickup_hora}}":  d.get("pickup_hora", ""),
+                "{{pickup_local}}": d.get("pickup_local", ""),
+                "{{dropoff_data}}": d.get("dropoff_data", ""),
+                "{{dropoff_hora}}": d.get("dropoff_hora", ""),
+                "{{dropoff_local}}":d.get("dropoff_local", ""),
+                "{{pickup_instrucoes}}": d.get("pickup_instrucoes", ""),
+                "{{parceiro_tel}}": d.get("parceiro_tel", ""),
+            }
+
+        for k, v in replacements.items():
+            tmpl = tmpl.replace(k, str(v) if v else "")
+
+        return jsonify({"success": True, "html": tmpl})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route("/", methods=["GET"])
 def health():
