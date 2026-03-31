@@ -593,7 +593,7 @@ def get_at():
         cached = cache_get("at")
         if cached is not None:
             return jsonify({"success": True, "records": cached, "cached": True})
-        records = airtable_list(BASE_RESERVAS, "Atividades")
+        records = airtable_list(BASE_RESERVAS, "Atividades", max_records=5000)
         out = []
         for rec in records:
             f = rec.get("fields", {})
