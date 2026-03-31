@@ -526,7 +526,7 @@ def get_rc():
             return jsonify({"success": True, "records": cached, "cached": True})
         print(f"[DEBUG] AT_TOKEN: {AT_TOKEN[:10] if AT_TOKEN else 'EMPTY'}")
         print(f"[DEBUG] BASE_RESERVAS: {BASE_RESERVAS}")
-        records = airtable_list(BASE_RESERVAS, "Rent Car")
+        records = airtable_list(BASE_RESERVAS, "Rent Car", max_records=10000)
         print(f"[DEBUG] RC records fetched: {len(records)}")
         out = []
         for rec in records:
@@ -1556,7 +1556,7 @@ def debug_rc_fields():
     if not check_key():
         return jsonify({"error": "Unauthorized"}), 401
     try:
-        records = airtable_list(BASE_RESERVAS, "Rent Car")
+        records = airtable_list(BASE_RESERVAS, "Rent Car", max_records=10000)
         sample = [{"id": r["id"], "fields": list(r.get("fields", {}).keys())} for r in records[:3]]
         return jsonify({"success": True, "sample": sample})
     except Exception as e:
