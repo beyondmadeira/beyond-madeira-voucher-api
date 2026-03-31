@@ -1922,7 +1922,7 @@ def airtable_extrato_parceiros(**kwargs):
                 params["filterByFormula"] = f"{{Mês}}='{mes}'"
             elif ano:
                 params["filterByFormula"] = f"FIND('{ano}',{{Mês}})>0"
-            recs = airtable_list(BASE_EP, "Extrato Parceiros", max_records=500)
+            recs = airtable_list(BASE_EP, "Extrato Parceiros", max_records=500, params=params)
             out = []
             for r in recs:
                 f = r.get("fields", {})
@@ -1930,12 +1930,16 @@ def airtable_extrato_parceiros(**kwargs):
                 if mes and mes_val != mes: continue
                 if ano and str(ano) not in str(mes_val): continue
                 out.append({
-                    "id":          r["id"],
-                    "parceiro":    f.get("Parceiro", ""),
-                    "mes":         mes_val,
-                    "total":       float(f.get("Total", f.get("Valor", 0)) or 0),
-                    "mailEnviado": bool(f.get("Mail enviado / pedido?", False)),
-                    "pago":        bool(f.get("Pago", False)),
+                    "id":              r["id"],
+                    "parceiro":        f.get("Parceiro", ""),
+                    "mes":             mes_val,
+                    "valor":           float(f.get("Valor do mês (€)", f.get("Valor", 0)) or 0),
+                    "ajustes":         float(f.get("Ajustes / Atrasos (€)", 0) or 0),
+                    "total":           float(f.get("Total a Receber (€)", f.get("Total", 0)) or 0),
+                    "recebido":        bool(f.get("Recebido?", False)),
+                    "dataRecebimento": f.get("Data de Recebimento", ""),
+                    "mailEnviado":     bool(f.get("Mail enviado / pedido?", False)),
+                    "acumulado":       bool(f.get("Acumulado", False)),
                 })
             return jsonify({"success": True, "records": out})
         elif request.method == "PATCH":
