@@ -1940,7 +1940,7 @@ def airtable_extrato_parceiros(**kwargs):
                     "valor":           float(f.get("Valor do mês (€)", f.get("Valor", 0)) or 0),
                     "ajustes":         float(f.get("Ajustes / Atrasos (€)", 0) or 0),
                     "total":           float(f.get("Total a Receber (€)", f.get("Total", 0)) or 0),
-                    "recebido":        bool(f.get("Recebido?", False)),
+                    "recebido":        (f.get("Recebido?") == True or f.get("Recebido?") == "checked"),
                     "dataRecebimento": f.get("Data de Recebimento", ""),
                     "mailEnviado":     bool(f.get("Mail enviado / pedido?", False)),
                     "acumulado":       bool(f.get("Acumulado", False)),
