@@ -1926,7 +1926,7 @@ def airtable_extrato_parceiros(**kwargs):
                 params["filterByFormula"] = f"{{Mês}}='{mes}'"
             elif ano:
                 params["filterByFormula"] = f"FIND('{ano}',{{Mês}})>0"
-            recs = airtable_list(BASE_EP, "Extrato Parceiros", max_records=500, params=params)
+            recs = airtable_list(BASE_EP, "Comissões Parceiros", max_records=500, params=params)
             out = []
             for r in recs:
                 f = r.get("fields", {})
@@ -1949,7 +1949,7 @@ def airtable_extrato_parceiros(**kwargs):
         elif request.method == "PATCH":
             record_id = kwargs.get("record_id", "")
             body = request.get_json() or {}
-            result = airtable_patch(BASE_EP, "Extrato Parceiros", record_id, body.get("fields", {}))
+            result = airtable_patch(BASE_EP, "Comissões Parceiros", record_id, body.get("fields", {}))
             return jsonify({"success": True, "record": result})
         else:
             return jsonify({"success": True, "records": []})
