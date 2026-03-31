@@ -249,19 +249,23 @@ def fmt_time(s):
         return s
 
 
-def airtable_list(base_id, table_name, max_records=1000):
+def airtable_list(base_id, table_name, max_records=1000, params=None):
     """Fetch all records from an Airtable table."""
     url = f"https://api.airtable.com/v0/{base_id}/{req_lib.utils.quote(table_name)}"
     records = []
     offset = None
     while True:
-        params = {"pageSize": 100}
+        p = {"pageSize": 100}
         if offset:
-            params["offset"] = offset
-        r = req_lib.get(url, headers=AT_HEADERS(), params=params, timeout=15)
+            p["offset"] = offset
+        if params:
+            p.update(params)
+        r = req_lib.get(url, headers=AT_HEADERS(), params=p, timeout=15)
         r.raise_for_status()
         data = r.json()
         records.extend(data.get("records", []))
+        if len(records) >= max_records:
+            break
         offset = data.get("offset")
         if not offset:
             break
