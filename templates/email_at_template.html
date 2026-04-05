@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Confirmed – Beyond Madeira</title>
+<style>
+  @media only screen and (max-width: 600px) {
+    .email-wrapper { padding: 16px 8px !important; }
+    .email-container { width: 100% !important; }
+    .header { padding: 28px 24px 24px !important; }
+    .body { padding: 24px 20px 32px !important; }
+    .detail-row td { display: block !important; width: 100% !important; border-bottom: 1px solid #f0f0f0 !important; }
+    .footer { padding: 24px 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#eef4f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#eef4f5;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- HEADER -->
+        <tr>
+          <td style="background:#0d6e7a;border-radius:14px 14px 0 0;padding:20px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:middle;width:120px;">
+                  <img src="https://res.cloudinary.com/dvrzzxu5b/image/upload/v1772828506/logo-beyond-madeira-_rvh6zt.png" alt="Beyond Madeira" height="36" style="display:block;height:36px;width:auto;">
+                </td>
+                <td style="vertical-align:middle;text-align:right;">
+                  <p style="margin:0 0 4px;background:rgba(255,255,255,0.18);display:inline-block;padding:4px 12px;border-radius:20px;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Activity Confirmed</p>
+                  <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:13px;">{{operador}}&nbsp;·&nbsp;Madeira</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#0a5c66;height:4px;font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style="background:#ffffff;padding:40px 44px 44px;">
+
+            <p style="margin:0 0 28px;font-size:15px;color:#3a3a3a;line-height:1.7;">
+              Hi <strong>{{cliente}}</strong>,<br><br>
+              Your activity is confirmed and we can't wait to show you the best of Madeira. Please find all the details below.
+            </p>
+
+            <!-- ACTIVITY DETAILS -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e0edf0;border-radius:10px;overflow:hidden;margin-bottom:32px;">
+              <tr>
+                <td colspan="2" style="background:#f2f9fa;padding:12px 18px;border-bottom:1.5px solid #e0edf0;">
+                  <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">Activity Details</p>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding:16px 18px;border-bottom:1px solid #f0f0f0;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Activity</p>
+                  <p style="margin:0;font-size:16px;font-weight:800;color:#1a1a1a;">{{atividade}}</p>
+                </td>
+              </tr>
+              <tr class="detail-row">
+                <td style="padding:14px 18px;border-bottom:1px solid #f0f0f0;width:50%;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Date</p>
+                  <p style="margin:0;font-size:14px;font-weight:700;color:#1a1a1a;">{{data}}</p>
+                </td>
+                <td style="padding:14px 18px;border-bottom:1px solid #f0f0f0;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Time</p>
+                  <p style="margin:0;font-size:14px;font-weight:700;color:#0d6e7a;">{{hora}}</p>
+                </td>
+              </tr>
+              <tr class="detail-row">
+                <td style="padding:14px 18px;border-bottom:1px solid #f0f0f0;width:50%;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Participants</p>
+                  <p style="margin:0;font-size:14px;font-weight:700;color:#1a1a1a;">{{participantes}}</p>
+                </td>
+                <td style="padding:14px 18px;border-bottom:1px solid #f0f0f0;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Operator</p>
+                  <p style="margin:0;font-size:14px;font-weight:700;color:#1a1a1a;">{{operador}}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 18px;width:50%;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Reference</p>
+                  <p style="margin:0;font-size:14px;font-weight:700;color:#1a1a1a;">{{referencia}}</p>
+                </td>
+                <td style="padding:14px 18px;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#999;">Total</p>
+                  <p style="margin:0;font-size:20px;font-weight:800;color:#0d6e7a;">{{total}} €</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- MEETING POINT -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+              <tr>
+                <td style="background:#f2f9fa;border-left:4px solid #0d6e7a;border-radius:0 8px 8px 0;padding:20px 22px;">
+                  <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">📍 Meeting Point</p>
+                  <p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">{{pickup_instrucoes}}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- PAYMENT -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+              <tr>
+                <td>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e0edf0;border-radius:10px;">
+                    <tr>
+                      <td style="padding:16px 18px;">
+                        <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0d6e7a;text-transform:uppercase;">💳 Payment</p>
+                        <p style="margin:0;font-size:13px;color:#3a3a3a;line-height:1.5;">{{payment_note}}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+
+            <!-- TIPS / WHAT TO BRING -->
+            {{tips_block}}
+
+            <!-- VOUCHER -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:36px;">
+              <tr>
+                <td style="background:#e8f6f7;border-radius:8px;padding:14px 18px;">
+                  <p style="margin:0;font-size:13px;color:#0a5c66;line-height:1.6;">
+                    📎 <strong>Your activity voucher is attached.</strong> Please bring it with you on the day.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTAs OPERADOR -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
+              <tr>
+                <td style="padding-bottom:6px;" colspan="2">
+                  <p style="margin:0;font-size:11px;color:#aaa;letter-spacing:0.8px;text-transform:uppercase;">Contact {{operador}}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-right:6px;width:50%;">
+                  <a href="tel:+{{parceiro_tel}}" style="display:block;background:#0d6e7a;color:#fff;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">Call</a>
+                </td>
+                <td style="padding-left:6px;">
+                  <a href="https://wa.me/{{parceiro_tel}}" style="display:block;background:#fff;color:#0d6e7a;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid #0d6e7a;">WhatsApp</a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA BEYOND MADEIRA -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+              <tr>
+                <td style="padding-bottom:6px;">
+                  <p style="margin:0;font-size:11px;color:#aaa;letter-spacing:0.8px;text-transform:uppercase;">Questions? Beyond Madeira</p>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <a href="https://wa.me/351939566415" style="display:block;background:#f7f7f7;color:#333;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">WhatsApp us</a>
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background:#0d6e7a;border-radius:0 0 14px 14px;padding:28px 44px;text-align:center;">
+            <img src="https://res.cloudinary.com/dvrzzxu5b/image/upload/v1772828506/logo-beyond-madeira-_rvh6zt.png" alt="Beyond Madeira" height="24" style="display:block;height:24px;width:auto;opacity:0.85;margin:0 auto 16px;">
+            <a href="https://beyondmadeira.com" style="display:inline-block;background:#ffffff;color:#0d6e7a;font-size:12px;font-weight:700;padding:6px 20px;border-radius:20px;text-decoration:none;letter-spacing:0.3px;">beyondmadeira.com</a>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
