@@ -16,17 +16,29 @@ def _wazzup_headers():
     }
 
 
+def _ensure_wazzup_user(user_id, user_name):
+    """Register the user in Wazzup via POST /v3/users (idempotent)."""
+    requests.post(
+        WAZZUP_BASE + "/users",
+        headers=_wazzup_headers(),
+        json=[{"id": user_id, "name": user_name}],
+        timeout=10,
+    )
+
+
 @bp.route("/wazzup/iframe", methods=["POST"])
 @require_api_key
 def wazzup_iframe():
     try:
         body = request.get_json(silent=True) or {}
+        user_id = body.get("userId", "Milton")
+        user_name = body.get("userName", "Milton")
         scope = body.get("scope", "global")
+
+        _ensure_wazzup_user(user_id, user_name)
+
         payload = {
-            "user": {
-                "id": body.get("userId", "Milton"),
-                "name": body.get("userName", "Milton"),
-            },
+            "user": {"id": user_id, "name": user_name},
             "scope": scope,
         }
         chat_type = body.get("chatType")
