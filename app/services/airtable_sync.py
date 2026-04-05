@@ -119,6 +119,18 @@ def pull_table(model_name):
             db.session.rollback()
             print(f"[SYNC] Skip {model_name} record {rec.get('id', '?')}: {e}")
 
+    # Remove PG records that no longer exist in Airtable
+    at_ids = {rec["id"] for rec in records}
+    orphans = Model.query.filter(
+        Model.airtable_id.isnot(None),
+        Model.airtable_id.notin_(at_ids),
+        Model.dirty.is_(False),
+    ).all()
+    for orphan in orphans:
+        db.session.delete(orphan)
+    if orphans:
+        print(f"[SYNC] {model_name}: removed {len(orphans)} orphan records")
+
     db.session.commit()
     return count
 
