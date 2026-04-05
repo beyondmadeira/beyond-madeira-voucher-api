@@ -73,6 +73,37 @@ def sync_trigger():
     })
 
 
+@bp.route("/sync/test-airtable", methods=["GET"])
+@require_api_key
+def sync_test_airtable():
+    """Direct test: fetch 1 record from Airtable to verify token works."""
+    import requests
+    from flask import current_app
+    token = current_app.config.get("AIRTABLE_TOKEN", "")
+    token_preview = token[:15] + "..." if len(token) > 15 else token or "(empty)"
+    base_id = "appR8ZKP5ygR8o8Q0"
+    table = "Rent Car"
+    url = f"https://api.airtable.com/v0/{base_id}/{requests.utils.quote(table)}"
+    try:
+        r = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            params={"pageSize": 1},
+            timeout=15,
+        )
+        return jsonify({
+            "success": r.ok,
+            "status_code": r.status_code,
+            "token_preview": token_preview,
+            "token_length": len(token),
+            "response_keys": list(r.json().keys()) if r.ok else None,
+            "record_count": len(r.json().get("records", [])) if r.ok else 0,
+            "error": r.text if not r.ok else None,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "token_preview": token_preview}), 500
+
+
 @bp.route("/sync/status", methods=["GET"])
 @require_api_key
 def sync_status():
