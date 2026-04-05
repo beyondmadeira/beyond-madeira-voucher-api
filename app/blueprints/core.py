@@ -45,32 +45,24 @@ def debug_rc_fields():
 @bp.route("/sync/trigger", methods=["POST"])
 @require_api_key
 def sync_trigger():
-    """Manually trigger Airtable -> PostgreSQL sync."""
+    """Trigger sync in background, return immediately."""
+    import threading
     from flask import current_app
-    from app.services.airtable_sync import pull_table, MODEL_REGISTRY
 
-    token = current_app.config.get("AIRTABLE_TOKEN", "")
-    token_preview = token[:12] + "..." if len(token) > 12 else token or "(empty)"
+    app = current_app._get_current_object()
 
-    results = {}
-    errors = {}
-    total = 0
-    for name in MODEL_REGISTRY:
-        try:
-            n = pull_table(name)
-            results[name] = n
-            total += n
-        except Exception as e:
-            results[name] = 0
-            errors[name] = str(e)
+    def _run_sync():
+        with app.app_context():
+            from app.services.airtable_sync import pull_all
+            try:
+                total = pull_all()
+                print(f"[SYNC TRIGGER] Done: {total} records")
+            except Exception as e:
+                print(f"[SYNC TRIGGER] Error: {e}")
 
-    return jsonify({
-        "success": True,
-        "records_synced": total,
-        "token_preview": token_preview,
-        "tables": results,
-        "errors": errors,
-    })
+    t = threading.Thread(target=_run_sync, daemon=True)
+    t.start()
+    return jsonify({"success": True, "message": "Sync started in background. Check /sync/status in ~2 minutes."})
 
 
 @bp.route("/sync/test-airtable", methods=["GET"])
