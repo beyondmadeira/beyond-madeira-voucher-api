@@ -24,7 +24,7 @@ class Config:
         "WAZZUP_API_KEY", "3c681e9848a14ceaa6c6bb1f27d33880"
     )
     WAZZUP_CHANNEL = os.environ.get(
-        "WAZZUP_CHANNEL", "345da32d-f391-4d42-b22f-660539d73085"
+        "WAZZUP_CHANNEL", "c01da476-ab8e-4997-872b-599767c16fc9"
     )
 
     # SMTP
