@@ -9,7 +9,7 @@ WAZZUP_BASE = "https://api.wazzup24.com/v3"
 
 def _wazzup_headers():
     return {
-        "X-Api-Key": current_app.config["WAZZUP_API_KEY"],
+        "Authorization": "Bearer " + current_app.config["WAZZUP_API_KEY"],
         "Content-Type": "application/json",
     }
 
@@ -20,9 +20,11 @@ def wazzup_iframe():
     try:
         body = request.get_json(silent=True) or {}
         payload = {
-            "channelId": current_app.config["WAZZUP_CHANNEL"],
-            "userId": body.get("userId", "milton"),
-            "userName": body.get("userName", "Milton"),
+            "user": {
+                "id": body.get("userId", "milton"),
+                "name": body.get("userName", "Milton"),
+            },
+            "scope": "global",
         }
         r = requests.post(
             WAZZUP_BASE + "/iframe",
