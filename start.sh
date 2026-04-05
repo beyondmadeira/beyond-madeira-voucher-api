@@ -15,9 +15,8 @@ with a.app_context():
 " 2>/dev/null || echo "0")
 
 if [ "$RECORD_COUNT" = "0" ]; then
-    echo "[INIT] Empty database — running initial Airtable sync..."
-    python -m flask sync-initial
-    echo "[INIT] Sync complete."
+    echo "[INIT] Empty database — starting sync in background..."
+    python -m flask sync-initial &
 else
     echo "[INIT] Database has $RECORD_COUNT RC records — skipping initial sync."
 fi
