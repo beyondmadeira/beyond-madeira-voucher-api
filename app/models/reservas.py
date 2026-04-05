@@ -6,32 +6,32 @@ class RentCar(AirtableSyncMixin, db.Model):
     __tablename__ = "rent_car"
 
     id = db.Column(db.Integer, primary_key=True)
-    ref = db.Column(db.String(50))
-    nome = db.Column(db.String(200))
-    tel = db.Column(db.String(50))
-    email = db.Column(db.String(200))
-    idade = db.Column(db.String(20))
-    parceiro = db.Column(db.String(200))
-    carro = db.Column(db.String(200))
-    estado = db.Column(db.String(50))
-    pagamento = db.Column(db.String(50))
-    pickup_data = db.Column(db.String(50))
-    pickup_local = db.Column(db.String(300))
-    pickup_voo = db.Column(db.String(50))
+    ref = db.Column(db.Text)
+    nome = db.Column(db.Text)
+    tel = db.Column(db.Text)
+    email = db.Column(db.Text)
+    idade = db.Column(db.Text)
+    parceiro = db.Column(db.Text)
+    carro = db.Column(db.Text)
+    estado = db.Column(db.Text)
+    pagamento = db.Column(db.Text)
+    pickup_data = db.Column(db.Text)
+    pickup_local = db.Column(db.Text)
+    pickup_voo = db.Column(db.Text)
     pickup_detalhe = db.Column(db.Text)
-    dropoff_data = db.Column(db.String(50))
-    dropoff_local = db.Column(db.String(300))
-    dropoff_voo = db.Column(db.String(50))
+    dropoff_data = db.Column(db.Text)
+    dropoff_local = db.Column(db.Text)
+    dropoff_voo = db.Column(db.Text)
     dropoff_detalhe = db.Column(db.Text)
     total = db.Column(db.Numeric(10, 2), default=0)
     comissao = db.Column(db.Numeric(10, 2), default=0)
     duracao = db.Column(db.Integer, default=0)
     extras = db.Column(db.Text)
     observacoes = db.Column(db.Text)
-    ref_parceiro = db.Column(db.String(100))
+    ref_parceiro = db.Column(db.Text)
     email_enviado = db.Column(db.Boolean, default=False)
     review_enviado = db.Column(db.Boolean, default=False)
-    data_feita = db.Column(db.String(50))
+    data_feita = db.Column(db.Text)
 
     def to_api(self):
         return {
@@ -69,28 +69,28 @@ class Atividade(AirtableSyncMixin, db.Model):
     __tablename__ = "atividade"
 
     id = db.Column(db.Integer, primary_key=True)
-    ref = db.Column(db.String(50))
-    nome = db.Column(db.String(200))
-    tel = db.Column(db.String(50))
-    email = db.Column(db.String(200))
-    atividade = db.Column(db.String(200))
-    categoria = db.Column(db.String(100))
-    parceiro = db.Column(db.String(200))
-    pax = db.Column(db.String(20))
-    data = db.Column(db.String(50))
-    hora = db.Column(db.String(20))
+    ref = db.Column(db.Text)
+    nome = db.Column(db.Text)
+    tel = db.Column(db.Text)
+    email = db.Column(db.Text)
+    atividade = db.Column(db.Text)
+    categoria = db.Column(db.Text)
+    parceiro = db.Column(db.Text)
+    pax = db.Column(db.Text)
+    data = db.Column(db.Text)
+    hora = db.Column(db.Text)
     total = db.Column(db.Numeric(10, 2), default=0)
     comissao = db.Column(db.Numeric(10, 2), default=0)
-    estado = db.Column(db.String(50))
-    pagamento = db.Column(db.String(50))
+    estado = db.Column(db.Text)
+    pagamento = db.Column(db.Text)
     observacoes = db.Column(db.Text)
-    local_pickup = db.Column(db.String(300))
-    stripe_link = db.Column(db.String(500))
-    idiomas = db.Column(db.String(100))
+    local_pickup = db.Column(db.Text)
+    stripe_link = db.Column(db.Text)
+    idiomas = db.Column(db.Text)
     email_enviado = db.Column(db.Boolean, default=False)
     thankyou_enviado = db.Column(db.Boolean, default=False)
     review_pedida = db.Column(db.Boolean, default=False)
-    data_feita = db.Column(db.String(50))
+    data_feita = db.Column(db.Text)
 
     def to_api(self):
         return {
@@ -125,10 +125,10 @@ class Parceiro(AirtableSyncMixin, db.Model):
     __tablename__ = "parceiro"
 
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(200))
-    email = db.Column(db.String(200))
-    telefone = db.Column(db.String(50))
-    tipo = db.Column(db.String(100))
+    nome = db.Column(db.Text)
+    email = db.Column(db.Text)
+    telefone = db.Column(db.Text)
+    tipo = db.Column(db.Text)
     ativo = db.Column(db.Boolean, default=True)
 
     def to_api(self):
@@ -147,10 +147,10 @@ class Tarefa(AirtableSyncMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.Text)
-    status = db.Column(db.String(50), default="pendente")
-    prioridade = db.Column(db.String(20), default="media")
-    responsavel = db.Column(db.String(100))
-    data = db.Column(db.String(50))
+    status = db.Column(db.Text, default="pendente")
+    prioridade = db.Column(db.Text, default="media")
+    responsavel = db.Column(db.Text)
+    data = db.Column(db.Text)
     feita = db.Column(db.Boolean, default=False)
 
     def to_api(self):
@@ -169,10 +169,10 @@ class Nota(AirtableSyncMixin, db.Model):
     __tablename__ = "nota"
 
     id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(200))
+    titulo = db.Column(db.Text)
     texto = db.Column(db.Text)
-    data = db.Column(db.String(50))
-    cor = db.Column(db.String(30))
+    data = db.Column(db.Text)
+    cor = db.Column(db.Text)
 
     def to_api(self):
         return {

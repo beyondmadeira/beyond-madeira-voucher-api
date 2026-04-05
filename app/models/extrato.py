@@ -6,13 +6,13 @@ class ComissaoParceiro(AirtableSyncMixin, db.Model):
     __tablename__ = "comissao_parceiro"
 
     id = db.Column(db.Integer, primary_key=True)
-    parceiro = db.Column(db.String(200))
-    mes = db.Column(db.String(50))
+    parceiro = db.Column(db.Text)
+    mes = db.Column(db.Text)
     valor = db.Column(db.Numeric(10, 2), default=0)
     ajustes = db.Column(db.Numeric(10, 2), default=0)
     total = db.Column(db.Numeric(10, 2), default=0)
     recebido = db.Column(db.Boolean, default=False)
-    data_recebimento = db.Column(db.String(50))
+    data_recebimento = db.Column(db.Text)
     mail_enviado = db.Column(db.Boolean, default=False)
     acumulado = db.Column(db.Boolean, default=False)
 

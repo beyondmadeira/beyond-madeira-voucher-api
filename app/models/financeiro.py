@@ -6,12 +6,12 @@ class RegistoDiario(AirtableSyncMixin, db.Model):
     __tablename__ = "registo_diario"
 
     id = db.Column(db.Integer, primary_key=True)
-    data = db.Column(db.String(50))
+    data = db.Column(db.Text)
     faturacao = db.Column(db.Numeric(10, 2), default=0)
     faturacao_rc = db.Column(db.Numeric(10, 2), default=0)
     faturacao_at = db.Column(db.Numeric(10, 2), default=0)
     notas = db.Column(db.Text)
-    responsavel = db.Column(db.String(100))
+    responsavel = db.Column(db.Text)
 
     def to_api(self):
         return {
@@ -29,10 +29,10 @@ class DespesaFixa(AirtableSyncMixin, db.Model):
     __tablename__ = "despesa_fixa"
 
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(200))
+    nome = db.Column(db.Text)
     valor = db.Column(db.Numeric(10, 2), default=0)
-    mes = db.Column(db.String(50))
-    categoria = db.Column(db.String(100))
+    mes = db.Column(db.Text)
+    categoria = db.Column(db.Text)
     pago = db.Column(db.Boolean, default=False)
     fatura = db.Column(db.Boolean, default=False)
 
@@ -54,10 +54,10 @@ class DespesaVariavel(AirtableSyncMixin, db.Model):
     __tablename__ = "despesa_variavel"
 
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(200))
+    nome = db.Column(db.Text)
     valor = db.Column(db.Numeric(10, 2), default=0)
-    mes = db.Column(db.String(50))
-    categoria = db.Column(db.String(100))
+    mes = db.Column(db.Text)
+    categoria = db.Column(db.Text)
     pago = db.Column(db.Boolean, default=False)
     fatura = db.Column(db.Boolean, default=False)
 
@@ -96,7 +96,7 @@ class ResumoMensal(AirtableSyncMixin, db.Model):
     __tablename__ = "resumo_mensal"
 
     id = db.Column(db.Integer, primary_key=True)
-    mes = db.Column(db.String(50))
+    mes = db.Column(db.Text)
     faturacao = db.Column(db.Numeric(12, 2), default=0)
     comissoes = db.Column(db.Numeric(10, 2), default=0)
     despesas = db.Column(db.Numeric(10, 2), default=0)

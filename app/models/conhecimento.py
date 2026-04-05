@@ -6,13 +6,13 @@ class Sitemap(AirtableSyncMixin, db.Model):
     __tablename__ = "sitemap"
 
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(300))
-    estado = db.Column(db.String(50))
-    categoria_principal = db.Column(db.String(200))
-    url = db.Column(db.String(500))
-    categoria = db.Column(db.String(200))
+    nome = db.Column(db.Text)
+    estado = db.Column(db.Text)
+    categoria_principal = db.Column(db.Text)
+    url = db.Column(db.Text)
+    categoria = db.Column(db.Text)
     conteudo = db.Column(db.Text)
-    modified = db.Column(db.String(50))
+    modified = db.Column(db.Text)
 
     def to_api(self):
         return {
@@ -31,11 +31,11 @@ class Biblioteca(AirtableSyncMixin, db.Model):
     __tablename__ = "biblioteca"
 
     id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(300))
+    titulo = db.Column(db.Text)
     gatilho = db.Column(db.Text)
     resposta = db.Column(db.Text)
-    categoria = db.Column(db.String(100))
-    estado = db.Column(db.String(50))
+    categoria = db.Column(db.Text)
+    estado = db.Column(db.Text)
     observacoes = db.Column(db.Text)
 
     def to_api(self):
@@ -54,21 +54,21 @@ class MadeiraGuide(AirtableSyncMixin, db.Model):
     __tablename__ = "madeira_guide"
 
     id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(300))
-    categoria = db.Column(db.String(100))
+    titulo = db.Column(db.Text)
+    categoria = db.Column(db.Text)
     descricao = db.Column(db.Text)
-    localizacao = db.Column(db.String(300))
-    estado = db.Column(db.String(50))
-    prioridade = db.Column(db.String(50))
-    tags = db.Column(db.String(500))
+    localizacao = db.Column(db.Text)
+    estado = db.Column(db.Text)
+    prioridade = db.Column(db.Text)
+    tags = db.Column(db.Text)
     notas = db.Column(db.Text)
     recomendado = db.Column(db.Boolean, default=False)
-    preco_nivel = db.Column(db.String(50))
-    horario = db.Column(db.String(200))
-    distancia = db.Column(db.String(100))
-    dificuldade = db.Column(db.String(50))
-    website = db.Column(db.String(500))
-    contacto = db.Column(db.String(200))
+    preco_nivel = db.Column(db.Text)
+    horario = db.Column(db.Text)
+    distancia = db.Column(db.Text)
+    dificuldade = db.Column(db.Text)
+    website = db.Column(db.Text)
+    contacto = db.Column(db.Text)
 
     def to_api(self):
         return {
@@ -95,16 +95,16 @@ class TemplateMensagem(AirtableSyncMixin, db.Model):
     __tablename__ = "template_mensagem"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200))
-    empresa = db.Column(db.String(200))
-    categoria = db.Column(db.String(100))
+    name = db.Column(db.Text)
+    empresa = db.Column(db.Text)
+    categoria = db.Column(db.Text)
     contexto = db.Column(db.Text)
     msg_en = db.Column(db.Text)
     msg_pt = db.Column(db.Text)
     msg_fr = db.Column(db.Text)
-    subj_en = db.Column(db.String(300))
-    subj_pt = db.Column(db.String(300))
-    idioma = db.Column(db.String(10))
+    subj_en = db.Column(db.Text)
+    subj_pt = db.Column(db.Text)
+    idioma = db.Column(db.Text)
 
     def to_api(self):
         return {

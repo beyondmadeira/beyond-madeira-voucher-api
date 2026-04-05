@@ -88,31 +88,36 @@ def pull_table(model_name):
     count = 0
 
     for rec in records:
-        at_id = rec["id"]
-        f = rec.get("fields", {})
+        try:
+            at_id = rec["id"]
+            f = rec.get("fields", {})
 
-        existing = Model.query.filter_by(airtable_id=at_id).first()
+            existing = Model.query.filter_by(airtable_id=at_id).first()
 
-        if existing and existing.dirty:
-            continue  # local change takes precedence
+            if existing and existing.dirty:
+                continue  # local change takes precedence
 
-        if not existing:
-            existing = Model(airtable_id=at_id)
-            db.session.add(existing)
+            if not existing:
+                existing = Model(airtable_id=at_id)
+                db.session.add(existing)
 
-        # Special handling for CaixaMensal (raw pass-through)
-        if model_name == "CaixaMensal":
-            existing.raw_fields = f
-        else:
-            for pg_col, at_names in field_defs.items():
-                val = _read_at_field(f, at_names)
-                column = Model.__table__.columns.get(pg_col)
-                if column is not None:
-                    setattr(existing, pg_col, _coerce_value(val, column))
+            # Special handling for CaixaMensal (raw pass-through)
+            if model_name == "CaixaMensal":
+                existing.raw_fields = f
+            else:
+                for pg_col, at_names in field_defs.items():
+                    val = _read_at_field(f, at_names)
+                    column = Model.__table__.columns.get(pg_col)
+                    if column is not None:
+                        setattr(existing, pg_col, _coerce_value(val, column))
 
-        existing.synced_at = datetime.now(timezone.utc)
-        existing.dirty = False
-        count += 1
+            existing.synced_at = datetime.now(timezone.utc)
+            existing.dirty = False
+            db.session.flush()
+            count += 1
+        except Exception as e:
+            db.session.rollback()
+            print(f"[SYNC] Skip {model_name} record {rec.get('id', '?')}: {e}")
 
     db.session.commit()
     return count
