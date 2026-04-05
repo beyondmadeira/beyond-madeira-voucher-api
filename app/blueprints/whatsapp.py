@@ -24,7 +24,7 @@ def wazzup_iframe():
         scope = body.get("scope", "global")
         payload = {
             "user": {
-                "id": body.get("userId", "beyond-milton"),
+                "id": body.get("userId", "Milton"),
                 "name": body.get("userName", "Milton"),
             },
             "scope": scope,
