@@ -1,8 +1,10 @@
+import logging
 import requests
 from flask import Blueprint, request, jsonify, current_app
 from app.utils.auth import require_api_key
 
 bp = Blueprint("whatsapp", __name__)
+log = logging.getLogger(__name__)
 
 WAZZUP_BASE = "https://api.wazzup24.com/v3"
 
@@ -19,28 +21,47 @@ def _wazzup_headers():
 def wazzup_iframe():
     try:
         body = request.get_json(silent=True) or {}
+        scope = body.get("scope", "global")
         payload = {
             "user": {
-                "id": body.get("userId", "3024-2504"),
+                "id": body.get("userId", "beyond-milton"),
                 "name": body.get("userName", "Milton"),
             },
-            "scope": "global",
+            "scope": scope,
         }
+        chat_type = body.get("chatType")
+        chat_id = body.get("chatId")
+        if chat_type and chat_id:
+            payload["filter"] = [{"chatType": chat_type, "chatId": chat_id}]
+            payload["activeChat"] = {"chatType": chat_type, "chatId": chat_id}
+            if scope == "global":
+                payload["scope"] = "card"
+
         r = requests.post(
             WAZZUP_BASE + "/iframe",
             headers=_wazzup_headers(),
             json=payload,
             timeout=15,
         )
-        r.raise_for_status()
+        if not r.ok:
+            detail = r.text
+            log.error("Wazzup iframe %s: %s", r.status_code, detail)
+            return jsonify({"error": f"Wazzup {r.status_code}", "detail": detail}), 502
+
         data = r.json()
-        return jsonify({
-            "url": data.get("url", ""),
-            "iframeUrl": data.get("iframeUrl", data.get("url", "")),
-        })
+        if "error" in data:
+            log.error("Wazzup iframe error: %s", data)
+            return jsonify({"error": data["error"]}), 502
+
+        url = data.get("url", "")
+        if not url:
+            log.error("Wazzup iframe empty url: %s", data)
+            return jsonify({"error": "Wazzup returned empty URL"}), 502
+
+        return jsonify({"url": url, "iframeUrl": url})
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+        log.exception("wazzup_iframe failed")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/wazzup/chats", methods=["GET"])
