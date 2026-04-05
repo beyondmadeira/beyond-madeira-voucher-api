@@ -46,12 +46,31 @@ def debug_rc_fields():
 @require_api_key
 def sync_trigger():
     """Manually trigger Airtable -> PostgreSQL sync."""
-    from app.services.airtable_sync import pull_all
-    try:
-        total = pull_all()
-        return jsonify({"success": True, "records_synced": total})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    from flask import current_app
+    from app.services.airtable_sync import pull_table, MODEL_REGISTRY
+
+    token = current_app.config.get("AIRTABLE_TOKEN", "")
+    token_preview = token[:12] + "..." if len(token) > 12 else token or "(empty)"
+
+    results = {}
+    errors = {}
+    total = 0
+    for name in MODEL_REGISTRY:
+        try:
+            n = pull_table(name)
+            results[name] = n
+            total += n
+        except Exception as e:
+            results[name] = 0
+            errors[name] = str(e)
+
+    return jsonify({
+        "success": True,
+        "records_synced": total,
+        "token_preview": token_preview,
+        "tables": results,
+        "errors": errors,
+    })
 
 
 @bp.route("/sync/status", methods=["GET"])
