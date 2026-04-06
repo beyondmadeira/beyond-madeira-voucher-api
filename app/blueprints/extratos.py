@@ -240,7 +240,7 @@ def gerar_extratos_mes():
 # ── Extrato Parceiros (comissões) ─────────────────────────────────────────
 
 @bp.route("/airtable/extrato-parceiros", methods=["GET"])
-@bp.route("/airtable/extrato-parceiros/<record_id>", methods=["GET", "PATCH"])
+@bp.route("/airtable/extrato-parceiros/<record_id>", methods=["GET", "PATCH", "DELETE"])
 @bp.route("/airtable/extrato-parceiros/criar-mes", methods=["POST"])
 @require_api_key
 def extrato_parceiros(**kwargs):
@@ -295,6 +295,20 @@ def extrato_parceiros(**kwargs):
             rec.dirty = True
             db.session.commit()
             return jsonify({"success": True, "record": rec.to_api()})
+
+        elif request.method == "DELETE":
+            record_id = kwargs.get("record_id", "")
+            rec = ComissaoParceiro.query.filter_by(airtable_id=record_id).first()
+            if not rec:
+                try:
+                    rec = ComissaoParceiro.query.get(int(record_id))
+                except (ValueError, TypeError):
+                    pass
+            if not rec:
+                return jsonify({"error": "Record not found"}), 404
+            db.session.delete(rec)
+            db.session.commit()
+            return jsonify({"success": True})
 
         elif request.method == "POST":
             # criar-mes: auto-create/update extrato records for all partners in a month
