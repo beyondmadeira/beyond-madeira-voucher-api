@@ -185,10 +185,10 @@ def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
                 {ico_web}<a href="https://beyondmadeira.com" style="color:#555;text-decoration:none">beyondmadeira.com</a>
               </div>
               <div style="margin-top:10px">
-                <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/whatsapp--v1.png" width="22" height="22" alt="WA" style="vertical-align:middle"/></a>
-                <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/facebook-new.png" width="22" height="22" alt="FB" style="vertical-align:middle"/></a>
-                <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/instagram-new--v1.png" width="22" height="22" alt="IG" style="vertical-align:middle"/></a>
-                <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none"><img src="https://img.icons8.com/color/28/tiktok--v1.png" width="22" height="22" alt="TT" style="vertical-align:middle"/></a>
+                <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/ios-filled/28/0a8f82/whatsapp--v1.png" width="22" height="22" alt="WA" style="vertical-align:middle"/></a>
+                <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/ios-filled/28/0a8f82/facebook-new.png" width="22" height="22" alt="FB" style="vertical-align:middle"/></a>
+                <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/ios-filled/28/0a8f82/instagram-new--v1.png" width="22" height="22" alt="IG" style="vertical-align:middle"/></a>
+                <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none"><img src="https://img.icons8.com/ios-filled/28/0a8f82/tiktok--v1.png" width="22" height="22" alt="TT" style="vertical-align:middle"/></a>
               </div>
             </td>
           </tr>
