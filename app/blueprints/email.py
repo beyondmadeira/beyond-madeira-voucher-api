@@ -153,10 +153,11 @@ def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
     except (ValueError, TypeError):
         total_val = "0,00"
     logo = "https://beyond-madeira-voucher-api-production-2651.up.railway.app/static/logo_clean.png"
-    # SVG icons for signature (inline, no external dependencies)
-    ico_email = '<img src="https://cdn-icons-png.flaticon.com/16/732/732200.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
-    ico_phone = '<img src="https://cdn-icons-png.flaticon.com/16/724/724664.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
-    ico_web = '<img src="https://cdn-icons-png.flaticon.com/16/1006/1006771.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
+    # All contact icons in teal (#0a8f82) via icons8
+    _ic = "https://img.icons8.com/ios-filled/20/0a8f82"
+    ico_email = f'<img src="{_ic}/new-post.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
+    ico_phone = f'<img src="{_ic}/phone.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
+    ico_web = f'<img src="{_ic}/globe--v1.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
     return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
       <!-- Header bar -->
@@ -184,25 +185,27 @@ def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
         <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_part2}</div>
 
         <!-- Signature -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;padding-top:20px">
-          <tr>
-            <td width="100" style="vertical-align:middle;padding:20px 16px 0 0;text-align:center;border-right:2px solid #0a8f82">
-              <img src="{logo}" width="90" alt="Beyond Madeira" style="display:block;margin:0 auto" />
-            </td>
-            <td style="vertical-align:middle;padding:20px 0 0 16px">
-              <div style="font-size:15px;font-weight:700;color:#1a1a1a">Hugo Vieira</div>
-              <div style="font-size:12px;color:#0a8f82;font-weight:600;margin-bottom:8px">Reservations</div>
-              <div style="font-size:12px;color:#555;line-height:2.2">
-                {ico_email}<a href="mailto:info@beyondmadeira.com" style="color:#555;text-decoration:none">info@beyondmadeira.com</a><br>
-                {ico_phone}<a href="tel:+351939566415" style="color:#555;text-decoration:none">+351 939 566 415</a><br>
-                {ico_web}<a href="https://beyondmadeira.com" style="color:#555;text-decoration:none">beyondmadeira.com</a>
-              </div>
-              <div style="margin-top:10px">
-                <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/ios-filled/28/0a8f82/whatsapp--v1.png" width="22" height="22" alt="WA" style="vertical-align:middle"/></a>
-                <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/ios-filled/28/0a8f82/facebook-new.png" width="22" height="22" alt="FB" style="vertical-align:middle"/></a>
-                <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/ios-filled/28/0a8f82/instagram-new--v1.png" width="22" height="22" alt="IG" style="vertical-align:middle"/></a>
-                <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none"><img src="https://img.icons8.com/ios-filled/28/0a8f82/tiktok--v1.png" width="22" height="22" alt="TT" style="vertical-align:middle"/></a>
-              </div>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="border-top:2px solid #e5e7eb;padding-top:24px">
+            <table cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td width="110" style="vertical-align:middle;text-align:center;padding-right:20px;border-right:3px solid #0a8f82">
+                  <img src="{logo}" width="95" alt="Beyond Madeira" style="display:block;margin:0 auto" />
+                </td>
+                <td style="vertical-align:middle;padding-left:20px">
+                  <div style="font-size:16px;font-weight:800;color:#1a1a1a;letter-spacing:-.2px">Hugo Vieira</div>
+                  <div style="font-size:11px;color:#0a8f82;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:3px 0 12px">Reservations</div>
+                  <table cellpadding="0" cellspacing="0" style="font-size:12px;color:#4b5563">
+                    <tr><td style="padding:3px 0">{ico_email}<a href="mailto:info@beyondmadeira.com" style="color:#4b5563;text-decoration:none">info@beyondmadeira.com</a></td></tr>
+                    <tr><td style="padding:3px 0">{ico_phone}<a href="tel:+351939566415" style="color:#4b5563;text-decoration:none">+351 939 566 415</a></td></tr>
+                    <tr><td style="padding:3px 0">{ico_web}<a href="https://beyondmadeira.com" style="color:#4b5563;text-decoration:none">beyondmadeira.com</a></td></tr>
+                  </table>
+                  <div style="margin-top:14px">
+                    <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:6px;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/whatsapp.png" width="16" height="16" alt="WA" style="vertical-align:middle"/></a>
+                    <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:6px;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/facebook-new.png" width="16" height="16" alt="FB" style="vertical-align:middle"/></a>
+                    <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:6px;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/instagram-new.png" width="16" height="16" alt="IG" style="vertical-align:middle"/></a>
+                    <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/tiktok.png" width="16" height="16" alt="TT" style="vertical-align:middle"/></a>
+                  </div>
             </td>
           </tr>
         </table>
