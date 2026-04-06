@@ -104,7 +104,7 @@ def enviar_extrato_email():
         to = d.get("to", "")
         parceiro = d.get("parceiro", "")
         mes = d.get("mes", "")
-        subject = d.get("subject", f"Extrato de Comissões — {mes} | Beyond Madeira")
+        subject = d.get("subject") or f"Extrato de Comissões — {parceiro} | {mes}"
         body_txt = d.get("body", "")
         pdf_b64 = d.get("pdf_base64") or None
         pdf_fname = d.get("pdf_filename", "")
