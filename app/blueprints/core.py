@@ -23,6 +23,21 @@ def health():
     })
 
 
+@bp.route("/debug/push-dirty", methods=["POST"])
+@require_api_key
+def debug_push_dirty():
+    """Manually trigger push for a specific model."""
+    from app.services.airtable_sync import push_dirty
+    d = request.get_json() or {}
+    model = d.get("model", "ComissaoParceiro")
+    try:
+        n = push_dirty(model)
+        return jsonify({"success": True, "model": model, "pushed": n})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
 @bp.route("/debug/email-config", methods=["GET"])
 @require_api_key
 def debug_email_config():

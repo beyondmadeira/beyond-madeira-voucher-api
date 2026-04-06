@@ -161,18 +161,29 @@ def push_dirty(model_name):
                 if val is not None:
                     at_fields[at_names[0]] = val  # write to first field name
 
+        # Convert Decimal/bool values for Airtable JSON compatibility
+        for k, v in list(at_fields.items()):
+            if hasattr(v, 'as_integer_ratio'):  # Decimal
+                at_fields[k] = float(v)
+            if v is False:
+                at_fields[k] = False
+            if v is True:
+                at_fields[k] = True
+
         try:
             if record.airtable_id:
                 airtable_patch(base_id, table, record.airtable_id, at_fields)
             else:
                 result = airtable_create(base_id, table, at_fields)
-                record.airtable_id = result["id"]
+                record.airtable_id = result.get("id", "")
 
             record.dirty = False
             record.synced_at = datetime.now(timezone.utc)
+            db.session.commit()
             count += 1
         except Exception as e:
-            print(f"[SYNC PUSH ERROR] {model_name} id={record.id}: {e}")
+            db.session.rollback()
+            print(f"[SYNC PUSH ERROR] {model_name} id={record.id} fields={list(at_fields.keys())}: {e}")
 
     db.session.commit()
     return count
