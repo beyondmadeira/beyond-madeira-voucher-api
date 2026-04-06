@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from app.utils.auth import require_api_key
 
 bp = Blueprint("core", __name__)
