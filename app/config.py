@@ -27,11 +27,17 @@ class Config:
         "WAZZUP_CHANNEL", "c01da476-ab8e-4997-872b-599767c16fc9"
     )
 
-    # SMTP
+    # SMTP (legacy fallback)
     SMTP_USER = os.environ.get("SMTP_USER", "booking@beyondmadeira.com")
     SMTP_PASS = os.environ.get("SMTP_PASS", "")
     SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+
+    # Gmail API (OAuth2)
+    GMAIL_CLIENT_ID = os.environ.get("GMAIL_CLIENT_ID", "")
+    GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_CLIENT_SECRET", "")
+    GMAIL_REFRESH_TOKEN = os.environ.get("GMAIL_REFRESH_TOKEN", "")
+    GMAIL_SENDER = os.environ.get("GMAIL_SENDER", "booking@beyondmadeira.com")
 
     # Sync intervals (seconds)
     SYNC_PULL_INTERVAL = 300  # 5 min
