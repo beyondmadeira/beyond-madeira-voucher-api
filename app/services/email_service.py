@@ -28,12 +28,15 @@ def _build_message(sender, to, subject, body_text=None, html_body=None,
         msg.attach(MIMEText(body_text, "plain"))
 
     if pdf_b64:
-        part = MIMEBase("application", "octet-stream")
+        import re
+        # Sanitize filename to ASCII for email compatibility
+        safe_name = re.sub(r'[^\w.\-]', '_', pdf_filename or 'extrato.pdf')
+        if not safe_name.endswith('.pdf'):
+            safe_name += '.pdf'
+        part = MIMEBase("application", "pdf", name=safe_name)
         part.set_payload(base64.b64decode(pdf_b64))
         encoders.encode_base64(part)
-        part.add_header(
-            "Content-Disposition", f'attachment; filename="{pdf_filename}"'
-        )
+        part.add_header("Content-Disposition", "attachment", filename=safe_name)
         msg.attach(part)
 
     return msg
