@@ -23,6 +23,21 @@ def health():
     })
 
 
+@bp.route("/debug/force-pull", methods=["POST"])
+@require_api_key
+def debug_force_pull():
+    """Force pull a specific table and report orphans."""
+    d = request.get_json() or {}
+    model = d.get("model", "DespesaFixa")
+    try:
+        from app.services.airtable_sync import pull_table
+        n = pull_table(model)
+        return jsonify({"success": True, "model": model, "synced": n})
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
 @bp.route("/debug/push-dirty", methods=["POST"])
 @require_api_key
 def debug_push_dirty():
