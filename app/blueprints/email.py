@@ -102,18 +102,65 @@ def enviar_extrato_email():
     try:
         d = request.get_json() or {}
         to = d.get("to", "")
-        subject = d.get("subject", "Extrato de Comiss\u00f5es \u2014 Beyond Madeira")
-        body_txt = d.get("body", "Segue em anexo o extrato de comiss\u00f5es.")
-        pdf_b64 = d.get("pdf_base64", "")
-        pdf_fname = d.get("pdf_filename", "extrato.pdf")
+        parceiro = d.get("parceiro", "")
+        mes = d.get("mes", "")
+        subject = d.get("subject", f"Extrato de Comissões — {mes} | Beyond Madeira")
+        body_txt = d.get("body", "")
+        pdf_b64 = d.get("pdf_base64") or None
+        pdf_fname = d.get("pdf_filename", "")
 
         if not to:
             return jsonify({"error": "Missing 'to' email"}), 400
 
-        send_plain_email(to, subject, body_txt, pdf_b64, pdf_fname)
+        # Auto-generate PDF if not provided
+        if not pdf_b64 and parceiro and mes:
+            from app.blueprints.extratos import _gerar_extrato_interno
+            result = _gerar_extrato_interno(parceiro, mes, d.get("tipo", ""))
+            if result and result.get("pdf_base64"):
+                pdf_b64 = result["pdf_base64"]
+                pdf_fname = result.get("filename", f"Extrato_{parceiro}_{mes}.pdf")
+
+        if not pdf_fname:
+            pdf_fname = f"BeyondMadeira_{parceiro}_{mes.replace(' ', '')}.pdf"
+
+        # Build HTML email
+        html_body = _build_extrato_html_email(parceiro, mes, body_txt)
+        send_html_email(to, subject, html_body, pdf_b64, pdf_fname)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _build_extrato_html_email(parceiro, mes, body_txt):
+    """Build a professional HTML email for the extrato."""
+    body_html = (body_txt or "").replace("\n", "<br>")
+    return f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
+      <div style="background:linear-gradient(135deg,#0a8f82 0%,#0a6b7c 100%);padding:32px 28px;border-radius:0 0 24px 24px">
+        <div style="font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:8px">Beyond Madeira</div>
+        <div style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-.5px">Extrato de Comissões</div>
+        <div style="font-size:15px;color:rgba(255,255,255,.85);margin-top:6px">{parceiro} — {mes}</div>
+      </div>
+      <div style="padding:28px">
+        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_html}</div>
+        <div style="background:#f8faf9;border:1px solid #e0ece8;border-radius:12px;padding:18px 20px;margin-bottom:24px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:40px;height:40px;border-radius:10px;background:#0a8f82;display:flex;align-items:center;justify-content:center">
+              <span style="font-size:18px">📄</span>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#1a1a1a">PDF em anexo</div>
+              <div style="font-size:12px;color:#888">BeyondMadeira_{parceiro.replace(' ', '_')}_{mes.replace(' ', '_')}.pdf</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;line-height:1.6">
+          Beyond Madeira · Turismo & Aventura<br>
+          +351 939 566 415 · info@beyondmadeira.com<br>
+          beyondmadeira.com
+        </div>
+      </div>
+    </div>"""
 
 
 @bp.route("/preview-email", methods=["POST"])

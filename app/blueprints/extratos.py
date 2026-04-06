@@ -112,45 +112,37 @@ def _build_rows_from_pg(parceiro, mes_num, ano):
     return rows
 
 
+def _gerar_extrato_interno(parceiro, mes_str, tipo=""):
+    """Generate extrato PDF internally. Returns dict with pdf_base64, filename, total."""
+    mes_num, ano = _parse_mes_ano(mes_str, None)
+    mes_nome = MESES_PT[mes_num] if 1 <= mes_num <= 12 else str(mes_num)
+    rows = _build_rows_from_pg(parceiro, mes_num, ano)
+    tots = calc_totais(rows)
+    sl = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
+    ref = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
+    fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
+    html_str = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
+    pdf_bytes = generate_pdf(html_str)
+    b64 = base64.b64encode(pdf_bytes).decode()
+    return {
+        "success": True,
+        "filename": fname,
+        "pdf_base64": b64,
+        "reservas": rows,
+        "total": tots["total_fim"],
+        "total_fim": tots["total_fim"],
+    }
+
+
 @bp.route("/gerar-extrato-parceiro", methods=["POST"])
 @require_api_key
 def gerar_extrato_parceiro():
     try:
         d = request.get_json() or {}
-        parceiro = d.get("parceiro", "")
-        upload = d.get("upload", False)
-        record_id = d.get("record_id", "")
-
-        mes_num, ano = _parse_mes_ano(d.get("mes", ""), d.get("ano"))
-        mes_nome = MESES_PT[mes_num] if 1 <= mes_num <= 12 else str(mes_num)
-
-        rows = _build_rows_from_pg(parceiro, mes_num, ano)
-        tots = calc_totais(rows)
-
-        sl = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
-        ref = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
-        fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
-
-        html_str = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
-        pdf_bytes = generate_pdf(html_str)
-        b64 = base64.b64encode(pdf_bytes).decode()
-
-        if upload and record_id and record_id.startswith("rec"):
-            try:
-                from app.services.airtable_client import airtable_patch
-                # Upload attachment via Airtable API if needed
-                pass
-            except Exception:
-                pass
-
-        return jsonify({
-            "success": True,
-            "filename": fname,
-            "pdf_base64": b64,
-            "reservas": rows,
-            "total": tots["total_fim"],
-            "total_fim": tots["total_fim"],
-        })
+        result = _gerar_extrato_interno(
+            d.get("parceiro", ""), d.get("mes", ""), d.get("tipo", "")
+        )
+        return jsonify(result)
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
