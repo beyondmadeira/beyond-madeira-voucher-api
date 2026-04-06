@@ -388,11 +388,27 @@ def extrato_parceiros(**kwargs):
                     rec = ComissaoParceiro.query.get(int(record_id))
                 except (ValueError, TypeError):
                     pass
-            if not rec:
+            if rec:
+                # Also delete from Airtable if has airtable_id
+                if rec.airtable_id:
+                    try:
+                        from app.services.airtable_client import airtable_delete
+                        airtable_delete("appRGJjirAzgEe46q", "Comissões Parceiros", rec.airtable_id)
+                    except Exception:
+                        pass
+                db.session.delete(rec)
+                db.session.commit()
+                return jsonify({"success": True})
+            else:
+                # Try delete from Airtable directly even if not in PG
+                if record_id.startswith("rec"):
+                    try:
+                        from app.services.airtable_client import airtable_delete
+                        airtable_delete("appRGJjirAzgEe46q", "Comissões Parceiros", record_id)
+                        return jsonify({"success": True})
+                    except Exception as e:
+                        return jsonify({"error": str(e)}), 500
                 return jsonify({"error": "Record not found"}), 404
-            db.session.delete(rec)
-            db.session.commit()
-            return jsonify({"success": True})
 
         elif request.method == "POST":
             # criar-mes: auto-create/update extrato records for all partners in a month
