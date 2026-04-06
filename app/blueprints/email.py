@@ -135,7 +135,19 @@ def enviar_extrato_email():
 
 def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
     """Build a professional HTML email for the extrato."""
-    body_html = (body_txt or "").replace("\n", "<br>")
+    # Split body into two parts: before and after the month reference line
+    lines = (body_txt or "").split("\n")
+    split_idx = -1
+    for idx, line in enumerate(lines):
+        if mes.lower() in line.lower() or "referente" in line.lower():
+            split_idx = idx
+            break
+    if split_idx >= 0:
+        body_part1 = "<br>".join(lines[:split_idx + 1])
+        body_part2 = "<br>".join(lines[split_idx + 1:]).strip().lstrip("<br>")
+    else:
+        body_part1 = "<br>".join(lines)
+        body_part2 = ""
     try:
         total_val = f"{float(total):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except (ValueError, TypeError):
@@ -157,18 +169,19 @@ def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
       </table>
 
       <div style="padding:28px">
-        <!-- Body text -->
-        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_html}</div>
+        <!-- Body part 1 (up to and including the month reference line) -->
+        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:20px">{body_part1}</div>
 
         <!-- Total card -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px">
           <tr><td style="background:#0a8f82;border-radius:12px;padding:22px;text-align:center">
             <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:6px">Total a receber</div>
             <div style="font-size:36px;font-weight:800;color:#ffffff;letter-spacing:-1.5px;line-height:1">&euro;{total_val}</div>
           </td></tr>
         </table>
 
-        <div style="font-size:12px;color:#999;margin-bottom:28px">Consulte o extrato detalhado no PDF em anexo.</div>
+        <!-- Body part 2 (rest of the message) -->
+        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_part2}</div>
 
         <!-- Signature -->
         <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;padding-top:20px">
