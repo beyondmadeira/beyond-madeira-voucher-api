@@ -113,51 +113,91 @@ def enviar_extrato_email():
             return jsonify({"error": "Missing 'to' email"}), 400
 
         # Auto-generate PDF if not provided
+        total = 0
         if not pdf_b64 and parceiro and mes:
             from app.blueprints.extratos import _gerar_extrato_interno
             result = _gerar_extrato_interno(parceiro, mes, d.get("tipo", ""))
             if result and result.get("pdf_base64"):
                 pdf_b64 = result["pdf_base64"]
                 pdf_fname = result.get("filename", f"Extrato_{parceiro}_{mes}.pdf")
+                total = result.get("total_fim", result.get("total", 0))
 
         if not pdf_fname:
             pdf_fname = f"BeyondMadeira_{parceiro}_{mes.replace(' ', '')}.pdf"
 
         # Build HTML email
-        html_body = _build_extrato_html_email(parceiro, mes, body_txt)
+        html_body = _build_extrato_html_email(parceiro, mes, body_txt, total)
         send_html_email(to, subject, html_body, pdf_b64, pdf_fname)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-def _build_extrato_html_email(parceiro, mes, body_txt):
+def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
     """Build a professional HTML email for the extrato."""
     body_html = (body_txt or "").replace("\n", "<br>")
+    total_val = f"{float(total):,.2f}".replace(",", " ") if total else "—"
     return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
+      <!-- Header -->
       <div style="background:linear-gradient(135deg,#0a8f82 0%,#0a6b7c 100%);padding:32px 28px;border-radius:0 0 24px 24px">
-        <div style="font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:8px">Beyond Madeira</div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:8px">Beyond Madeira</div>
         <div style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-.5px">Extrato de Comissões</div>
         <div style="font-size:15px;color:rgba(255,255,255,.85);margin-top:6px">{parceiro} — {mes}</div>
       </div>
+
       <div style="padding:28px">
-        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_html}</div>
-        <div style="background:#f8faf9;border:1px solid #e0ece8;border-radius:12px;padding:18px 20px;margin-bottom:24px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:40px;height:40px;border-radius:10px;background:#0a8f82;display:flex;align-items:center;justify-content:center">
-              <span style="font-size:18px">📄</span>
-            </div>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:#1a1a1a">PDF em anexo</div>
-              <div style="font-size:12px;color:#888">BeyondMadeira_{parceiro.replace(' ', '_')}_{mes.replace(' ', '_')}.pdf</div>
-            </div>
-          </div>
+        <!-- Total card -->
+        <div style="background:linear-gradient(135deg,#0a8f82,#0d7a70);border-radius:14px;padding:22px 24px;margin-bottom:24px;text-align:center">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:6px">Total a receber</div>
+          <div style="font-size:36px;font-weight:800;color:#ffffff;letter-spacing:-1.5px;line-height:1">&euro;{total_val}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:8px">{parceiro} &middot; {mes}</div>
         </div>
-        <div style="font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;line-height:1.6">
-          Beyond Madeira · Turismo & Aventura<br>
-          +351 939 566 415 · info@beyondmadeira.com<br>
-          beyondmadeira.com
+
+        <!-- Body -->
+        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_html}</div>
+
+        <!-- PDF attachment card -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px">
+          <tr>
+            <td style="background:#f8faf9;border:1px solid #e0ece8;border-radius:12px;padding:16px 20px">
+              <table cellpadding="0" cellspacing="0"><tr>
+                <td style="width:40px;vertical-align:middle">
+                  <div style="width:38px;height:38px;border-radius:10px;background:#0a8f82;text-align:center;line-height:38px;font-size:18px">&#128196;</div>
+                </td>
+                <td style="padding-left:12px;vertical-align:middle">
+                  <div style="font-size:13px;font-weight:700;color:#1a1a1a">PDF em anexo</div>
+                  <div style="font-size:11px;color:#888;margin-top:2px">BeyondMadeira_{parceiro.replace(' ', '_')}_{mes.replace(' ', '_')}.pdf</div>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Signature -->
+        <div style="border-top:1px solid #eee;padding-top:24px;margin-top:8px">
+          <table cellpadding="0" cellspacing="0" style="font-size:13px;color:#333">
+            <tr>
+              <td style="padding-right:18px;vertical-align:top;border-right:2px solid #0a8f82">
+                <img src="https://beyondmadeira.com/wp-content/uploads/2024/01/logo-beyond.png" width="80" alt="Beyond Madeira" style="display:block;border-radius:4px" />
+              </td>
+              <td style="padding-left:18px;vertical-align:top">
+                <div style="font-size:14px;font-weight:700;color:#1a1a1a">Hugo Vieira</div>
+                <div style="font-size:12px;color:#0a8f82;font-weight:600;margin-bottom:8px">Reservations</div>
+                <div style="font-size:12px;color:#555;line-height:1.8">
+                  &#128231; info@beyondmadeira.com<br>
+                  &#128222; +351 939 566 415<br>
+                  &#127760; beyondmadeira.com
+                </div>
+                <div style="margin-top:10px">
+                  <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:6px"><img src="https://img.icons8.com/color/24/whatsapp--v1.png" width="22" height="22" alt="WhatsApp" style="vertical-align:middle"/></a>
+                  <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:6px"><img src="https://img.icons8.com/color/24/facebook-new.png" width="22" height="22" alt="Facebook" style="vertical-align:middle"/></a>
+                  <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:6px"><img src="https://img.icons8.com/color/24/instagram-new--v1.png" width="22" height="22" alt="Instagram" style="vertical-align:middle"/></a>
+                  <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none"><img src="https://img.icons8.com/color/24/tiktok--v1.png" width="22" height="22" alt="TikTok" style="vertical-align:middle"/></a>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div>"""
