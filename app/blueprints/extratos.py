@@ -134,7 +134,7 @@ def _gerar_extrato_interno(parceiro, mes_str, tipo="", meses=None):
     for m in all_months:
         mn, yr = _parse_mes_ano(m, None)
         r = _build_rows_from_pg(parceiro, mn, yr)
-        lbl = f"{MESES_PT.get(mn, str(mn))} {yr}"
+        lbl = f"{MESES_PT[mn] if 1 <= mn <= 12 else str(mn)} {yr}"
         rows_by_month[lbl] = r
         all_rows.extend(r)
 
