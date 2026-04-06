@@ -90,11 +90,20 @@ def _start_scheduler(application):
                 except Exception as e:
                     print(f"[SCHEDULER] Push error: {e}")
 
+        def _sync_comissoes_job():
+            with application.app_context():
+                try:
+                    from app.blueprints.extratos import _sync_all_comissoes
+                    _sync_all_comissoes()
+                except Exception as e:
+                    print(f"[SCHEDULER] Comissoes sync error: {e}")
+
         pull_interval = application.config.get("SYNC_PULL_INTERVAL", 300)
         push_interval = application.config.get("SYNC_PUSH_INTERVAL", 30)
 
         scheduler.add_job(_pull_job, "interval", seconds=pull_interval, id="sync_pull")
         scheduler.add_job(_push_job, "interval", seconds=push_interval, id="sync_push")
+        scheduler.add_job(_sync_comissoes_job, "interval", seconds=900, id="sync_comissoes")
         scheduler.start()
         print(f"[SCHEDULER] Started: pull every {pull_interval}s, push every {push_interval}s")
     except ImportError:

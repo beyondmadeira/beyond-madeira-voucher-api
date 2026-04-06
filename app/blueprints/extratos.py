@@ -54,6 +54,90 @@ def _normalize_status(status_raw):
     return "Por Pagar"
 
 
+def _sync_all_comissoes():
+    """Auto-sync commission records for all months that have reservations."""
+    from app.services.airtable_client import airtable_create
+    months_seen = set()
+    for rc in RentCar.query.all():
+        if not rc.dropoff_data or rc.estado == "Cancelado":
+            continue
+        try:
+            dt = datetime.fromisoformat(str(rc.dropoff_data)[:10])
+            months_seen.add((dt.month, dt.year))
+        except (ValueError, TypeError):
+            pass
+    for at in Atividade.query.all():
+        if (at.estado or "") == "Cancelado" or not at.data:
+            continue
+        try:
+            dt = datetime.fromisoformat(str(at.data)[:10])
+            months_seen.add((dt.month, dt.year))
+        except (ValueError, TypeError):
+            pass
+
+    for mes_num, ano in sorted(months_seen):
+        mes_label = f"{MESES_PT[mes_num] if 1 <= mes_num <= 12 else str(mes_num)} {ano}"
+        partners = {}
+        for rc in RentCar.query.all():
+            if not rc.dropoff_data or rc.estado == "Cancelado":
+                continue
+            try:
+                dt = datetime.fromisoformat(str(rc.dropoff_data)[:10])
+                if dt.month != mes_num or dt.year != ano:
+                    continue
+            except (ValueError, TypeError):
+                continue
+            par = (rc.parceiro or "").strip()
+            if par:
+                partners[par] = partners.get(par, 0) + float(rc.comissao or 0)
+        for at in Atividade.query.all():
+            if (at.estado or "") == "Cancelado" or not at.data:
+                continue
+            try:
+                dt = datetime.fromisoformat(str(at.data)[:10])
+                if dt.month != mes_num or dt.year != ano:
+                    continue
+            except (ValueError, TypeError):
+                continue
+            par = (at.parceiro or "").strip()
+            if par:
+                partners[par] = partners.get(par, 0) + float(at.comissao or 0)
+
+        for par_name, com_val in partners.items():
+            com_val = round(com_val, 2)
+            existing = ComissaoParceiro.query.filter_by(parceiro=par_name, mes=mes_label).first()
+            if not existing:
+                all_recs = ComissaoParceiro.query.filter_by(mes=mes_label).all()
+                for r in all_recs:
+                    if _names_match(r.parceiro, par_name):
+                        existing = r
+                        break
+            if existing:
+                if abs(float(existing.valor or 0) - com_val) > 0.01:
+                    existing.valor = com_val
+                    existing.total = com_val + float(existing.ajustes or 0)
+                    existing.dirty = True
+            else:
+                at_id = None
+                try:
+                    at_result = airtable_create(
+                        "appRGJjirAzgEe46q", "Comissões Parceiros",
+                        {"Parceiro": par_name, "Mês": mes_label,
+                         "Valor do mês (€)": com_val, "Total a Receber (€)": com_val}
+                    )
+                    at_id = at_result.get("id", "")
+                except Exception:
+                    pass
+                rec = ComissaoParceiro(
+                    parceiro=par_name, mes=mes_label,
+                    valor=com_val, total=com_val,
+                    airtable_id=at_id or None, dirty=not bool(at_id),
+                )
+                db.session.add(rec)
+        db.session.commit()
+    print(f"[COMISSOES SYNC] Synced {len(months_seen)} months")
+
+
 def _norm_name(s):
     """Normalize partner name for fuzzy matching (remove spaces, hyphens, lowercase)."""
     import re
