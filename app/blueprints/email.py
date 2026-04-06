@@ -141,55 +141,58 @@ def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
     except (ValueError, TypeError):
         total_val = "0,00"
     logo = "https://beyond-madeira-voucher-api-production-2651.up.railway.app/static/logo_clean.png"
+    # SVG icons for signature (inline, no external dependencies)
+    ico_email = '<img src="https://cdn-icons-png.flaticon.com/16/732/732200.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
+    ico_phone = '<img src="https://cdn-icons-png.flaticon.com/16/724/724664.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
+    ico_web = '<img src="https://cdn-icons-png.flaticon.com/16/1006/1006771.png" width="14" height="14" style="vertical-align:middle;margin-right:6px" />'
     return f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
-      <!-- Header with logo -->
-      <div style="padding:28px 28px 0;text-align:center">
-        <img src="{logo}" width="160" alt="Beyond Madeira" style="display:inline-block" />
-      </div>
-      <div style="padding:16px 28px 0;text-align:center">
-        <div style="font-size:13px;color:#888;font-weight:500">Extrato de Comissões</div>
-        <div style="font-size:18px;font-weight:700;color:#1a1a1a;margin-top:4px">{parceiro} &mdash; {mes}</div>
-      </div>
+      <!-- Header bar -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="background:linear-gradient(135deg,#0a8f82 0%,#0a6b7c 100%);padding:28px 28px 24px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:6px">Beyond Madeira</div>
+          <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-.3px">Extrato de Comissões</div>
+          <div style="font-size:14px;color:rgba(255,255,255,.8);margin-top:4px">{parceiro} &mdash; {mes}</div>
+        </td></tr>
+      </table>
 
-      <div style="padding:24px 28px 28px">
+      <div style="padding:28px">
+        <!-- Body text -->
+        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:24px">{body_html}</div>
+
         <!-- Total card -->
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
-          <tr><td style="background:#0a8f82;border-radius:14px;padding:24px;text-align:center">
-            <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:8px">Total a receber</div>
-            <div style="font-size:38px;font-weight:800;color:#ffffff;letter-spacing:-1.5px;line-height:1">&euro;{total_val}</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:10px">{parceiro} &middot; {mes}</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px">
+          <tr><td style="background:#0a8f82;border-radius:12px;padding:22px;text-align:center">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:6px">Total a receber</div>
+            <div style="font-size:36px;font-weight:800;color:#ffffff;letter-spacing:-1.5px;line-height:1">&euro;{total_val}</div>
           </td></tr>
         </table>
 
-        <!-- Body -->
-        <div style="font-size:14px;color:#333;line-height:1.8;margin-bottom:28px">{body_html}</div>
+        <div style="font-size:12px;color:#999;margin-bottom:28px">Consulte o extrato detalhado no PDF em anexo.</div>
 
         <!-- Signature -->
-        <div style="border-top:1px solid #eee;padding-top:20px">
-          <table cellpadding="0" cellspacing="0" style="font-size:13px;color:#333">
-            <tr>
-              <td style="padding-right:16px;vertical-align:top;border-right:2px solid #0a8f82">
-                <img src="{logo}" width="90" alt="Beyond Madeira" style="display:block" />
-              </td>
-              <td style="padding-left:16px;vertical-align:top">
-                <div style="font-size:15px;font-weight:700;color:#1a1a1a">Hugo Vieira</div>
-                <div style="font-size:12px;color:#0a8f82;font-weight:600;margin-bottom:10px">Reservations</div>
-                <div style="font-size:12px;color:#555;line-height:2">
-                  &#128231; info@beyondmadeira.com<br>
-                  &#128222; +351 939 566 415<br>
-                  &#127760; beyondmadeira.com
-                </div>
-                <div style="margin-top:12px">
-                  <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/whatsapp--v1.png" width="24" height="24" alt="WA" style="vertical-align:middle"/></a>
-                  <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/facebook-new.png" width="24" height="24" alt="FB" style="vertical-align:middle"/></a>
-                  <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/instagram-new--v1.png" width="24" height="24" alt="IG" style="vertical-align:middle"/></a>
-                  <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none"><img src="https://img.icons8.com/color/28/tiktok--v1.png" width="24" height="24" alt="TT" style="vertical-align:middle"/></a>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;padding-top:20px">
+          <tr>
+            <td width="100" style="vertical-align:middle;padding:20px 16px 0 0;text-align:center;border-right:2px solid #0a8f82">
+              <img src="{logo}" width="90" alt="Beyond Madeira" style="display:block;margin:0 auto" />
+            </td>
+            <td style="vertical-align:middle;padding:20px 0 0 16px">
+              <div style="font-size:15px;font-weight:700;color:#1a1a1a">Hugo Vieira</div>
+              <div style="font-size:12px;color:#0a8f82;font-weight:600;margin-bottom:8px">Reservations</div>
+              <div style="font-size:12px;color:#555;line-height:2.2">
+                {ico_email}<a href="mailto:info@beyondmadeira.com" style="color:#555;text-decoration:none">info@beyondmadeira.com</a><br>
+                {ico_phone}<a href="tel:+351939566415" style="color:#555;text-decoration:none">+351 939 566 415</a><br>
+                {ico_web}<a href="https://beyondmadeira.com" style="color:#555;text-decoration:none">beyondmadeira.com</a>
+              </div>
+              <div style="margin-top:10px">
+                <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/whatsapp--v1.png" width="22" height="22" alt="WA" style="vertical-align:middle"/></a>
+                <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/facebook-new.png" width="22" height="22" alt="FB" style="vertical-align:middle"/></a>
+                <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:8px"><img src="https://img.icons8.com/color/28/instagram-new--v1.png" width="22" height="22" alt="IG" style="vertical-align:middle"/></a>
+                <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none"><img src="https://img.icons8.com/color/28/tiktok--v1.png" width="22" height="22" alt="TT" style="vertical-align:middle"/></a>
+              </div>
+            </td>
+          </tr>
+        </table>
       </div>
     </div>"""
 
