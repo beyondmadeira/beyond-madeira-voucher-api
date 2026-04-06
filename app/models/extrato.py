@@ -14,6 +14,8 @@ class ComissaoParceiro(AirtableSyncMixin, db.Model):
     recebido = db.Column(db.Boolean, default=False)
     data_recebimento = db.Column(db.Text)
     mail_enviado = db.Column(db.Boolean, default=False)
+    confirmado_parceiro = db.Column(db.Boolean, default=False)
+    confirmado_beyond = db.Column(db.Boolean, default=False)
     acumulado = db.Column(db.Boolean, default=False)
 
     def to_api(self):
@@ -27,5 +29,7 @@ class ComissaoParceiro(AirtableSyncMixin, db.Model):
             "recebido": self.recebido or False,
             "dataRecebimento": self.data_recebimento or "",
             "mailEnviado": self.mail_enviado or False,
+            "confirmadoParceiro": self.confirmado_parceiro or False,
+            "confirmadoBeyond": self.confirmado_beyond or False,
             "acumulado": self.acumulado or False,
         }

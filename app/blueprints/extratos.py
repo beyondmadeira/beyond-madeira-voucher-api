@@ -278,11 +278,13 @@ def extrato_parceiros(**kwargs):
                 "Recebido?": "recebido",
                 "Data de Recebimento": "data_recebimento",
                 "Mail enviado / pedido?": "mail_enviado",
+                "Confirmado pelo parceiro?": "confirmado_parceiro",
+                "Confirmado pela Beyond Madeira?": "confirmado_beyond",
                 "Acumulado": "acumulado",
             }.items():
                 if at_name in fields:
                     val = fields[at_name]
-                    if pg_col in ("recebido", "mail_enviado", "acumulado"):
+                    if pg_col in ("recebido", "mail_enviado", "acumulado", "confirmado_parceiro", "confirmado_beyond"):
                         val = val in (True, "checked", "true")
                     elif pg_col in ("valor", "ajustes", "total"):
                         try:

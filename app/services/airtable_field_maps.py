@@ -173,6 +173,8 @@ FIELD_MAPS = {
             "recebido":         ["Recebido?"],
             "data_recebimento": ["Data de Recebimento"],
             "mail_enviado":     ["Mail enviado / pedido?"],
+            "confirmado_parceiro": ["Confirmado pelo parceiro?"],
+            "confirmado_beyond":   ["Confirmado pela Beyond Madeira?"],
             "acumulado":        ["Acumulado"],
         },
     },
