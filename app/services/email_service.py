@@ -68,17 +68,28 @@ def _send_via_gmail_api(msg):
 
 
 def _send_via_smtp(msg, sender):
-    """Send email via SMTP (fallback)."""
+    """Send email via SMTP (fallback). Tries SSL (465) then STARTTLS (587)."""
     cfg = current_app.config
     smtp_pass = cfg["SMTP_PASS"]
-    smtp_host = cfg["SMTP_HOST"]
-    smtp_port = cfg["SMTP_PORT"]
+    smtp_host = cfg.get("SMTP_HOST", "smtp.gmail.com")
 
     if not smtp_pass:
         raise ValueError("SMTP_PASS not configured")
 
     ctx = ssl.create_default_context()
-    with smtplib.SMTP(smtp_host, smtp_port) as s:
+
+    # Try SSL on 465 first (works on Railway and most cloud hosts)
+    try:
+        with smtplib.SMTP_SSL(smtp_host, 465, context=ctx, timeout=15) as s:
+            s.login(sender, smtp_pass)
+            s.sendmail(sender, msg["To"], msg.as_string())
+            return
+    except Exception:
+        pass
+
+    # Fallback to STARTTLS on 587
+    smtp_port = int(cfg.get("SMTP_PORT", 587))
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as s:
         s.starttls(context=ctx)
         s.login(sender, smtp_pass)
         s.sendmail(sender, msg["To"], msg.as_string())
