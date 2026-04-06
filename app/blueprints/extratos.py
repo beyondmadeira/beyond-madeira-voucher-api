@@ -260,6 +260,12 @@ def extrato_parceiros(**kwargs):
             record_id = kwargs.get("record_id", "")
             rec = ComissaoParceiro.query.filter_by(airtable_id=record_id).first()
             if not rec:
+                # Fallback: try by numeric PG id
+                try:
+                    rec = ComissaoParceiro.query.get(int(record_id))
+                except (ValueError, TypeError):
+                    pass
+            if not rec:
                 return jsonify({"error": "Record not found"}), 404
             body = request.get_json() or {}
             fields = body.get("fields", {})
