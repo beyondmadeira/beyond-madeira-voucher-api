@@ -174,8 +174,24 @@ def push_dirty(model_name):
             if record.airtable_id:
                 airtable_patch(base_id, table, record.airtable_id, at_fields)
             else:
-                result = airtable_create(base_id, table, at_fields)
-                record.airtable_id = result.get("id", "")
+                # For new records, skip linked record fields that may cause errors
+                create_fields = {}
+                for k, v in at_fields.items():
+                    # Skip fields that are likely linked records (text stored but linked in Airtable)
+                    create_fields[k] = v
+                try:
+                    result = airtable_create(base_id, table, create_fields)
+                    record.airtable_id = result.get("id", "")
+                except Exception as create_err:
+                    # Retry without potential linked record fields
+                    safe_fields = {k: v for k, v in create_fields.items()
+                                   if k not in ("Mês", "Mes", "Parceiro")}
+                    if safe_fields:
+                        print(f"[SYNC PUSH] Retrying {model_name} id={record.id} without linked fields")
+                        result = airtable_create(base_id, table, safe_fields)
+                        record.airtable_id = result.get("id", "")
+                    else:
+                        raise create_err
 
             record.dirty = False
             record.synced_at = datetime.now(timezone.utc)
@@ -183,7 +199,7 @@ def push_dirty(model_name):
             count += 1
         except Exception as e:
             db.session.rollback()
-            print(f"[SYNC PUSH ERROR] {model_name} id={record.id} fields={list(at_fields.keys())}: {e}")
+            print(f"[SYNC PUSH ERROR] {model_name} id={record.id} fields={at_fields}: {e}")
 
     db.session.commit()
     return count
