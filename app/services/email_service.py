@@ -28,15 +28,16 @@ def _build_message(sender, to, subject, body_text=None, html_body=None,
         msg.attach(MIMEText(body_text, "plain"))
 
     if pdf_b64:
-        import re
-        # Sanitize filename to ASCII for email compatibility
-        safe_name = re.sub(r'[^\w.\-]', '_', pdf_filename or 'extrato.pdf')
-        if not safe_name.endswith('.pdf'):
-            safe_name += '.pdf'
-        part = MIMEBase("application", "pdf", name=safe_name)
+        from email.utils import encode_rfc2231
+        raw_name = pdf_filename or "extrato.pdf"
+        part = MIMEBase("application", "pdf")
         part.set_payload(base64.b64decode(pdf_b64))
         encoders.encode_base64(part)
-        part.add_header("Content-Disposition", "attachment", filename=safe_name)
+        # RFC 2231 encoding handles unicode filenames (ã, ç, etc.)
+        part.add_header("Content-Disposition", "attachment",
+                        filename=encode_rfc2231(raw_name, charset="utf-8"))
+        part.add_header("Content-Type", "application/pdf",
+                        name=encode_rfc2231(raw_name, charset="utf-8"))
         msg.attach(part)
 
     return msg
