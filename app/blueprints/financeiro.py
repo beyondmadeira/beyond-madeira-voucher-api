@@ -117,6 +117,11 @@ def _handle_despesa(Model, record_id):
         elif request.method == "PATCH":
             rec = Model.query.filter_by(airtable_id=record_id).first()
             if not rec:
+                try:
+                    rec = Model.query.get(int(record_id))
+                except (ValueError, TypeError):
+                    pass
+            if not rec:
                 return jsonify({"error": "Record not found"}), 404
             body = request.get_json() or {}
             fields = body.get("fields", body)
@@ -126,12 +131,23 @@ def _handle_despesa(Model, record_id):
                 rec.valor = float(fields.get("Valor", fields.get("valor", 0)) or 0)
             if "nome" in fields or "Fornecedor" in fields:
                 rec.nome = fields.get("Fornecedor", fields.get("nome", ""))
+            if "mes" in fields or "Notas" in fields:
+                rec.mes = fields.get("Notas", fields.get("mes", rec.mes))
+            if "categoria" in fields or "Categoria" in fields:
+                rec.categoria = fields.get("Categoria", fields.get("categoria", rec.categoria))
+            if "fatura" in fields or "Fatura Guardada" in fields:
+                rec.fatura = bool(fields.get("Fatura Guardada", fields.get("fatura", False)))
             rec.dirty = True
             db.session.commit()
             return jsonify({"success": True, "record": rec.to_api()})
 
         elif request.method == "DELETE":
             rec = Model.query.filter_by(airtable_id=record_id).first()
+            if not rec:
+                try:
+                    rec = Model.query.get(int(record_id))
+                except (ValueError, TypeError):
+                    pass
             if not rec:
                 return jsonify({"error": "Record not found"}), 404
             db.session.delete(rec)
@@ -200,9 +216,14 @@ def caixa_mensal(**kwargs):
             record_id = kwargs.get("record_id", "")
             rec = CaixaMensal.query.filter_by(airtable_id=record_id).first()
             if not rec:
+                try:
+                    rec = CaixaMensal.query.get(int(record_id))
+                except (ValueError, TypeError):
+                    pass
+            if not rec:
                 return jsonify({"error": "Record not found"}), 404
             body = request.get_json() or {}
-            fields = body.get("fields", {})
+            fields = body.get("fields", body)
             raw = rec.raw_fields or {}
             raw.update(fields)
             rec.raw_fields = raw
