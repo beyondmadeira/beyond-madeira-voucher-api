@@ -96,6 +96,34 @@ def enviar_voucher_email():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/preview-extrato-email", methods=["POST"])
+@require_api_key
+def preview_extrato_email():
+    """Return the HTML email template for preview (no sending)."""
+    try:
+        d = request.get_json() or {}
+        parceiro = d.get("parceiro", "")
+        mes = d.get("mes", "")
+        body_txt = d.get("body") or (
+            f"Olá,\n\nSegue em anexo o extrato de comissões referente a {mes}.\n\n"
+            f"O PDF em anexo contém o detalhe completo das reservas.\n"
+            f"Qualquer dúvida estamos disponíveis.\n\nCom os melhores cumprimentos,"
+        )
+        # Generate total from data
+        total = 0
+        if parceiro and mes:
+            from app.blueprints.extratos import _gerar_extrato_interno
+            try:
+                result = _gerar_extrato_interno(parceiro, mes, d.get("tipo", ""))
+                total = result.get("total_fim", result.get("total", 0))
+            except Exception:
+                pass
+        html = _build_extrato_html_email(parceiro, mes, body_txt, total)
+        return jsonify({"success": True, "html": html})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.route("/enviar-extrato-email", methods=["POST"])
 @require_api_key
 def enviar_extrato_email():
