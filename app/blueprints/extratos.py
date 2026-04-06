@@ -60,14 +60,21 @@ def _norm_name(s):
     return re.sub(r'[\s\-_]+', '', (s or '')).lower()
 
 
+def _names_match(a, b):
+    """Fuzzy match two partner names (exact, or one contains the other)."""
+    na, nb = _norm_name(a), _norm_name(b)
+    if not na or not nb:
+        return False
+    return na == nb or na in nb or nb in na
+
+
 def _build_rows_from_pg(parceiro, mes_num, ano):
     """Build extrato rows from PostgreSQL data."""
     rows = []
-    norm_par = _norm_name(parceiro)
 
     # Rent Car records — fuzzy match on parceiro name
     for rec in RentCar.query.all():
-        if _norm_name(rec.parceiro) != norm_par:
+        if not _names_match(rec.parceiro, parceiro):
             continue
         raw_date = rec.dropoff_data or ""
         if not raw_date:
@@ -92,7 +99,7 @@ def _build_rows_from_pg(parceiro, mes_num, ano):
 
     # Activity records — fuzzy match on parceiro name
     for rec in Atividade.query.all():
-        if _norm_name(rec.parceiro) != norm_par:
+        if not _names_match(rec.parceiro, parceiro):
             continue
         raw_date = rec.data or ""
         if not raw_date:
@@ -119,23 +126,35 @@ def _build_rows_from_pg(parceiro, mes_num, ano):
     return rows
 
 
-def _gerar_extrato_interno(parceiro, mes_str, tipo=""):
-    """Generate extrato PDF internally. Returns dict with pdf_base64, filename, total."""
+def _gerar_extrato_interno(parceiro, mes_str, tipo="", meses=None):
+    """Generate extrato PDF internally. Supports multi-month (accumulated)."""
+    all_months = meses or [mes_str]
+    all_rows = []
+    rows_by_month = {}
+    for m in all_months:
+        mn, yr = _parse_mes_ano(m, None)
+        r = _build_rows_from_pg(parceiro, mn, yr)
+        lbl = f"{MESES_PT.get(mn, str(mn))} {yr}"
+        rows_by_month[lbl] = r
+        all_rows.extend(r)
+
     mes_num, ano = _parse_mes_ano(mes_str, None)
     mes_nome = MESES_PT[mes_num] if 1 <= mes_num <= 12 else str(mes_num)
-    rows = _build_rows_from_pg(parceiro, mes_num, ano)
-    tots = calc_totais(rows)
+    tots = calc_totais(all_rows)
     sl = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
     ref = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
     fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
-    html_str = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
+    html_str = build_extrato_html(
+        parceiro, all_rows, ref, mes_nome, ano, tots,
+        rows_by_month=rows_by_month if len(all_months) > 1 else None,
+    )
     pdf_bytes = generate_pdf(html_str)
     b64 = base64.b64encode(pdf_bytes).decode()
     return {
         "success": True,
         "filename": fname,
         "pdf_base64": b64,
-        "reservas": rows,
+        "reservas": all_rows,
         "total": tots["total_fim"],
         "total_fim": tots["total_fim"],
     }
@@ -147,7 +166,8 @@ def gerar_extrato_parceiro():
     try:
         d = request.get_json() or {}
         result = _gerar_extrato_interno(
-            d.get("parceiro", ""), d.get("mes", ""), d.get("tipo", "")
+            d.get("parceiro", ""), d.get("mes", ""), d.get("tipo", ""),
+            meses=d.get("meses"),
         )
         return jsonify(result)
     except Exception as e:

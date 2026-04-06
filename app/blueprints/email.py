@@ -116,7 +116,7 @@ def enviar_extrato_email():
         total = 0
         if not pdf_b64 and parceiro and mes:
             from app.blueprints.extratos import _gerar_extrato_interno
-            result = _gerar_extrato_interno(parceiro, mes, d.get("tipo", ""))
+            result = _gerar_extrato_interno(parceiro, mes, d.get("tipo", ""), meses=d.get("meses"))
             if result and result.get("pdf_base64"):
                 pdf_b64 = result["pdf_base64"]
                 pdf_fname = result.get("filename", f"Extrato_{parceiro}_{mes}.pdf")
