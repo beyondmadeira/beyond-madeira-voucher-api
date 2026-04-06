@@ -87,6 +87,7 @@ def pull_table(model_name):
     records = airtable_list(base_id, table, max_records=10000)
     count = 0
 
+    # Upsert each record individually (commit per record to avoid rollback issues)
     for rec in records:
         try:
             at_id = rec["id"]
@@ -113,7 +114,7 @@ def pull_table(model_name):
 
             existing.synced_at = datetime.now(timezone.utc)
             existing.dirty = False
-            db.session.flush()
+            db.session.commit()
             count += 1
         except Exception as e:
             db.session.rollback()
@@ -121,17 +122,18 @@ def pull_table(model_name):
 
     # Remove PG records that no longer exist in Airtable
     at_ids = {rec["id"] for rec in records}
-    orphans = Model.query.filter(
-        Model.airtable_id.isnot(None),
-        Model.airtable_id.notin_(at_ids),
-        Model.dirty.is_(False),
-    ).all()
-    for orphan in orphans:
-        db.session.delete(orphan)
-    if orphans:
-        print(f"[SYNC] {model_name}: removed {len(orphans)} orphan records")
+    if at_ids:
+        orphans = Model.query.filter(
+            Model.airtable_id.isnot(None),
+            Model.airtable_id.notin_(at_ids),
+            Model.dirty.is_(False),
+        ).all()
+        for orphan in orphans:
+            db.session.delete(orphan)
+        if orphans:
+            print(f"[SYNC] {model_name}: removed {len(orphans)} orphan records")
+        db.session.commit()
 
-    db.session.commit()
     return count
 
 
