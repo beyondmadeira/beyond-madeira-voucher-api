@@ -364,12 +364,31 @@ def extrato_parceiros(**kwargs):
                         existing.dirty = True
                         updated += 1
                 else:
+                    # Create in Airtable first, then save with airtable_id
+                    at_id = None
+                    try:
+                        from app.services.airtable_client import airtable_create
+                        at_result = airtable_create(
+                            "appRGJjirAzgEe46q",
+                            "Comissões Parceiros",
+                            {
+                                "Parceiro": par_name,
+                                "Mês": mes_label,
+                                "Valor do mês (€)": com_val,
+                                "Total a Receber (€)": com_val,
+                            }
+                        )
+                        at_id = at_result.get("id", "")
+                    except Exception as at_err:
+                        print(f"[CRIAR-MES] Airtable create failed for {par_name}: {at_err}")
+
                     rec = ComissaoParceiro(
                         parceiro=par_name,
                         mes=mes_label,
                         valor=com_val,
                         total=com_val,
-                        dirty=True,
+                        airtable_id=at_id or None,
+                        dirty=not bool(at_id),
                     )
                     db.session.add(rec)
                     created += 1
