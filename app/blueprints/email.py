@@ -196,16 +196,27 @@ def _build_extrato_html_email(parceiro, mes, body_txt, total=0):
                   <div style="font-size:16px;font-weight:800;color:#1a1a1a;letter-spacing:-.2px">Hugo Vieira</div>
                   <div style="font-size:11px;color:#0a8f82;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:3px 0 12px">Reservations</div>
                   <table cellpadding="0" cellspacing="0" style="font-size:12px;color:#4b5563">
-                    <tr><td style="padding:3px 0">{ico_email}<a href="mailto:info@beyondmadeira.com" style="color:#4b5563;text-decoration:none">info@beyondmadeira.com</a></td></tr>
-                    <tr><td style="padding:3px 0">{ico_phone}<a href="tel:+351939566415" style="color:#4b5563;text-decoration:none">+351 939 566 415</a></td></tr>
-                    <tr><td style="padding:3px 0">{ico_web}<a href="https://beyondmadeira.com" style="color:#4b5563;text-decoration:none">beyondmadeira.com</a></td></tr>
+                    <tr>
+                      <td width="22" style="padding:4px 0;vertical-align:middle">{ico_email}</td>
+                      <td style="padding:4px 0;vertical-align:middle"><a href="mailto:info@beyondmadeira.com" style="color:#4b5563;text-decoration:none">info@beyondmadeira.com</a></td>
+                    </tr>
+                    <tr>
+                      <td width="22" style="padding:4px 0;vertical-align:middle">{ico_phone}</td>
+                      <td style="padding:4px 0;vertical-align:middle"><a href="tel:+351939566415" style="color:#4b5563;text-decoration:none">+351 939 566 415</a></td>
+                    </tr>
+                    <tr>
+                      <td width="22" style="padding:4px 0;vertical-align:middle">{ico_web}</td>
+                      <td style="padding:4px 0;vertical-align:middle"><a href="https://beyondmadeira.com" style="color:#4b5563;text-decoration:none">beyondmadeira.com</a></td>
+                    </tr>
                   </table>
-                  <div style="margin-top:14px">
-                    <a href="https://wa.me/351939566415" style="text-decoration:none;margin-right:6px;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/whatsapp.png" width="16" height="16" alt="WA" style="vertical-align:middle"/></a>
-                    <a href="https://facebook.com/beyondmadeira" style="text-decoration:none;margin-right:6px;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/facebook-new.png" width="16" height="16" alt="FB" style="vertical-align:middle"/></a>
-                    <a href="https://instagram.com/beyondmadeira" style="text-decoration:none;margin-right:6px;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/instagram-new.png" width="16" height="16" alt="IG" style="vertical-align:middle"/></a>
-                    <a href="https://tiktok.com/@beyondmadeira" style="text-decoration:none;display:inline-block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;vertical-align:middle"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/tiktok.png" width="16" height="16" alt="TT" style="vertical-align:middle"/></a>
-                  </div>
+                  <table cellpadding="0" cellspacing="0" style="margin-top:14px">
+                    <tr>
+                      <td style="padding-right:6px"><a href="https://wa.me/351939566415" style="display:block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;text-decoration:none"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/whatsapp.png" width="16" height="16" alt="WA" style="vertical-align:middle"/></a></td>
+                      <td style="padding-right:6px"><a href="https://facebook.com/beyondmadeira" style="display:block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;text-decoration:none"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/facebook-new.png" width="16" height="16" alt="FB" style="vertical-align:middle"/></a></td>
+                      <td style="padding-right:6px"><a href="https://instagram.com/beyondmadeira" style="display:block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;text-decoration:none"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/instagram-new.png" width="16" height="16" alt="IG" style="vertical-align:middle"/></a></td>
+                      <td><a href="https://tiktok.com/@beyondmadeira" style="display:block;width:30px;height:30px;border-radius:50%;background:#0a8f82;text-align:center;line-height:30px;text-decoration:none"><img src="https://img.icons8.com/ios-glyphs/18/ffffff/tiktok.png" width="16" height="16" alt="TT" style="vertical-align:middle"/></a></td>
+                    </tr>
+                  </table>
             </td>
           </tr>
         </table>
