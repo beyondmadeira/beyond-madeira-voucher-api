@@ -54,14 +54,21 @@ def _normalize_status(status_raw):
     return "Por Pagar"
 
 
+def _norm_name(s):
+    """Normalize partner name for fuzzy matching (remove spaces, hyphens, lowercase)."""
+    import re
+    return re.sub(r'[\s\-_]+', '', (s or '')).lower()
+
+
 def _build_rows_from_pg(parceiro, mes_num, ano):
     """Build extrato rows from PostgreSQL data."""
     rows = []
+    norm_par = _norm_name(parceiro)
 
-    # Rent Car records
-    for rec in RentCar.query.filter(
-        db.func.lower(RentCar.parceiro) == parceiro.lower()
-    ).all():
+    # Rent Car records — fuzzy match on parceiro name
+    for rec in RentCar.query.all():
+        if _norm_name(rec.parceiro) != norm_par:
+            continue
         raw_date = rec.dropoff_data or ""
         if not raw_date:
             continue
@@ -83,10 +90,10 @@ def _build_rows_from_pg(parceiro, mes_num, ano):
             ddt=raw_date,
         ))
 
-    # Activity records
-    for rec in Atividade.query.filter(
-        db.func.lower(Atividade.parceiro) == parceiro.lower()
-    ).all():
+    # Activity records — fuzzy match on parceiro name
+    for rec in Atividade.query.all():
+        if _norm_name(rec.parceiro) != norm_par:
+            continue
         raw_date = rec.data or ""
         if not raw_date:
             continue
