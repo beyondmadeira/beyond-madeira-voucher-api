@@ -23,6 +23,22 @@ def health():
     })
 
 
+@bp.route("/debug/email-config", methods=["GET"])
+@require_api_key
+def debug_email_config():
+    from flask import current_app
+    cfg = current_app.config
+    return jsonify({
+        "SMTP_USER": cfg.get("SMTP_USER", ""),
+        "SMTP_PASS_SET": bool(cfg.get("SMTP_PASS")),
+        "SMTP_PASS_LEN": len(cfg.get("SMTP_PASS", "")),
+        "GMAIL_CLIENT_ID_SET": bool(cfg.get("GMAIL_CLIENT_ID")),
+        "GMAIL_CLIENT_SECRET_SET": bool(cfg.get("GMAIL_CLIENT_SECRET")),
+        "GMAIL_REFRESH_TOKEN_SET": bool(cfg.get("GMAIL_REFRESH_TOKEN")),
+        "GMAIL_SENDER": cfg.get("GMAIL_SENDER", ""),
+    })
+
+
 @bp.route("/cache/clear", methods=["POST"])
 @require_api_key
 def clear_cache():
