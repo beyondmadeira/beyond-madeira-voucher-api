@@ -294,6 +294,95 @@ def extrato_parceiros(**kwargs):
             db.session.commit()
             return jsonify({"success": True, "record": rec.to_api()})
 
+        elif request.method == "POST":
+            # criar-mes: auto-create/update extrato records for all partners in a month
+            body = request.get_json() or {}
+            mes_str = body.get("mes", "")
+            if not mes_str:
+                return jsonify({"error": "mes required"}), 400
+
+            mes_num, ano = _parse_mes_ano(mes_str, None)
+            mes_label = f"{MESES_PT[mes_num] if 1 <= mes_num <= 12 else str(mes_num)} {ano}"
+
+            # Gather all partners from RC and AT for this month
+            partners = {}
+            for rc in RentCar.query.all():
+                if not rc.dropoff_data or rc.estado == "Cancelado":
+                    continue
+                try:
+                    dt = datetime.fromisoformat(str(rc.dropoff_data)[:10])
+                    if dt.month != mes_num or dt.year != ano:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                par = (rc.parceiro or "").strip()
+                if not par:
+                    continue
+                if par not in partners:
+                    partners[par] = {"valor": 0, "total": 0}
+                partners[par]["valor"] += float(rc.comissao or 0)
+
+            for at in Atividade.query.all():
+                est = (at.estado or "").strip()
+                if est == "Cancelado":
+                    continue
+                if not at.data:
+                    continue
+                try:
+                    dt = datetime.fromisoformat(str(at.data)[:10])
+                    if dt.month != mes_num or dt.year != ano:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                par = (at.parceiro or "").strip()
+                if not par:
+                    continue
+                if par not in partners:
+                    partners[par] = {"valor": 0, "total": 0}
+                partners[par]["valor"] += float(at.comissao or 0)
+
+            created = 0
+            updated = 0
+            for par_name, vals in partners.items():
+                com_val = round(vals["valor"], 2)
+                # Find existing record
+                existing = ComissaoParceiro.query.filter_by(
+                    parceiro=par_name, mes=mes_label
+                ).first()
+                if not existing:
+                    # Try fuzzy match
+                    all_recs = ComissaoParceiro.query.filter_by(mes=mes_label).all()
+                    for r in all_recs:
+                        if _names_match(r.parceiro, par_name):
+                            existing = r
+                            break
+
+                if existing:
+                    if abs(float(existing.valor or 0) - com_val) > 0.01:
+                        existing.valor = com_val
+                        existing.total = com_val + float(existing.ajustes or 0)
+                        existing.dirty = True
+                        updated += 1
+                else:
+                    rec = ComissaoParceiro(
+                        parceiro=par_name,
+                        mes=mes_label,
+                        valor=com_val,
+                        total=com_val,
+                        dirty=True,
+                    )
+                    db.session.add(rec)
+                    created += 1
+
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "mes": mes_label,
+                "created": created,
+                "updated": updated,
+                "partners": len(partners),
+            })
+
         else:
             return jsonify({"success": True, "records": []})
     except Exception as e:
