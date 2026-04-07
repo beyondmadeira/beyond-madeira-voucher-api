@@ -180,3 +180,64 @@ def delete_agent_note(note_id):
         db.session.delete(row)
         db.session.commit()
     return jsonify({"success": True})
+
+
+# ── Beyond Memory ─────────────────────────────────────────
+
+@bp.route("/api/memory", methods=["GET"])
+@require_api_key
+def list_memory():
+    from app.models.memory import BeyondMemory
+    cat = request.args.get("category", "")
+    key = request.args.get("key", "")
+    q = BeyondMemory.query
+    if cat:
+        q = q.filter(BeyondMemory.category == cat)
+    if key:
+        q = q.filter(db.func.lower(BeyondMemory.key) == key.lower())
+    rows = q.order_by(BeyondMemory.updated_at.desc()).all()
+    return jsonify({"success": True, "memories": [r.to_api() for r in rows]})
+
+
+@bp.route("/api/memory", methods=["POST"])
+@require_api_key
+def save_memory():
+    from app.models.memory import BeyondMemory
+    d = request.get_json() or {}
+    mem_id = d.get("id")
+    if mem_id:
+        row = BeyondMemory.query.get(mem_id)
+        if row:
+            for f in ["category", "key", "content", "source"]:
+                if f in d:
+                    setattr(row, f, d[f])
+            row.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True, "memory": row.to_api()})
+    row = BeyondMemory(
+        category=d.get("category", "insight"),
+        key=d.get("key", ""),
+        content=d.get("content", ""),
+        source=d.get("source", "user"),
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"success": True, "memory": row.to_api()})
+
+
+@bp.route("/api/memory/context", methods=["GET"])
+@require_api_key
+def memory_context():
+    """Return all memories formatted as context string for agents."""
+    from app.models.memory import BeyondMemory
+    rows = BeyondMemory.query.order_by(BeyondMemory.category, BeyondMemory.key).all()
+    if not rows:
+        return jsonify({"success": True, "context": ""})
+    lines = []
+    cur_cat = ""
+    for r in rows:
+        if r.category != cur_cat:
+            cur_cat = r.category
+            lines.append(f"\n[{cur_cat.upper()}]")
+        lines.append(f"- {r.key}: {r.content}")
+    return jsonify({"success": True, "context": "\n".join(lines)})
