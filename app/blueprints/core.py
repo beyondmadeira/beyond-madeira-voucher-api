@@ -1,7 +1,109 @@
+import os
+import requests as req_lib
 from flask import Blueprint, jsonify, request
 from app.utils.auth import require_api_key
 
 bp = Blueprint("core", __name__)
+
+
+@bp.route("/ai/parse-reserva", methods=["POST"])
+@require_api_key
+def ai_parse_reserva():
+    body = request.get_json(force=True) or {}
+    text = (body.get("text") or "").strip()
+    tipo = (body.get("tipo") or "rc").lower()
+    if not text:
+        return jsonify({"error": "text required"}), 400
+
+    from flask import current_app
+    anthropic_key = current_app.config.get("ANTHROPIC_API_KEY", "")
+    if not anthropic_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY not set"}), 500
+
+    from datetime import date
+    today_str = date.today().strftime("%d/%m/%Y")
+    year = date.today().year
+
+    if tipo == "rc":
+        schema = '''{
+  "nome": "full client name",
+  "ref": "BYD reference (e.g. BYD3836)",
+  "parceiro": "car rental partner name",
+  "carro": "car model string",
+  "pdt": "YYYY-MM-DDTHH:MM (pick-up datetime)",
+  "ploc": "one of: Airport | Office | Hotel/Airbnb",
+  "pvoo": "pick-up flight number or empty string",
+  "pdet": "hotel name/address if Hotel/Airbnb, else empty",
+  "ddt": "YYYY-MM-DDTHH:MM (drop-off datetime)",
+  "dloc": "one of: Airport | Office | Hotel/Airbnb",
+  "dvoo": "drop-off flight number or empty string",
+  "ddet": "hotel name/address if Hotel/Airbnb, else empty",
+  "dur": "number_of_days_as_integer",
+  "total": "price_as_number",
+  "com": "commission_as_number",
+  "tel": "phone number with country code",
+  "email": "email address or empty",
+  "obs": "any extra notes"
+}'''
+    else:
+        schema = '''{
+  "nome": "full client name",
+  "ref": "BYD reference (e.g. BYD-JEEP-130726)",
+  "parceiro": "partner/operator name",
+  "atv": "activity name",
+  "data": "YYYY-MM-DD",
+  "hora": "HH:MM",
+  "local": "pick-up location description",
+  "pess": "number of people as string (e.g. 2)",
+  "total": "price_as_number",
+  "com": "commission_as_number",
+  "tel": "phone number with country code",
+  "email": "email address or empty",
+  "obs": "any extra notes or special instructions"
+}'''
+
+    system_prompt = f"""You are a reservation parser for Beyond Madeira, a tourism company in Madeira, Portugal.
+Today is {today_str}. Current year is {year}.
+For dates written as DD/MM (no year): if that date is in the future or today use {year}, otherwise use {year + 1}.
+Convert all DD/MM dates to YYYY-MM-DD format.
+Parse the reservation text and return ONLY a valid JSON object matching this schema:
+{schema}
+Return ONLY the JSON object, no explanation, no markdown, no extra text."""
+
+    resp = req_lib.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": anthropic_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        json={
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 1024,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": text}],
+        },
+        timeout=20,
+    )
+
+    if resp.status_code != 200:
+        return jsonify({"error": "Claude API error", "detail": resp.text}), 500
+
+    raw = resp.json()
+    content = raw.get("content", [{}])[0].get("text", "")
+    content = content.strip()
+    if content.startswith("```"):
+        content = "\n".join(content.split("\n")[1:])
+    if content.endswith("```"):
+        content = content.rsplit("```", 1)[0]
+    content = content.strip()
+
+    try:
+        import json as _json
+        parsed = _json.loads(content)
+        return jsonify({"success": True, "data": parsed})
+    except Exception:
+        return jsonify({"error": "JSON parse error", "raw": content}), 500
 
 
 @bp.route("/", methods=["GET"])
