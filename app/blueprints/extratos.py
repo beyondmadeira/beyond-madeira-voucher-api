@@ -244,6 +244,53 @@ def _gerar_extrato_interno(parceiro, mes_str, tipo="", meses=None):
     }
 
 
+@bp.route("/gerar-extrato-manual", methods=["POST"])
+@require_api_key
+def gerar_extrato_manual():
+    """Generate extrato PDF from manually provided rows (no DB lookup)."""
+    try:
+        d = request.get_json() or {}
+        parceiro = d.get("parceiro", "")
+        mes_str = d.get("mes", "")
+        rows_raw = d.get("rows", [])
+        if not parceiro or not rows_raw:
+            return jsonify({"error": "parceiro and rows required"}), 400
+
+        mes_num, ano = _parse_mes_ano(mes_str)
+        if not mes_num:
+            return jsonify({"error": "Invalid mes"}), 400
+        mes_nome = MESES_PT[mes_num]
+
+        rows = []
+        for r in rows_raw:
+            rows.append(dict(
+                date=r.get("date", ""),
+                ref=r.get("ref", ""),
+                client=r.get("client", ""),
+                act=r.get("act", ""),
+                pax=str(r.get("pax", "")),
+                total=float(r.get("total", 0)),
+                comm=float(r.get("comm", 0)),
+                status=r.get("status", "Confirmado"),
+                ddt=r.get("date", ""),
+            ))
+
+        tots = calc_totais(rows)
+        sl = re.sub(r"[^a-zA-Z0-9]", "", parceiro)
+        ref = f"EXT-{ano}-{str(mes_num).zfill(2)}-{sl[:10].upper()}"
+        fname = f"BeyondMadeira_{sl}_{mes_nome}{ano}.pdf"
+        html_str = build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots)
+        pdf_bytes = generate_pdf(html_str)
+        b64 = base64.b64encode(pdf_bytes).decode()
+        return jsonify({
+            "success": True, "filename": fname, "pdf_base64": b64,
+            "total": tots["total_fim"],
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
 @bp.route("/gerar-extrato-parceiro", methods=["POST"])
 @require_api_key
 def gerar_extrato_parceiro():
