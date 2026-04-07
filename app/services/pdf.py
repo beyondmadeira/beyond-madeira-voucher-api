@@ -239,6 +239,21 @@ def build_at_html(d):
             f'<div class="inv-unit">{unit_str}</div>'
             f'<div class="inv-sub">&euro;{it.get("sub", "")}</div></div>'
         )
+    # Extras
+    extras = d.get("extras", [])
+    if extras and isinstance(extras, list):
+        for ex in extras:
+            if isinstance(ex, dict) and ex.get("desc"):
+                val = float(ex.get("valor", 0) or 0)
+                rows_html += (
+                    f'<div class="inv-row" style="opacity:.85"><div class="inv-prod">'
+                    f'<div class="inv-name" style="font-size:12px">Extra: {ex["desc"]}</div>'
+                    f'<div class="inv-detail" style="font-size:11px">Additional service</div></div>'
+                    f'<div class="inv-qty">1x</div>'
+                    f'<div class="inv-unit"></div>'
+                    f'<div class="inv-sub">&euro;{val:.2f}</div></div>'
+                )
+
     d["invoice_rows_html"] = rows_html
 
     d.setdefault(
