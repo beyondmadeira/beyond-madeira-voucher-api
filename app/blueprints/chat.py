@@ -76,7 +76,21 @@ def api_chat():
 @bp.route("/api/chat-history", methods=["GET"])
 @require_api_key
 def list_chat_history():
-    rows = ChatHistory.query.order_by(ChatHistory.updated_at.desc()).limit(50).all()
+    user = request.args.get("user", "")
+    q = ChatHistory.query
+    if user:
+        q = q.filter(ChatHistory.user_name == user)
+    rows = q.order_by(ChatHistory.updated_at.desc()).limit(20).all()
+    # Auto-cleanup: if user has more than 20, delete oldest (keep good insights via notes)
+    if user:
+        all_count = ChatHistory.query.filter(ChatHistory.user_name == user).count()
+        if all_count > 20:
+            old = ChatHistory.query.filter(ChatHistory.user_name == user).order_by(
+                ChatHistory.updated_at.asc()
+            ).limit(all_count - 20).all()
+            for r in old:
+                db.session.delete(r)
+            db.session.commit()
     return jsonify({"success": True, "conversations": [r.to_api() for r in rows]})
 
 
