@@ -1,6 +1,9 @@
 import requests
+from datetime import datetime
 from flask import Blueprint, request, jsonify, Response, stream_with_context, current_app
 from app.utils.auth import require_api_key
+from app.extensions import db
+from app.models.chat import ChatHistory, AgentNote
 
 bp = Blueprint("chat", __name__)
 
@@ -66,3 +69,100 @@ def api_chat():
         return jsonify(r.json())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── Chat History ──────────────────────────────────────────
+
+@bp.route("/api/chat-history", methods=["GET"])
+@require_api_key
+def list_chat_history():
+    rows = ChatHistory.query.order_by(ChatHistory.updated_at.desc()).limit(50).all()
+    return jsonify({"success": True, "conversations": [r.to_api() for r in rows]})
+
+
+@bp.route("/api/chat-history/<int:conv_id>", methods=["GET"])
+@require_api_key
+def get_chat_history(conv_id):
+    row = ChatHistory.query.get(conv_id)
+    if not row:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"success": True, "conversation": row.to_api()})
+
+
+@bp.route("/api/chat-history", methods=["POST"])
+@require_api_key
+def save_chat_history():
+    body = request.get_json() or {}
+    conv_id = body.get("id")
+    if conv_id:
+        row = ChatHistory.query.get(conv_id)
+        if row:
+            row.messages = body.get("messages", row.messages)
+            row.title = body.get("title", row.title)
+            row.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True, "conversation": row.to_api()})
+
+    row = ChatHistory(
+        agent_id=body.get("agent_id", 0),
+        agent_name=body.get("agent_name", ""),
+        title=body.get("title", ""),
+        messages=body.get("messages", []),
+        user_name=body.get("user_name", ""),
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"success": True, "conversation": row.to_api()})
+
+
+@bp.route("/api/chat-history/<int:conv_id>", methods=["DELETE"])
+@require_api_key
+def delete_chat_history(conv_id):
+    row = ChatHistory.query.get(conv_id)
+    if row:
+        db.session.delete(row)
+        db.session.commit()
+    return jsonify({"success": True})
+
+
+# ── Agent Notes ───────────────────────────────────────────
+
+@bp.route("/api/agent-notes", methods=["GET"])
+@require_api_key
+def list_agent_notes():
+    rows = AgentNote.query.order_by(AgentNote.updated_at.desc()).all()
+    return jsonify({"success": True, "notes": [r.to_api() for r in rows]})
+
+
+@bp.route("/api/agent-notes", methods=["POST"])
+@require_api_key
+def save_agent_note():
+    body = request.get_json() or {}
+    note_id = body.get("id")
+    if note_id:
+        row = AgentNote.query.get(note_id)
+        if row:
+            row.content = body.get("content", row.content)
+            row.category = body.get("category", row.category)
+            row.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True, "note": row.to_api()})
+
+    row = AgentNote(
+        category=body.get("category", "Geral"),
+        content=body.get("content", ""),
+        user_name=body.get("user_name", ""),
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"success": True, "note": row.to_api()})
+
+
+@bp.route("/api/agent-notes/<int:note_id>", methods=["DELETE"])
+@require_api_key
+def delete_agent_note(note_id):
+    row = AgentNote.query.get(note_id)
+    if row:
+        db.session.delete(row)
+        db.session.commit()
+    return jsonify({"success": True})

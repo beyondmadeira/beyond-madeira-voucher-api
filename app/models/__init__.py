@@ -5,3 +5,4 @@ from app.models.financeiro import (  # noqa
     Objetivo, ResumoMensal, CaixaMensal,
 )
 from app.models.extrato import ComissaoParceiro  # noqa
+from app.models.chat import ChatHistory, AgentNote  # noqa
