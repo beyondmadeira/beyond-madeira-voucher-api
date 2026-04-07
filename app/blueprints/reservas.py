@@ -157,6 +157,82 @@ def get_parceiros():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/airtable/parceiros/<record_id>", methods=["PATCH"])
+@require_api_key
+def patch_parceiro(record_id):
+    try:
+        fields = (request.get_json() or {}).get("fields", {})
+        row = Parceiro.query.filter(
+            (Parceiro.airtable_id == record_id) | (Parceiro.id == int(record_id) if record_id.isdigit() else False)
+        ).first()
+        if not row:
+            return jsonify({"error": "not found"}), 404
+        field_map = {
+            "Telefone": "telefone", "Email": "email", "Notas": "notas",
+            "Comissão Valor": "comissao_valor", "Tipo Comissao": "comissao_tipo",
+            "Instruções Aeroporto": "instrucoes_aeroporto", "Instruções Hotel": "instrucoes_hotel",
+        }
+        for airtable_name, col in field_map.items():
+            if airtable_name in fields and hasattr(row, col):
+                setattr(row, col, fields[airtable_name])
+        row._dirty = True
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/airtable/frota", methods=["GET"])
+@require_api_key
+def get_frota():
+    """Return fleet data — currently from Parceiro-linked data or empty."""
+    return jsonify({"success": True, "records": []})
+
+
+@bp.route("/airtable/disponibilidade", methods=["GET"])
+@require_api_key
+def get_disponibilidade():
+    """Return availability blocks — currently empty."""
+    return jsonify({"success": True, "records": []})
+
+
+@bp.route("/airtable/clientes", methods=["GET"])
+@require_api_key
+def get_clientes():
+    """Build client list from RC + AT reservations."""
+    try:
+        clients = {}
+        for r in RentCar.query.all():
+            api = r.to_api()
+            key = (api.get("email") or api.get("nome") or "").lower()
+            if not key:
+                continue
+            if key not in clients:
+                clients[key] = {"nome": api.get("nome",""), "email": api.get("email",""),
+                                "tel": api.get("tel",""), "n_rc": 0, "n_at": 0,
+                                "total_gasto": 0, "vip": False}
+            clients[key]["n_rc"] += 1
+            clients[key]["total_gasto"] += float(api.get("total", 0) or 0)
+        for r in Atividade.query.all():
+            api = r.to_api()
+            key = (api.get("email") or api.get("nome") or "").lower()
+            if not key:
+                continue
+            if key not in clients:
+                clients[key] = {"nome": api.get("nome",""), "email": api.get("email",""),
+                                "tel": api.get("tel",""), "n_rc": 0, "n_at": 0,
+                                "total_gasto": 0, "vip": False}
+            clients[key]["n_at"] += 1
+            clients[key]["total_gasto"] += float(api.get("total", 0) or 0)
+        out = sorted(clients.values(), key=lambda x: x["total_gasto"], reverse=True)
+        for c in out:
+            if c["total_gasto"] >= 500 or (c["n_rc"] + c["n_at"]) >= 5:
+                c["vip"] = True
+        return jsonify({"success": True, "records": out})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Tarefas ───────────────────────────────────────────────────────────────
 
 @bp.route("/airtable/tarefas", methods=["GET", "POST"])
