@@ -20,6 +20,13 @@ def enviar_voucher_email():
         if not to:
             return jsonify({"error": "Missing 'to' email"}), 400
 
+        if tipo == "simple":
+            # Simple raw HTML email — used for pickup updates, notifications
+            tmpl = d.get("email_body", "")
+            subject = d.get("email_subject", "Beyond Madeira")
+            send_html_email(to, subject, tmpl, pdf_b64, pdf_fname)
+            return jsonify({"success": True, "method": "simple"})
+
         if tipo == "at":
             tmpl = load_template("email_at_template.html")
             atividade = d.get("atividade", "")
