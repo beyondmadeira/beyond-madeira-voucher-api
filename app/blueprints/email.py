@@ -33,6 +33,8 @@ def enviar_voucher_email():
                 else:
                     pickup_label = "\U0001f4cd Meeting Point"
                     pickup_note = ""
+                maps_link = d.get("maps_link", "")
+                maps_html = f' <a href="{maps_link}" style="color:#0d6e7a;font-size:12px;">View on Maps</a>' if maps_link else ""
                 pickup_block = (
                     f'<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">'
                     f"<tr><td style=\"background:#f2f9fa;border-left:4px solid #0d6e7a;"
@@ -40,7 +42,7 @@ def enviar_voucher_email():
                     f'<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;'
                     f'color:#0d6e7a;text-transform:uppercase;">{pickup_label}</p>'
                     f'<p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">'
-                    f"{pickup_local}</p>{pickup_note}</td></tr></table>"
+                    f"{pickup_local}{maps_html}</p>{pickup_note}</td></tr></table>"
                 )
             else:
                 pickup_block = ""
@@ -294,6 +296,8 @@ def preview_email():
                 else:
                     pickup_label = "\U0001f4cd Meeting Point"
                     pickup_note = ""
+                maps_link = d.get("maps_link", "")
+                maps_html = f' <a href="{maps_link}" style="color:#0d6e7a;font-size:12px;">View on Maps</a>' if maps_link else ""
                 pickup_block = (
                     f'<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">'
                     f"<tr><td style=\"background:#f2f9fa;border-left:4px solid #0d6e7a;"
@@ -301,7 +305,7 @@ def preview_email():
                     f'<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;'
                     f'color:#0d6e7a;text-transform:uppercase;">{pickup_label}</p>'
                     f'<p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">'
-                    f"{pickup_local}</p>{pickup_note}</td></tr></table>"
+                    f"{pickup_local}{maps_html}</p>{pickup_note}</td></tr></table>"
                 )
             else:
                 pickup_block = ""

@@ -7,3 +7,4 @@ from app.models.financeiro import (  # noqa
 from app.models.extrato import ComissaoParceiro  # noqa
 from app.models.chat import ChatHistory, AgentNote  # noqa
 from app.models.email_template import EmailTemplate  # noqa
+from app.models.meeting_point import MeetingPoint  # noqa

@@ -233,6 +233,47 @@ def get_clientes():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Meeting Points ────────────────────────────────────────────────────────
+
+@bp.route("/api/meeting-points", methods=["GET"])
+@require_api_key
+def get_meeting_points():
+    from app.models.meeting_point import MeetingPoint
+    parceiro = request.args.get("parceiro", "")
+    q = MeetingPoint.query
+    if parceiro:
+        q = q.filter(db.func.lower(MeetingPoint.parceiro) == parceiro.lower())
+    rows = q.all()
+    return jsonify({"success": True, "points": [r.to_api() for r in rows]})
+
+
+@bp.route("/api/meeting-points", methods=["POST"])
+@require_api_key
+def save_meeting_point():
+    from app.models.meeting_point import MeetingPoint
+    d = request.get_json() or {}
+    mp_id = d.get("id")
+    if mp_id:
+        row = MeetingPoint.query.get(mp_id)
+        if row:
+            for f in ["parceiro", "atividade", "local", "maps_link", "notas", "pickup_mode"]:
+                if f in d:
+                    setattr(row, f, d[f])
+            db.session.commit()
+            return jsonify({"success": True, "point": row.to_api()})
+    row = MeetingPoint(
+        parceiro=d.get("parceiro", ""),
+        atividade=d.get("atividade", ""),
+        local=d.get("local", ""),
+        maps_link=d.get("maps_link", ""),
+        notas=d.get("notas", ""),
+        pickup_mode=d.get("pickup_mode", "meeting_point"),
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"success": True, "point": row.to_api()})
+
+
 # ── Tarefas ───────────────────────────────────────────────────────────────
 
 @bp.route("/airtable/tarefas", methods=["GET", "POST"])
