@@ -121,7 +121,7 @@ ACTIVITY_TIPS = {
     "cabo girao": {
         "bring": ["Comfortable shoes", "Camera"],
         "not_included": ["Cabo Gir\u00e3o skywalk entry \u2014 \u20ac5 per person (cash or card on site)"],
-        "tips": ["Entry paid on site \u2014 bring cash as backup"],
+        "tips": ["Entry paid on site \u2014 card or cash accepted"],
     },
     "queimadas": {
         "bring": ["Warm layers", "Waterproof jacket \u2014 often misty", "Water 1.5L"],
@@ -140,17 +140,17 @@ ACTIVITY_TIPS = {
     },
     "island tour": {
         "bring": ["Sunscreen", "Camera", "Light jacket", "Water", "Comfortable walking shoes"],
-        "not_included": ["Lunch (unless specified)", "Entry fees to attractions (if any)"],
-        "tips": ["Bring cash for optional stops", "Confirm pick-up point the day before"],
+        "not_included": ["Lunch", "Entry fees (if applicable)"],
+        "tips": ["We stop for lunch — cards accepted almost everywhere", "Confirm pick-up point the day before"],
     },
     "jeep": {
         "bring": ["Sunscreen", "Camera", "Light jacket", "Water"],
-        "not_included": ["Lunch (unless specified)"],
-        "tips": ["Off-road sections can be bumpy \u2014 avoid if back issues", "Bring cash for food stops"],
+        "not_included": ["Lunch"],
+        "tips": ["Off-road sections can be bumpy \u2014 avoid if back issues", "We stop for lunch — cards accepted at most places"],
     },
     "mini van": {
         "bring": ["Sunscreen", "Camera", "Comfortable shoes", "Water"],
-        "not_included": ["Lunch (unless specified)", "Entry fees if applicable"],
+        "not_included": ["Lunch", "Entry fees (if applicable)"],
         "tips": ["Confirm pick-up location the night before"],
     },
     "boat": {
@@ -180,7 +180,7 @@ ACTIVITY_TIPS = {
     },
     "paragliding": {
         "bring": ["Comfortable clothes (no skirts)", "Closed-toe shoes", "Sunglasses"],
-        "not_included": ["Photos/video package (optional extra \u2014 ask operator)"],
+        "not_included": ["Photos/video package (optional \u2014 ask on the day)"],
         "tips": ["Weight limit ~100-110kg \u2014 confirm with operator", "Flights are weather dependent \u2014 confirmed morning of"],
     },
     "quad": {
@@ -194,7 +194,7 @@ ACTIVITY_TIPS = {
         "tips": ["Some upper body strength required", "Not suitable for severe fear of heights"],
     },
     "default": {
-        "bring": ["Comfortable clothes for outdoor activity", "Sunscreen & sunglasses", "Water", "Camera", "Cash for optional extras"],
+        "bring": ["Comfortable clothes", "Sunscreen & sunglasses", "Water", "Camera"],
         "not_included": [],
         "tips": ["Confirm meeting point the day before", "Arrive 10 minutes early"],
     },
@@ -247,7 +247,7 @@ def build_tips_html(tips):
         items = "".join(f"<li>{n}</li>" for n in tips["not_included"])
         sections.append(
             f'<div style="background:#fff8f0;border-radius:8px;padding:14px 18px;margin-bottom:10px;">'
-            f'<p style="margin:0 0 6px;font-weight:700;font-size:13px;color:#c0392b;">\u26a0\ufe0f Not Included / Extra Cost</p>'
+            f'<p style="margin:0 0 6px;font-weight:700;font-size:13px;color:#c0392b;">\u26a0\ufe0f Not Included</p>'
             f'<ul style="margin:0;padding-left:18px;font-size:12px;color:#2a2a2a;line-height:1.8;">{items}</ul></div>'
         )
     if tips.get("tips"):
