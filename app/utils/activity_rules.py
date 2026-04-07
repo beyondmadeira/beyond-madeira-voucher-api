@@ -12,8 +12,15 @@ TIPS_TEXT = {
 ACTIVITY_RULES = [
     {"kw": ["sunrise", "pico areeiro"],
      "payment": "cash", "pickup": "pickup_day_before",
+     "no_payment_link": True, "email_template": "sunrise",
      "tips": ["warm", "water", "snack", "shoes"],
      "note": "Dress very warmly \u2014 Pico Areeiro can be below 0\u00b0C at sunrise."},
+
+    {"kw": ["vereda", "larano"],
+     "payment": "cash", "pickup": "pickup_day_before",
+     "no_payment_link": True, "email_template": "sunrise",
+     "tips": ["jacket", "water", "snack", "shoes"],
+     "note": "Trail fee \u20ac3 per person \u2014 paid on site via Simplifica app."},
 
     {"kw": ["caldeirao verde", "caldeir\u00e3o verde"],
      "payment": "cash", "pickup": "pickup_hotel",
@@ -40,8 +47,15 @@ ACTIVITY_RULES = [
 
     {"kw": ["whale", "dolphin"],
      "payment": "cash_card", "pickup": "meeting_point",
+     "no_payment_link": True, "email_template": "dolphins",
      "tips": ["jacket", "swimsuit", "sunscreen", "water"],
      "note": "Please arrive at the marina 30 minutes before departure for check-in and payment."},
+
+    {"kw": ["vip dolphin"],
+     "payment": "cash_card", "pickup": "meeting_point",
+     "no_payment_link": True, "email_template": "dolphins",
+     "tips": ["jacket", "sunscreen", "water"],
+     "note": "Please arrive at the marina 30 minutes before departure."},
 
     {"kw": ["sunset"],
      "payment": "cash_card", "pickup": "meeting_point",
@@ -193,6 +207,18 @@ def detect_activity(nome):
         if all(kw in n for kw in rule["kw"]):
             return rule
     return None
+
+
+def is_no_payment_activity(nome):
+    """Returns True if this activity should NOT show payment link in email."""
+    rule = detect_activity(nome or "")
+    return bool(rule and rule.get("no_payment_link"))
+
+
+def get_email_template_key(nome):
+    """Returns template key (sunrise/dolphins/generic) for this activity."""
+    rule = detect_activity(nome or "")
+    return (rule.get("email_template") if rule else None) or "generic"
 
 
 def get_activity_tips(atividade_str, categoria_str=""):

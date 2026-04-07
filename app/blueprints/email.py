@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.utils.auth import require_api_key
 from app.utils.formatting import load_template
-from app.utils.activity_rules import get_activity_tips, build_tips_html
+from app.utils.activity_rules import get_activity_tips, build_tips_html, is_no_payment_activity, get_email_template_key
 from app.services.email_service import send_html_email, send_plain_email
 
 bp = Blueprint("email", __name__)
@@ -44,8 +44,24 @@ def enviar_voucher_email():
                 )
             else:
                 pickup_block = ""
+            # Check if this activity should skip payment link
+            no_pay = is_no_payment_activity(atividade)
+            tpl_key = get_email_template_key(atividade)
+
+            # Try to load custom subject from DB
+            db_subject = None
+            try:
+                from app.models.email_template import EmailTemplate
+                db_tpl = EmailTemplate.query.filter_by(key=tpl_key).first()
+                if db_tpl and db_tpl.subject:
+                    db_subject = db_tpl.subject
+            except Exception:
+                pass
+
             pagamento = d.get("pagamento", "cash")
-            if "cash" in pagamento:
+            if no_pay:
+                payment_note = "Payment on the day of the activity — no advance payment required."
+            elif "cash" in pagamento:
                 payment_note = "Cash on the day of the activity."
             elif "card" in pagamento:
                 payment_note = "Payment by card on the day."
@@ -53,7 +69,7 @@ def enviar_voucher_email():
                 payment_note = "To be confirmed."
             subject = d.get(
                 "email_subject",
-                f"Your Activity is Confirmed \u2014 {atividade} | Beyond Madeira",
+                db_subject or f"Your Activity is Confirmed \u2014 {atividade} | Beyond Madeira",
             )
             replacements = {
                 "{{cliente}}": d.get("cliente", ""),
@@ -337,3 +353,56 @@ def preview_email():
     except Exception as e:
         import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+# ── Email Templates CRUD ──────────────────────────────────────────────────
+
+@bp.route("/api/email-templates", methods=["GET"])
+@require_api_key
+def list_email_templates():
+    from app.models.email_template import EmailTemplate
+    rows = EmailTemplate.query.order_by(EmailTemplate.key).all()
+    return jsonify({"success": True, "templates": [r.to_api() for r in rows]})
+
+
+@bp.route("/api/email-templates", methods=["POST"])
+@require_api_key
+def save_email_template():
+    from app.models.email_template import EmailTemplate
+    from app.extensions import db
+    from datetime import datetime
+    d = request.get_json() or {}
+    tpl_id = d.get("id")
+    if tpl_id:
+        row = EmailTemplate.query.get(tpl_id)
+        if row:
+            for f in ["key", "name", "subject", "body_html", "no_payment_link", "activities", "notes"]:
+                if f in d:
+                    setattr(row, f, d[f])
+            row.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({"success": True, "template": row.to_api()})
+    row = EmailTemplate(
+        key=d.get("key", ""),
+        name=d.get("name", ""),
+        subject=d.get("subject", ""),
+        body_html=d.get("body_html", ""),
+        no_payment_link=d.get("no_payment_link", False),
+        activities=d.get("activities", ""),
+        notes=d.get("notes", ""),
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"success": True, "template": row.to_api()})
+
+
+@bp.route("/api/email-templates/<int:tpl_id>", methods=["DELETE"])
+@require_api_key
+def delete_email_template(tpl_id):
+    from app.models.email_template import EmailTemplate
+    from app.extensions import db
+    row = EmailTemplate.query.get(tpl_id)
+    if row:
+        db.session.delete(row)
+        db.session.commit()
+    return jsonify({"success": True})
