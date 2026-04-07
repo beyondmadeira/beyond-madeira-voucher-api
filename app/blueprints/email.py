@@ -26,14 +26,21 @@ def enviar_voucher_email():
             operador = d.get("operador", "")
             pickup_local = d.get("pickup_local", "")
             if pickup_local:
+                pickup_mode = d.get("pickup_mode", "meeting_point")
+                if pickup_mode in ("pickup_day_before", "pickup_time_confirmed"):
+                    pickup_label = "\U0001f698 Pick-up Location"
+                    pickup_note = '<p style="margin:6px 0 0;font-size:12px;color:#0d6e7a;font-style:italic;">Pick-up time will be confirmed the day before.</p>'
+                else:
+                    pickup_label = "\U0001f4cd Meeting Point"
+                    pickup_note = ""
                 pickup_block = (
                     f'<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">'
                     f"<tr><td style=\"background:#f2f9fa;border-left:4px solid #0d6e7a;"
                     f'border-radius:0 8px 8px 0;padding:20px 22px;">'
                     f'<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;'
-                    f'color:#0d6e7a;text-transform:uppercase;">\U0001f4cd Meeting Point</p>'
+                    f'color:#0d6e7a;text-transform:uppercase;">{pickup_label}</p>'
                     f'<p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">'
-                    f"{pickup_local}</p></td></tr></table>"
+                    f"{pickup_local}</p>{pickup_note}</td></tr></table>"
                 )
             else:
                 pickup_block = ""
@@ -264,14 +271,21 @@ def preview_email():
             atividade = d.get("atividade", "")
             pickup_local = d.get("pickup_local", "")
             if pickup_local:
+                pickup_mode = d.get("pickup_mode", "meeting_point")
+                if pickup_mode in ("pickup_day_before", "pickup_time_confirmed"):
+                    pickup_label = "\U0001f698 Pick-up Location"
+                    pickup_note = '<p style="margin:6px 0 0;font-size:12px;color:#0d6e7a;font-style:italic;">Pick-up time will be confirmed the day before.</p>'
+                else:
+                    pickup_label = "\U0001f4cd Meeting Point"
+                    pickup_note = ""
                 pickup_block = (
                     f'<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">'
                     f"<tr><td style=\"background:#f2f9fa;border-left:4px solid #0d6e7a;"
                     f'border-radius:0 8px 8px 0;padding:20px 22px;">'
                     f'<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;'
-                    f'color:#0d6e7a;text-transform:uppercase;">\U0001f4cd Meeting Point</p>'
+                    f'color:#0d6e7a;text-transform:uppercase;">{pickup_label}</p>'
                     f'<p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">'
-                    f"{pickup_local}</p></td></tr></table>"
+                    f"{pickup_local}</p>{pickup_note}</td></tr></table>"
                 )
             else:
                 pickup_block = ""
