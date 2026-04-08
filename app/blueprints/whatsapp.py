@@ -116,12 +116,36 @@ def wazzup_send():
         body = request.get_json()
         body["channelId"] = current_app.config["WAZZUP_CHANNEL"]
         r = requests.post(
-            WAZZUP_BASE + "/messages/text",
+            WAZZUP_BASE + "/message",
             headers=_wazzup_headers(),
             json=body,
             timeout=15,
         )
         r.raise_for_status()
         return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/wazzup/mark-as-read", methods=["POST"])
+@require_api_key
+def wazzup_mark_as_read():
+    try:
+        body = request.get_json()
+        chat_id = body.get("chatId")
+        if not chat_id:
+            return jsonify({"error": "chatId is required"}), 400
+        payload = {
+            "chatId": chat_id,
+            "channelId": current_app.config["WAZZUP_CHANNEL"],
+        }
+        r = requests.post(
+            WAZZUP_BASE + "/mark-as-read",
+            headers=_wazzup_headers(),
+            json=payload,
+            timeout=15,
+        )
+        r.raise_for_status()
+        return jsonify(r.json() if r.text else {"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
