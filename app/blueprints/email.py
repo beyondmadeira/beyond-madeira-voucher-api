@@ -20,6 +20,11 @@ def enviar_voucher_email():
         if not to:
             return jsonify({"error": "Missing 'to' email"}), 400
 
+        # Auto-detect tipo if not sent
+        if not tipo or tipo == "rc":
+            if d.get("atividade"):
+                tipo = "at"
+
         if tipo == "simple":
             # Simple raw HTML email — used for pickup updates, notifications
             tmpl = d.get("email_body", "")
@@ -31,15 +36,18 @@ def enviar_voucher_email():
             tmpl = load_template("email_at_template.html")
             atividade = d.get("atividade", "")
             operador = d.get("operador", "")
-            pickup_local = d.get("pickup_local", "")
-            if pickup_local:
-                pickup_mode = d.get("pickup_mode", "meeting_point")
-                if pickup_mode in ("pickup_day_before", "pickup_time_confirmed"):
-                    pickup_label = "\U0001f698 Pick-up Location"
-                    pickup_note = '<p style="margin:6px 0 0;font-size:12px;color:#0d6e7a;font-style:italic;">Pick-up time will be confirmed the day before.</p>'
-                else:
+            pickup_local = d.get("pickup_local", "") or d.get("local", "")
+            local_type = d.get("local_type", "pickup")
+            local_det = d.get("local_det", "")
+            if pickup_local or local_type == "pickup":
+                if local_type == "meeting":
                     pickup_label = "\U0001f4cd Meeting Point"
-                    pickup_note = ""
+                    pickup_note = f'<p style="margin:6px 0 0;font-size:12px;color:#6b7280;">{local_det}</p>' if local_det else ""
+                else:
+                    pickup_label = "\U0001f698 Pick-up"
+                    pickup_note = f'<p style="margin:6px 0 0;font-size:12px;color:#0d6e7a;font-style:italic;">{local_det or "Please be ready at the entrance / reception."}</p>'
+                    if not pickup_local:
+                        pickup_local = "We will pick you up at your accommodation"
                 maps_link = d.get("maps_link", "")
                 maps_html = f' <a href="{maps_link}" style="color:#0d6e7a;font-size:12px;">View on Maps</a>' if maps_link else ""
                 pickup_block = (
@@ -67,12 +75,19 @@ def enviar_voucher_email():
             except Exception:
                 pass
 
-            pagamento = d.get("pagamento", "cash")
+            pagamento = d.get("pagamento", "")
+            pag_map = {
+                "Pago": "Payment already received.",
+                "Devemos": "Payment to be discussed.",
+                "Por Pagar": "Cash on the day of the activity.",
+            }
             if no_pay:
-                payment_note = "Payment on the day of the activity — no advance payment required."
-            elif "cash" in pagamento:
+                payment_note = "Payment on the day — no advance payment required."
+            elif pagamento in pag_map:
+                payment_note = pag_map[pagamento]
+            elif "cash" in pagamento.lower():
                 payment_note = "Cash on the day of the activity."
-            elif "card" in pagamento:
+            elif "card" in pagamento.lower():
                 payment_note = "Payment by card on the day."
             else:
                 payment_note = "To be confirmed."
