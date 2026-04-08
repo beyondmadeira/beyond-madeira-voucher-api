@@ -43,6 +43,7 @@ def wazzup_iframe():
             "user": {"id": user_id, "name": user_name},
             "scope": scope,
             "channels": [channel_id],
+            "options": {"hideAvatars": True},
         }
         chat_type = body.get("chatType")
         chat_id = body.get("chatId")
