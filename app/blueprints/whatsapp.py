@@ -37,9 +37,12 @@ def wazzup_iframe():
 
         _ensure_wazzup_user(user_id, user_name)
 
+        channel_id = current_app.config["WAZZUP_CHANNEL"]
+
         payload = {
             "user": {"id": user_id, "name": user_name},
             "scope": scope,
+            "channels": [channel_id],
         }
         chat_type = body.get("chatType")
         chat_id = body.get("chatId")
