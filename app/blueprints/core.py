@@ -64,8 +64,14 @@ def ai_parse_reserva():
 
     system_prompt = f"""You are a reservation parser for Beyond Madeira, a tourism company in Madeira, Portugal.
 Today is {today_str}. Current year is {year}.
-For dates written as DD/MM (no year): if that date is in the future or today use {year}, otherwise use {year + 1}.
-Convert all DD/MM dates to YYYY-MM-DD format.
+Rules:
+- Accept ANY format: formal, informal, incomplete, shorthand. E.g. "reserva pointcar joao 924430084 renault clio" is valid.
+- For dates written as DD/MM (no year): if that date is in the future or today use {year}, otherwise use {year + 1}.
+- Convert all DD/MM dates to YYYY-MM-DD format.
+- If a field is missing from the text, use empty string "" for text fields and 0 for numbers.
+- Common partner names: PointCar, Point Car, Atlantic Rent Car, Ab4 Rent, Amsterdam Rent Car, LidoTours, RentCar Madeira.
+- Phone numbers: always include country code. If just 9 digits starting with 9, prefix +351.
+- Be smart: "airport" = Airport, "hotel X" = Hotel/Airbnb with pdet=X, "office" = Office.
 Parse the reservation text and return ONLY a valid JSON object matching this schema:
 {schema}
 Return ONLY the JSON object, no explanation, no markdown, no extra text."""
