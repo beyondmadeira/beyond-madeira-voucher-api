@@ -227,14 +227,14 @@ def _poll_gmail():
     results = []
 
     queries = [
-        ("from:no-reply@bokun.io is:unread", "at"),
-        ("from:notify@web3forms.com is:unread", "rc"),
+        ("from:no-reply@bokun.io newer_than:30d", "at"),
+        ("from:notify@web3forms.com newer_than:30d", "rc"),
     ]
 
     for query, tipo in queries:
         try:
             resp = service.users().messages().list(
-                userId="me", q=query, maxResults=20
+                userId="me", q=query, maxResults=100
             ).execute()
             messages = resp.get("messages", [])
         except Exception as e:
@@ -293,13 +293,17 @@ def _poll_gmail():
                 db.session.add(booking)
                 db.session.flush()  # get the id
 
-                # Send WhatsApp
-                wa_sent = _send_whatsapp(
-                    parsed.get("tel", ""),
-                    parsed.get("nome", ""),
-                    product_label,
-                    tipo,
-                )
+                # Send WhatsApp only for recent emails (< 2 hours old)
+                wa_sent = False
+                internal_date = int(msg.get("internalDate", "0")) / 1000
+                email_age_hours = (datetime.now(timezone.utc).timestamp() - internal_date) / 3600
+                if email_age_hours < 2:
+                    wa_sent = _send_whatsapp(
+                        parsed.get("tel", ""),
+                        parsed.get("nome", ""),
+                        product_label,
+                        tipo,
+                    )
                 booking.whatsapp_sent = wa_sent
 
                 db.session.commit()
