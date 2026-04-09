@@ -244,8 +244,8 @@ def _poll_gmail():
     results = []
 
     queries = [
-        ("from:no-reply@bokun.io newer_than:30d", "at"),
-        ("from:notify@web3forms.com newer_than:30d", "rc"),
+        ("from:no-reply@bokun.io newer_than:7d", "at"),
+        ("from:notify@web3forms.com newer_than:7d", "rc"),
     ]
 
     for query, tipo in queries:
