@@ -529,3 +529,41 @@ def reset_site_bookings():
         db.session.rollback()
         log.exception("Reset failed")
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/site-bookings/reparse", methods=["POST"])
+@require_api_key
+def reparse_site_bookings():
+    """Re-parse all bookings from stored raw_email text."""
+    try:
+        rows = SiteBooking.query.all()
+        fixed = 0
+        for row in rows:
+            if not row.raw_email:
+                continue
+            body = row.raw_email
+            if row.tipo == "at":
+                parsed = _parse_bokun(body)
+            else:
+                parsed = _parse_web3forms(body)
+            nome = parsed.get("nome", "")
+            if nome and not row.nome:
+                row.nome = nome
+                row.email = parsed.get("email", "") or row.email
+                row.tel = parsed.get("tel", "") or row.tel
+                row.parsed_data = json.dumps(parsed, ensure_ascii=False)
+                fixed += 1
+            elif not row.parsed_data or row.parsed_data == "{}":
+                row.parsed_data = json.dumps(parsed, ensure_ascii=False)
+                if nome:
+                    row.nome = nome
+                if parsed.get("email"):
+                    row.email = parsed["email"]
+                if parsed.get("tel"):
+                    row.tel = parsed["tel"]
+                fixed += 1
+        db.session.commit()
+        return jsonify({"success": True, "fixed": fixed, "total": len(rows)})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
