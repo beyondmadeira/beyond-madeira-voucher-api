@@ -20,6 +20,25 @@ def get_rc():
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
+@bp.route("/airtable/rc", methods=["POST"])
+@require_api_key
+def create_rc():
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        rec = RentCar()
+        _apply_rc_fields(rec, fields)
+        rec.dirty = True
+        db.session.add(rec)
+        db.session.commit()
+        return jsonify({"success": True, "record": rec.to_api()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.route("/airtable/rc/<record_id>", methods=["PATCH"])
 @require_api_key
 def patch_rc(record_id):
@@ -88,6 +107,25 @@ def get_at():
         out = [r.to_api() for r in records]
         return jsonify({"success": True, "records": out})
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/airtable/at", methods=["POST"])
+@require_api_key
+def create_at():
+    try:
+        body = request.get_json() or {}
+        fields = body.get("fields", {})
+        if not fields:
+            return jsonify({"error": "No fields provided"}), 400
+        rec = Atividade()
+        _apply_at_fields(rec, fields)
+        rec.dirty = True
+        db.session.add(rec)
+        db.session.commit()
+        return jsonify({"success": True, "record": rec.to_api()})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
