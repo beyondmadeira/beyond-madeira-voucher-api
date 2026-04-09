@@ -103,6 +103,8 @@ def _parse_bokun(body):
     pax = _extract(r"PAX\s+(.+?)(?:\n|$)", body)
     pickup = _extract(r"Pick-?up\s+(.+?)(?:\n|$)", body)
 
+    booking_channel = _extract(r"Booking\s+channel\s+(.+?)(?:\n|$)", body)
+
     return {
         "ref": ref,
         "atividade": product,
@@ -112,6 +114,7 @@ def _parse_bokun(body):
         "data": date_str,
         "pax": pax,
         "pickup": pickup,
+        "booking_channel": booking_channel,
     }
 
 
@@ -311,6 +314,12 @@ def _poll_gmail():
                     parsed = _parse_web3forms(body)
 
                 ref = parsed.get("ref", "")
+
+                # Skip bookings made manually by Milton (not from site)
+                channel = parsed.get("booking_channel", "").lower()
+                if "milton" in channel:
+                    log.info("Skipping manual booking by Milton: %s", ref)
+                    continue
 
                 # Skip if already imported (by ref)
                 if ref and SiteBooking.query.filter_by(ref=ref).first():
