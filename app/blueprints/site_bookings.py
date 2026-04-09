@@ -441,6 +441,40 @@ def ignore_site_booking(booking_id):
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/api/site-bookings/debug", methods=["GET"])
+@require_api_key
+def debug_gmail():
+    """Debug: test Gmail connection and show what emails exist."""
+    try:
+        service = _gmail_service()
+        # Test 1: any recent email
+        r1 = service.users().messages().list(userId="me", maxResults=3).execute()
+        total = r1.get("resultSizeEstimate", 0)
+        # Test 2: unread from bokun
+        r2 = service.users().messages().list(userId="me", q="from:no-reply@bokun.io is:unread", maxResults=5).execute()
+        bokun_unread = len(r2.get("messages", []))
+        # Test 3: unread from web3forms
+        r3 = service.users().messages().list(userId="me", q="from:notify@web3forms.com is:unread", maxResults=5).execute()
+        web3_unread = len(r3.get("messages", []))
+        # Test 4: ALL from bokun (last 30 days, read or unread)
+        r4 = service.users().messages().list(userId="me", q="from:no-reply@bokun.io newer_than:30d", maxResults=5).execute()
+        bokun_all = len(r4.get("messages", []))
+        # Test 5: ALL from web3forms (last 30 days)
+        r5 = service.users().messages().list(userId="me", q="from:notify@web3forms.com newer_than:30d", maxResults=5).execute()
+        web3_all = len(r5.get("messages", []))
+        return jsonify({
+            "success": True,
+            "gmail_connected": True,
+            "total_emails": total,
+            "bokun_unread": bokun_unread,
+            "bokun_last_30d": bokun_all,
+            "web3forms_unread": web3_unread,
+            "web3forms_last_30d": web3_all,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "gmail_connected": False, "error": str(e)}), 500
+
+
 @bp.route("/api/site-bookings/poll", methods=["POST"])
 @require_api_key
 def poll_site_bookings():
