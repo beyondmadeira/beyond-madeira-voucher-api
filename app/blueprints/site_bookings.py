@@ -125,19 +125,19 @@ def _parse_web3forms(body):
         return m.group(1).strip() if m else default
 
     ref = _extract(r"Ref\s*:?\s*(\S+)", body)
-    driver = _extract(r"Driver:\s*(.+?)(?:\n|$)", body)
-    age = _extract(r"Age:\s*(\d+)", body)
-    phone = _extract(r"Phone:\s*(\+?\S+)", body)
-    email_addr = _extract(r"Email:\s*(\S+)", body)
-    pickup_raw = _extract(r"Pick-up:\s*(.+?)(?:\n|$)", body)
-    dropoff_raw = _extract(r"Drop-off:\s*(.+?)(?:\n|$)", body)
-    car = _extract(r"Car:\s*(.+?)(?:\n|$)", body)
-    extras = _extract(r"Extras:\s*(.+?)(?:\n|$)", body)
-    total_line = _extract(r"Total:\s*(.+?)(?:\n|$)", body)
-    empresa = _extract(r"Empresa:\s*(.+?)(?:\n|$)", body)
-    comissao_line = _extract(r"Comiss[aã]o:\s*(.+?)(?:\n|$)", body)
-    total_num = _extract(r"Total\s*num:\s*(\S+)", body)
-    comissao_num = _extract(r"Comiss?[aã]o\s*num:\s*(\S+)", body)
+    driver = _extract(r"Driver\s*:\s*(.+?)(?:\n|$)", body)
+    age = _extract(r"Age\s*:\s*(\d+)", body)
+    phone = _extract(r"Phone\s*:\s*(\+?[\d\s\-]+)", body)
+    email_addr = _extract(r"Email\s*:\s*(\S+)", body)
+    pickup_raw = _extract(r"Pick-?up\s*:\s*(.+?)(?:\n|$)", body)
+    dropoff_raw = _extract(r"Drop-?off\s*:\s*(.+?)(?:\n|$)", body)
+    car = _extract(r"Car\s*:\s*(.+?)(?:\n|$)", body)
+    extras = _extract(r"Extras\s*:\s*(.+?)(?:\n|$)", body)
+    total_line = _extract(r"Total\s*:\s*(.+?)(?:\n|$)", body)
+    empresa = _extract(r"Empresa\s*:\s*(.+?)(?:\n|$)", body)
+    comissao_line = _extract(r"Comiss[aã]o\s*:\s*(.+?)(?:\n|$)", body)
+    total_num = _extract(r"Total_?num\s*:\s*(\S+)", body)
+    comissao_num = _extract(r"Comiss?[aã]o_?num\s*:\s*(\S+)", body)
 
     # Parse pickup details: "Sat, 16 May 2026 17:30 — Airport (20€) — SK2901"
     pickup_dt = ""
