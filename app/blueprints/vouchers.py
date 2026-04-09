@@ -68,7 +68,7 @@ def gerar_voucher_multi():
                 f'<div style="display:flex;justify-content:space-between;padding:10px 0;'
                 f'border-bottom:1px solid #eee;font-size:13px;">'
                 f'<div><strong>{i+1}. {a.get("nome","")}</strong><br>'
-                f'<span style="color:#666;font-size:12px;">{a.get("data","")} \u00b7 {a.get("hora","TBC")} \u00b7 {a.get("pax","1")} pax</span></div>'
+                f'<span style="color:#666;font-size:12px;">{a.get("data","")} \u00b7 {a.get("hora","09:00")} \u00b7 {a.get("pax","1")} pax</span></div>'
                 f'<div style="font-weight:700;white-space:nowrap;">\u20ac{float(a.get("total",0)):.2f}</div></div>'
             )
         discount_html = ""

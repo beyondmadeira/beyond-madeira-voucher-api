@@ -135,8 +135,8 @@ def build_at_html(d):
         else:
             d["price_note"] = "Cash on the day"
 
-    hora = d.get("hora", "TBC")
-    d["start_time_class"] = "tbc" if hora == "TBC" else "accent"
+    hora = d.get("hora", "09:00")
+    d["start_time_class"] = "tbc" if hora == "09:00" else "accent"
 
     total = d.get("total", "")
     if status == "awaiting":
@@ -222,7 +222,7 @@ def build_at_html(d):
         items = [
             {
                 "nome": d.get("atividade", ""),
-                "detalhe": f"{d.get('data', '')} &middot; {d.get('hora', 'TBC')}",
+                "detalhe": f"{d.get('data', '')} &middot; {d.get('hora', '09:00')}",
                 "qty": d.get("pax", ""),
                 "unit": d.get("preco_unit", ""),
                 "sub": d.get("total", ""),

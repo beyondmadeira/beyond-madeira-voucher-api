@@ -114,12 +114,12 @@ ACTIVITY_TIPS = {
         "tips": ["Wear layers \u2014 mornings can be cool", "Start well-rested and hydrated"],
     },
     "sunrise": {
-        "bring": ["Warm layers (near 0\u00b0C at altitude)", "Headlamp or phone torch", "Water & snacks", "Camera / tripod"],
+        "bring": ["Warm layers (near 0\u00b0C at altitude)", "Headlamp or phone torch", "Water & snacks", "Phone torch"],
         "not_included": [],
         "tips": ["Set multiple alarms \u2014 departure is very early", "Dress warmer than you think"],
     },
     "cabo girao": {
-        "bring": ["Comfortable shoes", "Camera"],
+        "bring": ["Comfortable shoes"],
         "not_included": ["Cabo Gir\u00e3o skywalk entry \u2014 \u20ac5 per person (cash or card on site)"],
         "tips": ["Entry paid on site \u2014 card or cash accepted"],
     },
@@ -139,17 +139,17 @@ ACTIVITY_TIPS = {
         "tips": ["Weather changes fast at altitude \u2014 always bring a jacket", "No water points on trail"],
     },
     "island tour": {
-        "bring": ["Sunscreen", "Camera", "Light jacket", "Water", "Comfortable walking shoes"],
+        "bring": ["Sunscreen", "Light jacket", "Water", "Comfortable walking shoes"],
         "not_included": ["Lunch", "Entry fees (if applicable)"],
         "tips": ["We stop for lunch — cards accepted almost everywhere", "Confirm pick-up point the day before"],
     },
     "jeep": {
-        "bring": ["Sunscreen", "Camera", "Light jacket", "Water"],
+        "bring": ["Sunscreen", "Light jacket", "Water"],
         "not_included": ["Lunch"],
         "tips": ["Off-road sections can be bumpy \u2014 avoid if back issues", "We stop for lunch — cards accepted at most places"],
     },
     "mini van": {
-        "bring": ["Sunscreen", "Camera", "Comfortable shoes", "Water"],
+        "bring": ["Sunscreen", "Comfortable shoes", "Water"],
         "not_included": ["Lunch", "Entry fees (if applicable)"],
         "tips": ["Confirm pick-up location the night before"],
     },
@@ -159,7 +159,7 @@ ACTIVITY_TIPS = {
         "tips": ["Take seasickness medication 30min before if prone", "Bring a waterproof bag for your phone"],
     },
     "dolphin": {
-        "bring": ["Sunscreen", "Warm layer for sea breeze", "Seasickness tablets if needed", "Camera"],
+        "bring": ["Sunscreen", "Warm layer for sea breeze", "Seasickness tablets if needed"],
         "not_included": [],
         "tips": ["Sightings are very likely but not 100% guaranteed \u2014 it's nature", "Confirm departure marina"],
     },
@@ -194,7 +194,7 @@ ACTIVITY_TIPS = {
         "tips": ["Some upper body strength required", "Not suitable for severe fear of heights"],
     },
     "default": {
-        "bring": ["Comfortable clothes", "Sunscreen & sunglasses", "Water", "Camera"],
+        "bring": ["Comfortable clothes", "Sunscreen & sunglasses", "Water"],
         "not_included": [],
         "tips": ["Confirm meeting point the day before", "Arrive 10 minutes early"],
     },

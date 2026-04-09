@@ -76,7 +76,7 @@ def _build_voucher_html(d, tipo):
             "{{cliente}}": d.get("cliente", ""),
             "{{atividade}}": atividade,
             "{{data}}": d.get("data", ""),
-            "{{hora}}": d.get("hora", "TBC"),
+            "{{hora}}": d.get("hora", "09:00"),
             "{{participantes}}": d.get("participantes", ""),
             "{{operador}}": operador,
             "{{referencia}}": d.get("referencia", ""),
