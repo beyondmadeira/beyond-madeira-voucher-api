@@ -65,28 +65,43 @@ def _get_body_text(payload):
 # Parsers (regex-based)
 # ---------------------------------------------------------------------------
 
+def _clean_html(html):
+    """Strip HTML tags and normalize whitespace."""
+    text = re.sub(r'<br\s*/?\s*>', '\n', html, flags=re.IGNORECASE)
+    text = re.sub(r'</(td|tr|div|p|li|h\d)>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&nbsp;', ' ', text)
+    text = re.sub(r'&amp;', '&', text)
+    text = re.sub(r'&#\d+;', '', text)
+    text = re.sub(r'&\w+;', '', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n', text)
+    return text.strip()
+
+
 def _parse_bokun(body):
     """Parse a Bokun activity booking email and return a dict."""
+    # Clean HTML if present
+    if '<' in body and '>' in body:
+        body = _clean_html(body)
 
     def _extract(pattern, text, default=""):
-        m = re.search(pattern, text, re.IGNORECASE)
+        m = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
         return m.group(1).strip() if m else default
 
-    ref = _extract(r"Booking\s+ref\.\s+(BYD-\S+)", body)
-    product = _extract(r"Product\s+(?!booking)(\S.+?)(?:\n|$)", body)
-    # Customer line: "Customer    LastName, FirstName"
-    customer_raw = _extract(r"Customer\s+(?!email|phone)(\S.+?)(?:\n|$)", body)
-    # Flip "LastName, FirstName" -> "FirstName LastName"
+    ref = _extract(r"Booking\s+ref\.?\s+(BYD-?\S+)", body)
+    product = _extract(r"Product\s+(?!booking)(.+?)(?:\n|$)", body)
+    customer_raw = _extract(r"Customer\s+(?!email|phone)(.+?)(?:\n|$)", body)
     if "," in customer_raw:
         parts = [p.strip() for p in customer_raw.split(",", 1)]
         customer = f"{parts[1]} {parts[0]}" if len(parts) == 2 else customer_raw
     else:
         customer = customer_raw
     email_addr = _extract(r"Customer\s+email\s+(\S+)", body)
-    phone = _extract(r"Customer\s+phone\s+(\+?\S+)", body)
+    phone = _extract(r"Customer\s+phone\s+(\+?[\d\s\-]+)", body)
     date_str = _extract(r"Date\s+(.+?)(?:\n|$)", body)
     pax = _extract(r"PAX\s+(.+?)(?:\n|$)", body)
-    pickup = _extract(r"Pick-up\s+(.+?)(?:\n|$)", body)
+    pickup = _extract(r"Pick-?up\s+(.+?)(?:\n|$)", body)
 
     return {
         "ref": ref,
@@ -102,12 +117,14 @@ def _parse_bokun(body):
 
 def _parse_web3forms(body):
     """Parse a Web3Forms rent-car booking email and return a dict."""
+    if '<' in body and '>' in body:
+        body = _clean_html(body)
 
     def _extract(pattern, text, default=""):
-        m = re.search(pattern, text, re.IGNORECASE)
+        m = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
         return m.group(1).strip() if m else default
 
-    ref = _extract(r"Ref:\s*(\S+)", body)
+    ref = _extract(r"Ref\s*:?\s*(\S+)", body)
     driver = _extract(r"Driver:\s*(.+?)(?:\n|$)", body)
     age = _extract(r"Age:\s*(\d+)", body)
     phone = _extract(r"Phone:\s*(\+?\S+)", body)
@@ -492,4 +509,23 @@ def poll_site_bookings():
         })
     except Exception as e:
         log.exception("Poll failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/site-bookings/reset", methods=["POST"])
+@require_api_key
+def reset_site_bookings():
+    """Delete all site bookings and re-import from Gmail."""
+    try:
+        SiteBooking.query.delete()
+        db.session.commit()
+        results = _poll_gmail()
+        return jsonify({
+            "success": True,
+            "deleted": True,
+            "imported": len(results),
+        })
+    except Exception as e:
+        db.session.rollback()
+        log.exception("Reset failed")
         return jsonify({"error": str(e)}), 500
