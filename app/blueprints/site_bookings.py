@@ -546,22 +546,17 @@ def reparse_site_bookings():
                 parsed = _parse_bokun(body)
             else:
                 parsed = _parse_web3forms(body)
-            nome = parsed.get("nome", "")
-            if nome and not row.nome:
-                row.nome = nome
-                row.email = parsed.get("email", "") or row.email
-                row.tel = parsed.get("tel", "") or row.tel
-                row.parsed_data = json.dumps(parsed, ensure_ascii=False)
-                fixed += 1
-            elif not row.parsed_data or row.parsed_data == "{}":
-                row.parsed_data = json.dumps(parsed, ensure_ascii=False)
-                if nome:
-                    row.nome = nome
-                if parsed.get("email"):
-                    row.email = parsed["email"]
-                if parsed.get("tel"):
-                    row.tel = parsed["tel"]
-                fixed += 1
+            # Always update parsed_data and fields
+            row.parsed_data = json.dumps(parsed, ensure_ascii=False)
+            if parsed.get("nome"):
+                row.nome = parsed["nome"]
+            if parsed.get("email"):
+                row.email = parsed["email"]
+            if parsed.get("tel"):
+                row.tel = parsed["tel"]
+            if parsed.get("ref") and not row.ref:
+                row.ref = parsed["ref"]
+            fixed += 1
         db.session.commit()
         return jsonify({"success": True, "fixed": fixed, "total": len(rows)})
     except Exception as e:
