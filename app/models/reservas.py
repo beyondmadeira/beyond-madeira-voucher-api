@@ -126,18 +126,42 @@ class Parceiro(AirtableSyncMixin, db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.Text)
+    categoria = db.Column(db.Text)
     email = db.Column(db.Text)
     telefone = db.Column(db.Text)
-    tipo = db.Column(db.Text)
+    website = db.Column(db.Text)
+    morada_office = db.Column(db.Text)
+    comissao_tipo = db.Column(db.Text)
+    comissao_valor = db.Column(db.Text)
+    comissao_notas = db.Column(db.Text)
+    instrucoes_aeroporto = db.Column(db.Text)
+    instrucoes_hotel = db.Column(db.Text)
+    instrucoes_office = db.Column(db.Text)
+    logo_url = db.Column(db.Text)
+    notas = db.Column(db.Text)
+    atividades = db.Column(db.Text)
     ativo = db.Column(db.Boolean, default=True)
+    # Legacy
+    tipo = db.Column(db.Text)
 
     def to_api(self):
         return {
             "id": self.airtable_id or str(self.id),
             "nome": self.nome or "",
+            "categoria": self.categoria or self.tipo or "",
             "email": self.email or "",
-            "telefone": self.telefone or "",
-            "tipo": self.tipo or "",
+            "tel": self.telefone or "",
+            "website": self.website or "",
+            "morada_office": self.morada_office or "",
+            "comissao_tipo": self.comissao_tipo or "",
+            "comissao_valor": self.comissao_valor or "",
+            "comissao_notas": self.comissao_notas or "",
+            "instrucoes_aeroporto": self.instrucoes_aeroporto or "",
+            "instrucoes_hotel": self.instrucoes_hotel or "",
+            "instrucoes_office": self.instrucoes_office or "",
+            "logo_url": self.logo_url or "",
+            "notas": self.notas or "",
+            "atividades": self.atividades or "",
             "ativo": self.ativo if self.ativo is not None else True,
         }
 
