@@ -45,6 +45,7 @@ def create_app(config_class=Config):
     from app.blueprints.email import bp as email_bp
     from app.blueprints.whatsapp import bp as whatsapp_bp
     from app.blueprints.chat import bp as chat_bp
+    from app.blueprints.site_bookings import bp as site_bookings_bp
 
     application.register_blueprint(core_bp)
     application.register_blueprint(reservas_bp)
@@ -55,6 +56,7 @@ def create_app(config_class=Config):
     application.register_blueprint(email_bp)
     application.register_blueprint(whatsapp_bp)
     application.register_blueprint(chat_bp)
+    application.register_blueprint(site_bookings_bp)
 
     # Register CLI commands
     from app.services.airtable_sync import register_commands
