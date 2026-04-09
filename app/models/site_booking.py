@@ -34,7 +34,7 @@ class SiteBooking(db.Model):
             "tipo": self.tipo or "",
             "status": self.status or "pending",
             "raw_email": self.raw_email or "",
-            "parsed": parsed,
+            "parsed_data": parsed,
             "nome": self.nome or "",
             "email": self.email or "",
             "tel": self.tel or "",
