@@ -26,31 +26,31 @@ FOLLOWUP_MESSAGES = {
         "Great, thank you for confirming! 😊\n\n"
         "If you need anything at all during your stay, we're always here to help.\n"
         "You can also find tips, our travel guide and webcams on our website anytime.\n\n"
-        "Enjoy your time in Madeira! 🌴"
+        "Enjoy your time in Madeira! 😊"
     ),
     "fr": (
         "Parfait, merci d'avoir confirmé ! 😊\n\n"
         "Si vous avez besoin de quoi que ce soit pendant votre séjour, nous sommes là pour vous aider.\n"
         "Vous trouverez aussi des conseils et notre guide de voyage sur notre site.\n\n"
-        "Profitez bien de Madère ! 🌴"
+        "Profitez bien de Madère ! 😊"
     ),
     "pt": (
         "Ótimo, obrigado por confirmar! 😊\n\n"
         "Se precisar de alguma coisa durante a sua estadia, estamos sempre aqui.\n"
         "Pode encontrar dicas e o nosso guia de viagem no nosso site.\n\n"
-        "Aproveite a Madeira! 🌴"
+        "Aproveite a Madeira! 😊"
     ),
     "es": (
         "Perfecto, gracias por confirmar! 😊\n\n"
         "Si necesitas algo durante tu estancia, estamos aquí para ayudarte.\n"
         "También puedes encontrar consejos y nuestra guía de viaje en nuestra web.\n\n"
-        "¡Disfruta de Madeira! 🌴"
+        "¡Disfruta de Madeira! 😊"
     ),
     "de": (
         "Super, danke für die Bestätigung! 😊\n\n"
         "Wenn Sie während Ihres Aufenthalts etwas brauchen, sind wir immer für Sie da.\n"
         "Auf unserer Website finden Sie Tipps und unseren Reiseführer.\n\n"
-        "Genießen Sie Madeira! 🌴"
+        "Genießen Sie Madeira! 😊"
     ),
 }
 
