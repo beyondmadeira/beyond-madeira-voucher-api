@@ -178,8 +178,8 @@ def _parse_web3forms(body):
 # WhatsApp notification via Wazzup
 # ---------------------------------------------------------------------------
 
-def _send_whatsapp(phone, name, product_or_car, tipo):
-    """Send a WhatsApp greeting via Wazzup API."""
+def _send_whatsapp(phone, name, product_or_car, tipo, parsed=None):
+    """Send a WhatsApp greeting with booking details via Wazzup API."""
     if not phone:
         return False
 
@@ -190,22 +190,52 @@ def _send_whatsapp(phone, name, product_or_car, tipo):
         log.warning("Wazzup not configured, skipping WhatsApp for %s", name)
         return False
 
-    # Clean phone: keep only digits and leading +
     clean_phone = re.sub(r"[^\d+]", "", phone)
     if clean_phone.startswith("+"):
         clean_phone = clean_phone[1:]
 
-    if tipo == "at":
-        item_label = product_or_car
-    else:
-        item_label = f"a rental car ({product_or_car})" if product_or_car else "a car rental"
-
     first_name = name.split()[0] if name else "there"
+    d = parsed or {}
+
+    # Build details
+    details = ""
+    if tipo == "at":
+        atv = d.get("atividade", product_or_car or "")
+        data = d.get("data", "")
+        pax = d.get("pax", "")
+        if atv:
+            details += f"\n\U0001f3af {atv}"
+        if data:
+            details += f"\n\U0001f4c5 {data}"
+        if pax:
+            details += f"\n\U0001f465 {pax}"
+    else:
+        carro = d.get("carro", product_or_car or "")
+        parceiro = d.get("parceiro", "")
+        pickup_dt = d.get("pickup_dt", "")
+        pickup_loc = d.get("pickup_loc", "")
+        pickup_flight = d.get("pickup_flight", "")
+        total = d.get("total", "")
+        if carro:
+            details += f"\n\U0001f697 {carro}"
+            if parceiro:
+                details += f" \u00B7 {parceiro}"
+        if pickup_dt:
+            details += f"\n\U0001f4c5 {pickup_dt}"
+        if pickup_loc:
+            details += f"\n\U0001f4cd {pickup_loc}"
+            if pickup_flight:
+                details += f" \u00B7 {pickup_flight}"
+        if total:
+            details += f"\n\U0001f4b0 \u20AC{total}"
+    ref = d.get("ref", "")
+    if ref:
+        details += f"\nRef: {ref}"
 
     message = (
-        f"Hello {first_name}! \U0001f60a We received your booking request for "
-        f"{item_label}. We're checking availability and will get back to you "
-        f"shortly! \u2014 Beyond Madeira Team"
+        f"Hello {first_name}! \U0001f60a We received your booking request."
+        f"{details}\n\n"
+        f"We're checking availability and will get back to you shortly!"
     )
 
     try:
@@ -320,6 +350,7 @@ def _poll_gmail():
                         parsed.get("nome", ""),
                         product_label,
                         tipo,
+                        parsed,
                     )
                 booking.whatsapp_sent = wa_sent
 
