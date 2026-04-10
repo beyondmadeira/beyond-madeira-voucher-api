@@ -394,15 +394,21 @@ def _poll_gmail():
 @bp.route("/api/site-bookings", methods=["GET"])
 @require_api_key
 def list_site_bookings():
-    """List site bookings, optionally filtered by status."""
+    """List site bookings, optionally filtered by status. Excludes raw_email for speed."""
     try:
         status = request.args.get("status", "pending")
         q = SiteBooking.query
         if status and status != "all":
             q = q.filter_by(status=status)
-        q = q.order_by(SiteBooking.created_at.desc())
+        q = q.order_by(SiteBooking.created_at.desc()).limit(200)
         rows = q.all()
-        return jsonify({"success": True, "records": [r.to_api() for r in rows]})
+        # Build lighter response — exclude raw_email (huge)
+        out = []
+        for r in rows:
+            api = r.to_api()
+            api.pop("raw_email", None)
+            out.append(api)
+        return jsonify({"success": True, "records": out})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
