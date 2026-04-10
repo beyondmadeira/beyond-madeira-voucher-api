@@ -22,11 +22,6 @@ def create_app(config_class=Config):
     # Extensions
     db.init_app(application)
     migrate.init_app(application, db)
-    try:
-        from flask_compress import Compress
-        Compress(application)
-    except ImportError:
-        pass
     cors.init_app(
         application,
         origins=[
