@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app
 from app.extensions import db
 from app.models.wa_confirmation import WaConfirmation
+from app.models.wa_notification import WaNotification
 from app.utils.auth import require_api_key
 
 bp = Blueprint("whatsapp", __name__)
@@ -267,6 +268,17 @@ def wazzup_webhook():
         payload = request.get_json(silent=True) or {}
         messages = payload.get("messages", [])
 
+        # Build a map of chatId -> contact_name from the contacts array, if present
+        contacts_by_chat = {}
+        try:
+            for c in (payload.get("contacts") or []):
+                cid = c.get("chatId") or c.get("id") or ""
+                name = c.get("name") or c.get("username") or ""
+                if cid:
+                    contacts_by_chat[cid] = name
+        except Exception:
+            contacts_by_chat = {}
+
         for msg in messages:
             # Only process incoming WhatsApp text messages
             if msg.get("type") != "incoming":
@@ -278,6 +290,27 @@ def wazzup_webhook():
             chat_id = msg.get("chatId", "")
             if not chat_id or not text:
                 continue
+
+            # ── Store as bell notification ─────────────────────────
+            try:
+                contact_name = contacts_by_chat.get(chat_id) or ""
+                if not contact_name and isinstance(msg.get("contact"), dict):
+                    contact_name = msg.get("contact", {}).get("name") or ""
+                if not contact_name:
+                    contact_name = msg.get("authorName") or ""
+                notif = WaNotification(
+                    chat_id=chat_id,
+                    contact_name=contact_name or "",
+                    text=text[:2000],
+                    received_at=datetime.utcnow(),
+                    read=False,
+                    replied=False,
+                )
+                db.session.add(notif)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                log.exception("failed to store wa_notification")
 
             # Check if we have an unreplied confirmation for this chatId
             # sent within the last 24 hours
@@ -321,6 +354,14 @@ def wazzup_webhook():
             if r.ok:
                 conf.replied = True
                 conf.replied_at = datetime.utcnow()
+                # Mark the just-stored notification (and any other unreplied
+                # ones for this chat) as replied so they won't nag in the bell.
+                try:
+                    (WaNotification.query
+                     .filter_by(chat_id=chat_id, replied=False)
+                     .update({"replied": True}))
+                except Exception:
+                    log.exception("failed to mark notifications replied")
                 db.session.commit()
                 log.info(
                     "Auto-replied confirmation for chat_id=%s lang=%s",
@@ -339,3 +380,39 @@ def wazzup_webhook():
         log.exception("wazzup_webhook failed")
         # Always return 200 to Wazzup so it doesn't retry endlessly
         return jsonify({"ok": False, "error": str(e)}), 200
+
+
+# ── Bell notifications API ─────────────────────────────────────────
+@bp.route("/api/wa-notifications", methods=["GET"])
+@require_api_key
+def list_wa_notifications():
+    """Return up to 20 most recent UNREAD WhatsApp notifications."""
+    try:
+        q = (
+            WaNotification.query
+            .filter_by(read=False)
+            .order_by(WaNotification.received_at.desc())
+            .limit(20)
+            .all()
+        )
+        return jsonify({"items": [n.to_api() for n in q], "count": len(q)})
+    except Exception as e:
+        log.exception("list_wa_notifications failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/wa-notifications/<int:notif_id>/read", methods=["POST"])
+@require_api_key
+def mark_wa_notification_read(notif_id):
+    """Mark a single WhatsApp bell notification as read."""
+    try:
+        n = WaNotification.query.get(notif_id)
+        if not n:
+            return jsonify({"error": "not found"}), 404
+        n.read = True
+        db.session.commit()
+        return jsonify(n.to_api())
+    except Exception as e:
+        db.session.rollback()
+        log.exception("mark_wa_notification_read failed")
+        return jsonify({"error": str(e)}), 500

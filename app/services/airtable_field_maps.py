@@ -70,11 +70,11 @@ FIELD_MAPS = {
         "airtable_base": "appR8ZKP5ygR8o8Q0",
         "airtable_table": "Parceiros",
         "fields": {
-            "nome":     ["Nome", "Name"],
+            "nome":     ["Parceiro", "Nome", "Name"],
             "email":    ["Email"],
-            "telefone": ["Telefone", "Tel"],
-            "tipo":     ["Tipo", "Categoria"],
-            "ativo":    ["Ativo", "Active"],
+            "telefone": ["Contacto Telefone", "Telefone", "Tel"],
+            "tipo":     ["Categoria", "Tipo"],
+            "ativo":    ["Ativo?", "Ativo", "Active"],
         },
     },
     "Tarefa": {
