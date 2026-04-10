@@ -187,12 +187,55 @@ def _apply_at_fields(rec, fields):
 @bp.route("/airtable/parceiros", methods=["GET"])
 @require_api_key
 def get_parceiros():
+    """Fetch parceiros directly from Airtable (DB sync may be incomplete)."""
     try:
-        records = Parceiro.query.all()
-        out = [r.to_api() for r in records]
-        return jsonify({"success": True, "records": out})
+        import requests as req_lib
+        from flask import current_app
+        token = current_app.config.get("AIRTABLE_TOKEN", "")
+        if not token:
+            return jsonify({"success": False, "error": "No Airtable token", "records": []}), 200
+        headers = {"Authorization": f"Bearer {token}"}
+        all_records = []
+        offset = None
+        for _ in range(10):
+            params = {"pageSize": 100}
+            if offset:
+                params["offset"] = offset
+            r = req_lib.get(
+                "https://api.airtable.com/v0/appR8ZKP5ygR8o8Q0/Parceiros",
+                headers=headers, params=params, timeout=10,
+            )
+            if not r.ok:
+                break
+            data = r.json()
+            for rec in data.get("records", []):
+                f = rec.get("fields", {})
+                all_records.append({
+                    "id": rec.get("id"),
+                    "nome": f.get("Parceiro", "") or f.get("Nome", "") or "",
+                    "categoria": f.get("Categoria", "") or "",
+                    "tel": f.get("Contacto Telefone", "") or "",
+                    "email": f.get("Email", "") or "",
+                    "website": f.get("Website", "") or "",
+                    "morada": f.get("Morada Office", "") or "",
+                    "comissao_tipo": f.get("Comissão Tipo", "") or "",
+                    "comissao_valor": f.get("Comissão Valor", "") or "",
+                    "comissao_notas": f.get("Comissão Notas", "") or "",
+                    "instrucoes_aeroporto": f.get("Instruções Aeroporto", "") or "",
+                    "instrucoes_hotel": f.get("Instruções Hotel", "") or "",
+                    "instrucoes_office": f.get("Instruções Office", "") or "",
+                    "logo_url": f.get("Logo URL", "") or "",
+                    "notas": f.get("Notas Internas", "") or "",
+                    "atividades": f.get("Atividades / Passeios", "") or "",
+                    "ativo": f.get("Ativo?", True),
+                })
+            offset = data.get("offset")
+            if not offset:
+                break
+        return jsonify({"success": True, "records": all_records})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        return jsonify({"success": False, "error": str(e), "records": []}), 200
 
 
 @bp.route("/airtable/parceiros/<record_id>", methods=["PATCH"])
