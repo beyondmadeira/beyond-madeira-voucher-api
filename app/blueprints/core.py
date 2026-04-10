@@ -114,19 +114,32 @@ Return ONLY the JSON object, no explanation, no markdown, no extra text."""
 
 @bp.route("/", methods=["GET"])
 def health():
+    import os
     return jsonify({
         "status": "ok",
         "service": "Beyond Madeira CRM API",
-        "version": "2.0",
+        "version": "2.1",
+        "deployed": "2026-04-10-pg-first",
         "database": "postgresql",
+        "source_of_truth": "PostgreSQL (Airtable opcional)",
         "endpoints": [
             "/gerar-voucher",
             "/gerar-voucher-atividade",
             "/airtable/rc",
             "/airtable/at",
+            "/airtable/despesas-fixas",
+            "/airtable/despesas-variaveis",
+            "/airtable/diario",
+            "/airtable/parceiros",
             "/airtable/sitemap",
             "/airtable/biblioteca",
             "/airtable/guia",
+            "/api/agent-notes",
+            "/api/wa-notifications",
+            "/api/site-bookings",
+            "/api/chat",
+            "/sync/trigger",
+            "/sync/status",
         ],
     })
 
