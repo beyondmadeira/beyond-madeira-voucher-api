@@ -2,6 +2,19 @@ from app.extensions import db
 from app.models.mixins import AirtableSyncMixin
 
 
+def _safe_float(v):
+    """Convert any value to float, tolerantly stripping €, spaces and converting , to ."""
+    if v is None or v == "":
+        return 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        s = str(v).replace("€", "").replace("\u20ac", "").replace(",", ".").strip()
+        return float(s) if s else 0.0
+    except (ValueError, TypeError):
+        return 0.0
+
+
 class RegistoDiario(AirtableSyncMixin, db.Model):
     __tablename__ = "registo_diario"
 
@@ -17,9 +30,9 @@ class RegistoDiario(AirtableSyncMixin, db.Model):
         return {
             "id": self.airtable_id or str(self.id),
             "data": self.data or "",
-            "fat": float(self.faturacao or 0),
-            "fatRC": float(self.faturacao_rc or 0),
-            "fatAT": float(self.faturacao_at or 0),
+            "fat": _safe_float(self.faturacao),
+            "fatRC": _safe_float(self.faturacao_rc),
+            "fatAT": _safe_float(self.faturacao_at),
             "obs": self.notas or "",
             "resp": self.responsavel or "",
         }
@@ -41,7 +54,7 @@ class DespesaFixa(AirtableSyncMixin, db.Model):
             "id": self.airtable_id or str(self.id),
             "nome": self.nome or "",
             "descricao": self.nome or "",
-            "valor": float(self.valor or 0),
+            "valor": _safe_float(self.valor),
             "mes": self.mes or "",
             "categoria": self.categoria or "",
             "pago": self.pago or False,
@@ -66,7 +79,7 @@ class DespesaVariavel(AirtableSyncMixin, db.Model):
             "id": self.airtable_id or str(self.id),
             "nome": self.nome or "",
             "descricao": self.nome or "",
-            "valor": float(self.valor or 0),
+            "valor": _safe_float(self.valor),
             "mes": self.mes or "",
             "categoria": self.categoria or "",
             "pago": self.pago or False,
@@ -88,7 +101,7 @@ class Objetivo(AirtableSyncMixin, db.Model):
             "id": self.airtable_id or str(self.id),
             "mes": self.mes or 0,
             "ano": self.ano or 0,
-            "fat": float(self.faturacao or 0),
+            "fat": _safe_float(self.faturacao),
         }
 
 
@@ -105,9 +118,9 @@ class ResumoMensal(AirtableSyncMixin, db.Model):
         return {
             "id": self.airtable_id or str(self.id),
             "mes": self.mes or "",
-            "fat": float(self.faturacao or 0),
-            "com": float(self.comissoes or 0),
-            "desp": float(self.despesas or 0),
+            "fat": _safe_float(self.faturacao),
+            "com": _safe_float(self.comissoes),
+            "desp": _safe_float(self.despesas),
         }
 
 
