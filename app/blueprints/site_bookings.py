@@ -542,20 +542,48 @@ def debug_gmail():
         return jsonify({"success": False, "gmail_connected": False, "error": str(e)}), 500
 
 
+_poll_in_progress = False
+_poll_last_result = {"imported": 0, "ts": 0}
+
+
 @bp.route("/api/site-bookings/poll", methods=["POST"])
 @require_api_key
 def poll_site_bookings():
-    """Manually trigger a Gmail poll for new booking emails."""
-    try:
-        results = _poll_gmail()
+    """Trigger Gmail poll asynchronously — returns immediately."""
+    global _poll_in_progress
+    import threading
+    from flask import current_app
+
+    if _poll_in_progress:
         return jsonify({
             "success": True,
-            "imported": len(results),
-            "bookings": results,
+            "imported": _poll_last_result.get("imported", 0),
+            "in_progress": True,
         })
-    except Exception as e:
-        log.exception("Poll failed")
-        return jsonify({"error": str(e)}), 500
+
+    app = current_app._get_current_object()
+
+    def _bg_poll():
+        global _poll_in_progress
+        try:
+            with app.app_context():
+                results = _poll_gmail()
+                _poll_last_result["imported"] = len(results)
+                _poll_last_result["ts"] = int(datetime.utcnow().timestamp())
+        except Exception:
+            log.exception("Background poll failed")
+        finally:
+            _poll_in_progress = False
+
+    _poll_in_progress = True
+    t = threading.Thread(target=_bg_poll, daemon=True)
+    t.start()
+
+    return jsonify({
+        "success": True,
+        "imported": _poll_last_result.get("imported", 0),
+        "in_progress": True,
+    })
 
 
 @bp.route("/api/site-bookings/reset", methods=["POST"])
