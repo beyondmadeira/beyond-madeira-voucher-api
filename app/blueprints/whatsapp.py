@@ -3,9 +3,11 @@ import re
 import requests
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app
+from sqlalchemy import update
 from app.extensions import db
 from app.models.wa_confirmation import WaConfirmation
 from app.models.wa_notification import WaNotification
+from app.models.site_booking import SiteBooking
 from app.utils.auth import require_api_key
 
 bp = Blueprint("whatsapp", __name__)
@@ -195,8 +197,52 @@ def wazzup_messages():
 @bp.route("/wazzup/send", methods=["POST"])
 @require_api_key
 def wazzup_send():
+    """
+    Envia mensagem WhatsApp via Wazzup API.
+    Aceita campos opcionais para auto-ack lock atómico:
+      - booking_id: int — id da SiteBooking
+      - mark_whatsapp_sent: bool — se True, marca whatsapp_sent=True
+        ATOMICAMENTE antes do POST. Se já estava True, devolve 409 e
+        NÃO envia. Isto impede duplicação multi-user (Hugo+Paulo no
+        mesmo segundo).
+    """
     try:
-        body = request.get_json()
+        body = request.get_json() or {}
+        booking_id = body.pop("booking_id", None)
+        mark_wa = body.pop("mark_whatsapp_sent", False)
+
+        # ── LOCK ATÓMICO antes do POST ──
+        # UPDATE ... WHERE whatsapp_sent=False — devolve rowcount=1 só
+        # se ninguém marcou ainda. Race-safe.
+        if booking_id and mark_wa:
+            try:
+                bid = int(booking_id)
+                stmt = (
+                    update(SiteBooking)
+                    .where(SiteBooking.id == bid)
+                    .where(SiteBooking.whatsapp_sent.is_(False))
+                    .values(whatsapp_sent=True)
+                )
+                result = db.session.execute(stmt)
+                db.session.commit()
+                if result.rowcount == 0:
+                    # Outro processo já marcou — NÃO enviar
+                    log.info("wazzup_send: booking %s já marcado, skip", bid)
+                    return jsonify({
+                        "success": False,
+                        "skipped": True,
+                        "reason": "already_sent",
+                        "booking_id": bid
+                    }), 409
+                log.info("wazzup_send: booking %s lock acquired (whatsapp_sent=True)", bid)
+            except (ValueError, TypeError) as e:
+                log.warning("wazzup_send: booking_id inválido: %s", e)
+                # Continua sem lock — comportamento legacy
+            except Exception as e:
+                log.exception("wazzup_send: falha no lock atómico")
+                db.session.rollback()
+                # Continua sem lock — não bloquear envio por erro DB
+
         body["channelId"] = current_app.config["WAZZUP_CHANNEL"]
         r = requests.post(
             WAZZUP_BASE + "/message",
@@ -204,7 +250,21 @@ def wazzup_send():
             json=body,
             timeout=15,
         )
-        r.raise_for_status()
+        if not r.ok:
+            # Wazzup falhou — REVERTER o lock para permitir retry
+            if booking_id and mark_wa:
+                try:
+                    bid = int(booking_id)
+                    db.session.execute(
+                        update(SiteBooking)
+                        .where(SiteBooking.id == bid)
+                        .values(whatsapp_sent=False)
+                    )
+                    db.session.commit()
+                    log.warning("wazzup_send: Wazzup HTTP %s, lock revertido para booking %s", r.status_code, bid)
+                except Exception:
+                    db.session.rollback()
+            r.raise_for_status()
         return jsonify(r.json())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
