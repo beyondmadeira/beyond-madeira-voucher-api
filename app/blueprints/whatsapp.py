@@ -253,6 +253,15 @@ def wazzup_send():
                 # Continua sem lock — não bloquear envio por erro DB
 
         body["channelId"] = current_app.config["WAZZUP_CHANNEL"]
+        # Auto-detectar group vs chat individual pelo formato do chatId
+        # Grupos WhatsApp têm chatId que termina em @g.us ou começa por 1203...
+        cid = str(body.get("chatId", ""))
+        if "@g.us" in cid or cid.startswith("120363"):
+            if not body.get("chatType") or body.get("chatType") == "whatsapp":
+                body["chatType"] = "whatsappgroup"
+            # Strip @g.us do chatId — Wazzup espera só o ID puro
+            if "@g.us" in cid:
+                body["chatId"] = cid.replace("@g.us", "")
         r = requests.post(
             WAZZUP_BASE + "/message",
             headers=_wazzup_headers(),
@@ -352,7 +361,9 @@ def wazzup_webhook():
             # Only process incoming WhatsApp text messages
             if msg.get("type") != "incoming":
                 continue
-            if msg.get("chatType") != "whatsapp":
+            # Aceitar chats individuais E grupos (whatsapp + whatsappgroup)
+            chat_type = msg.get("chatType", "")
+            if chat_type not in ("whatsapp", "whatsappgroup"):
                 continue
 
             text = msg.get("text", "")
@@ -380,6 +391,10 @@ def wazzup_webhook():
             except Exception:
                 db.session.rollback()
                 log.exception("failed to store wa_notification")
+
+            # Auto-confirm follow-up: APENAS para chats individuais (não grupos)
+            if chat_type != "whatsapp":
+                continue
 
             # Check if we have an unreplied confirmation for this chatId
             # sent within the last 24 hours
