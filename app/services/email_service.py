@@ -14,18 +14,21 @@ from flask import current_app
 def _resolve_sender(kind):
     """Resolve sender credentials by kind ('hello' or 'info').
 
-    Lookup order (NEVER mix credentials from different mailboxes):
-    1. Per-kind Gmail API (GMAIL_SENDER_KIND + GMAIL_REFRESH_TOKEN_KIND)
-    2. Per-kind SMTP (SMTP_USER_KIND + SMTP_PASS_KIND)
-    3. Legacy shared (GMAIL_SENDER / SMTP_USER) — only used if per-kind
-       not configured at all. This is the safety net for the original
-       single-sender setup.
+    Lookup order:
+    1. Per-kind Gmail API (own OAuth: GMAIL_SENDER_KIND + GMAIL_REFRESH_TOKEN_KIND)
+       Use case: kind has its own dedicated Workspace mailbox + OAuth.
+    2. Alias mode: kind has its own desired sender (GMAIL_SENDER_KIND or
+       SMTP_USER_KIND) but no own OAuth → use the legacy GMAIL_REFRESH_TOKEN
+       (info@'s OAuth) but set the From: to the kind's sender. Requires the
+       kind sender (e.g. hello@) to be configured as a verified "Send mail
+       as" alias inside the legacy mailbox's Gmail Settings. This is the
+       recommended path on Railway because outbound SMTP is blocked there.
+    3. Per-kind SMTP — kept for completeness but does NOT work on Railway
+       (cloud blocks port 465/587 outbound).
+    4. Legacy shared (GMAIL_SENDER / SMTP_USER) — single-sender fallback.
 
-    CRITICAL: we must not fall back to the legacy refresh token when a
-    per-kind sender is set with only SMTP creds. The legacy refresh
-    token is tied to a different mailbox (info@) and Gmail will
-    enforce that the From: header matches the authenticated account,
-    silently rewriting the From: from hello@ to info@ on send.
+    CRITICAL: never mix credentials. The Gmail API enforces that the From:
+    header matches the authenticated user OR a verified Send-As alias.
     """
     cfg = current_app.config
     suffix = (kind or "").upper()
@@ -35,7 +38,7 @@ def _resolve_sender(kind):
     smtp_user_kind = cfg.get(f"SMTP_USER_{suffix}", "")
     smtp_pass_kind = cfg.get(f"SMTP_PASS_{suffix}", "")
 
-    # 1. Per-kind Gmail API
+    # 1. Per-kind Gmail API (own OAuth, fully isolated)
     if gmail_sender_kind and gmail_token_kind:
         return {
             "sender": gmail_sender_kind,
@@ -44,9 +47,26 @@ def _resolve_sender(kind):
             "gmail_refresh_token": gmail_token_kind,
             "smtp_user": "",
             "smtp_pass": "",
+            "mode": "gmail_own",
         }
 
-    # 2. Per-kind SMTP — force SMTP path by zeroing gmail_refresh_token
+    # 2. Alias mode — kind has a desired sender but no own OAuth
+    legacy_refresh = cfg.get("GMAIL_REFRESH_TOKEN", "")
+    legacy_client_id = cfg.get("GMAIL_CLIENT_ID", "")
+    legacy_client_secret = cfg.get("GMAIL_CLIENT_SECRET", "")
+    desired_sender = gmail_sender_kind or smtp_user_kind
+    if desired_sender and legacy_refresh and legacy_client_id and legacy_client_secret:
+        return {
+            "sender": desired_sender,
+            "gmail_client_id": legacy_client_id,
+            "gmail_client_secret": legacy_client_secret,
+            "gmail_refresh_token": legacy_refresh,
+            "smtp_user": "",
+            "smtp_pass": "",
+            "mode": "gmail_alias",
+        }
+
+    # 3. Per-kind SMTP — only works on hosts that allow outbound SMTP
     if smtp_user_kind and smtp_pass_kind:
         return {
             "sender": smtp_user_kind,
@@ -55,9 +75,10 @@ def _resolve_sender(kind):
             "gmail_refresh_token": "",
             "smtp_user": smtp_user_kind,
             "smtp_pass": smtp_pass_kind,
+            "mode": "smtp_own",
         }
 
-    # 3. Legacy shared fallback (single-sender mode)
+    # 4. Legacy shared fallback (single-sender mode)
     return {
         "sender": cfg.get("GMAIL_SENDER", "") or cfg.get("SMTP_USER", ""),
         "gmail_client_id": cfg.get("GMAIL_CLIENT_ID", ""),
@@ -65,6 +86,7 @@ def _resolve_sender(kind):
         "gmail_refresh_token": cfg.get("GMAIL_REFRESH_TOKEN", ""),
         "smtp_user": cfg.get("SMTP_USER", ""),
         "smtp_pass": cfg.get("SMTP_PASS", ""),
+        "mode": "legacy",
     }
 
 

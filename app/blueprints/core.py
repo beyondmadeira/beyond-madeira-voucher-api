@@ -249,9 +249,11 @@ def debug_email_config():
         "SMTP_PASS_INFO_SET": bool(cfg.get("SMTP_PASS_INFO")),
         # Resolved at runtime (this is what _actually_ gets used)
         "RESOLVED_HELLO_SENDER": hello_creds.get("sender", ""),
+        "RESOLVED_HELLO_MODE": hello_creds.get("mode", ""),
         "RESOLVED_HELLO_HAS_GMAIL_API": bool(hello_creds.get("gmail_refresh_token")),
         "RESOLVED_HELLO_HAS_SMTP_PASS": bool(hello_creds.get("smtp_pass")),
         "RESOLVED_INFO_SENDER": info_creds.get("sender", ""),
+        "RESOLVED_INFO_MODE": info_creds.get("mode", ""),
         "RESOLVED_INFO_HAS_GMAIL_API": bool(info_creds.get("gmail_refresh_token")),
         "RESOLVED_INFO_HAS_SMTP_PASS": bool(info_creds.get("smtp_pass")),
     })
