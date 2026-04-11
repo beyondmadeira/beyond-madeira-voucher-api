@@ -1,3 +1,5 @@
+import html as _html
+import re as _re
 from flask import Blueprint, request, jsonify
 from app.utils.auth import require_api_key
 from app.utils.formatting import load_template
@@ -5,6 +7,47 @@ from app.utils.activity_rules import get_activity_tips, build_tips_html, is_no_p
 from app.services.email_service import send_html_email, send_plain_email
 
 bp = Blueprint("email", __name__)
+
+
+def _build_intro_block(email_body, cliente, default_text):
+    """Build the intro paragraph for voucher emails.
+
+    If `email_body` (custom text from the operator/template) is provided,
+    converts it to HTML preserving line breaks, emojis, and section
+    dividers. Otherwise falls back to a default greeting using the
+    client's first name.
+
+    The user-provided body is HTML-escaped to prevent injection. We
+    convert plain '\\n' to '<br>' and detect URLs to make them clickable.
+    """
+    if email_body and email_body.strip():
+        body = email_body.strip()
+        # Escape HTML to prevent XSS / template injection
+        body = _html.escape(body)
+        # Auto-link URLs (http/https) — must run BEFORE the newline -> <br>
+        # conversion so we don't break the regex with HTML tags
+        body = _re.sub(
+            r"(https?://[^\s<>]+)",
+            r'<a href="\1" style="color:#0d6e7a;text-decoration:underline;">\1</a>',
+            body,
+        )
+        # Paragraph breaks (\n\n) → </p><p>, single \n → <br>
+        body = body.replace("\n\n", "</p><p style=\"margin:0 0 14px;font-size:15px;color:#3a3a3a;line-height:1.7;\">")
+        body = body.replace("\n", "<br>")
+        return (
+            '<div style="margin:0 0 28px;">'
+            '<p style="margin:0 0 14px;font-size:15px;color:#3a3a3a;line-height:1.7;">'
+            f"{body}"
+            "</p></div>"
+        )
+    # Default fallback when no custom body is provided
+    first_name = (cliente or "").split(" ")[0] if cliente else ""
+    greeting = f"Hi <strong>{_html.escape(first_name)}</strong>,<br><br>" if first_name else ""
+    return (
+        '<p style="margin:0 0 28px;font-size:15px;color:#3a3a3a;line-height:1.7;">'
+        f"{greeting}{_html.escape(default_text)}"
+        "</p>"
+    )
 
 
 def _build_voucher_html(d, tipo):
@@ -72,7 +115,16 @@ def _build_voucher_html(d, tipo):
             "email_subject",
             db_subject or f"Your Activity is Confirmed \u2014 {atividade} | Beyond Madeira",
         )
+        # Build the intro block — uses operator-supplied email_body if
+        # provided (e.g. m107 Sunrise template), else falls back to a
+        # generic confirmation greeting.
+        at_intro = _build_intro_block(
+            d.get("email_body", ""),
+            d.get("cliente", ""),
+            "Your activity is confirmed and we can't wait to show you the best of Madeira. Please find all the details below.",
+        )
         replacements = {
+            "{{intro_block}}": at_intro,
             "{{cliente}}": d.get("cliente", ""),
             "{{atividade}}": atividade,
             "{{data}}": d.get("data", ""),
@@ -95,7 +147,13 @@ def _build_voucher_html(d, tipo):
             "email_subject",
             "Your Car Rental is Confirmed \u2014 Beyond Madeira",
         )
+        rc_intro = _build_intro_block(
+            d.get("email_body", ""),
+            d.get("cliente", ""),
+            "Great news \u2014 your car rental is confirmed. Everything is ready for your arrival. Please review the details below and keep this email handy.",
+        )
         replacements = {
+            "{{intro_block}}": rc_intro,
             "{{cliente}}": d.get("cliente", ""),
             "{{empresa}}": d.get("empresa", ""),
             "{{veiculo}}": d.get("veiculo", ""),
