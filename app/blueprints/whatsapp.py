@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import requests
@@ -252,7 +253,9 @@ def wazzup_send():
                 db.session.rollback()
                 # Continua sem lock — não bloquear envio por erro DB
 
-        body["channelId"] = current_app.config["WAZZUP_CHANNEL"]
+        # Se body NÃO trouxe channelId, usa o default
+        if not body.get("channelId"):
+            body["channelId"] = current_app.config["WAZZUP_CHANNEL"]
         # Auto-detectar group vs chat individual pelo formato do chatId
         # Grupos WhatsApp têm chatId que termina em @g.us ou começa por 1203...
         cid = str(body.get("chatId", ""))
@@ -262,12 +265,15 @@ def wazzup_send():
             # Strip @g.us do chatId — Wazzup espera só o ID puro
             if "@g.us" in cid:
                 body["chatId"] = cid.replace("@g.us", "")
+        log.info("wazzup_send → body: %s", json.dumps(body)[:300])
         r = requests.post(
             WAZZUP_BASE + "/message",
             headers=_wazzup_headers(),
             json=body,
             timeout=15,
         )
+        if not r.ok:
+            log.warning("wazzup_send ← HTTP %s body: %s", r.status_code, r.text[:300])
         if not r.ok:
             # Wazzup falhou — REVERTER o lock para permitir retry
             if booking_id and mark_wa:
