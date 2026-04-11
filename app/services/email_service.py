@@ -14,46 +14,57 @@ from flask import current_app
 def _resolve_sender(kind):
     """Resolve sender credentials by kind ('hello' or 'info').
 
-    Returns dict with: sender, gmail_client_id, gmail_client_secret,
-    gmail_refresh_token, smtp_user, smtp_pass.
+    Lookup order (NEVER mix credentials from different mailboxes):
+    1. Per-kind Gmail API (GMAIL_SENDER_KIND + GMAIL_REFRESH_TOKEN_KIND)
+    2. Per-kind SMTP (SMTP_USER_KIND + SMTP_PASS_KIND)
+    3. Legacy shared (GMAIL_SENDER / SMTP_USER) — only used if per-kind
+       not configured at all. This is the safety net for the original
+       single-sender setup.
 
-    Falls back to legacy shared GMAIL_SENDER / SMTP_USER if per-kind
-    vars are not set, so the system keeps working until both mailboxes
-    are configured in Railway.
+    CRITICAL: we must not fall back to the legacy refresh token when a
+    per-kind sender is set with only SMTP creds. The legacy refresh
+    token is tied to a different mailbox (info@) and Gmail will
+    enforce that the From: header matches the authenticated account,
+    silently rewriting the From: from hello@ to info@ on send.
     """
     cfg = current_app.config
     suffix = (kind or "").upper()
 
-    sender = (
-        cfg.get(f"GMAIL_SENDER_{suffix}")
-        or cfg.get(f"SMTP_USER_{suffix}")
-        or cfg.get("GMAIL_SENDER")
-        or cfg.get("SMTP_USER", "")
-    )
+    gmail_sender_kind = cfg.get(f"GMAIL_SENDER_{suffix}", "")
+    gmail_token_kind = cfg.get(f"GMAIL_REFRESH_TOKEN_{suffix}", "")
+    smtp_user_kind = cfg.get(f"SMTP_USER_{suffix}", "")
+    smtp_pass_kind = cfg.get(f"SMTP_PASS_{suffix}", "")
 
-    refresh_token = (
-        cfg.get(f"GMAIL_REFRESH_TOKEN_{suffix}")
-        or cfg.get("GMAIL_REFRESH_TOKEN", "")
-    )
+    # 1. Per-kind Gmail API
+    if gmail_sender_kind and gmail_token_kind:
+        return {
+            "sender": gmail_sender_kind,
+            "gmail_client_id": cfg.get("GMAIL_CLIENT_ID", ""),
+            "gmail_client_secret": cfg.get("GMAIL_CLIENT_SECRET", ""),
+            "gmail_refresh_token": gmail_token_kind,
+            "smtp_user": "",
+            "smtp_pass": "",
+        }
 
-    smtp_user = (
-        cfg.get(f"SMTP_USER_{suffix}")
-        or cfg.get(f"GMAIL_SENDER_{suffix}")
-        or cfg.get("SMTP_USER", "")
-    )
+    # 2. Per-kind SMTP — force SMTP path by zeroing gmail_refresh_token
+    if smtp_user_kind and smtp_pass_kind:
+        return {
+            "sender": smtp_user_kind,
+            "gmail_client_id": "",
+            "gmail_client_secret": "",
+            "gmail_refresh_token": "",
+            "smtp_user": smtp_user_kind,
+            "smtp_pass": smtp_pass_kind,
+        }
 
-    smtp_pass = (
-        cfg.get(f"SMTP_PASS_{suffix}")
-        or cfg.get("SMTP_PASS", "")
-    )
-
+    # 3. Legacy shared fallback (single-sender mode)
     return {
-        "sender": sender,
+        "sender": cfg.get("GMAIL_SENDER", "") or cfg.get("SMTP_USER", ""),
         "gmail_client_id": cfg.get("GMAIL_CLIENT_ID", ""),
         "gmail_client_secret": cfg.get("GMAIL_CLIENT_SECRET", ""),
-        "gmail_refresh_token": refresh_token,
-        "smtp_user": smtp_user,
-        "smtp_pass": smtp_pass,
+        "gmail_refresh_token": cfg.get("GMAIL_REFRESH_TOKEN", ""),
+        "smtp_user": cfg.get("SMTP_USER", ""),
+        "smtp_pass": cfg.get("SMTP_PASS", ""),
     }
 
 
