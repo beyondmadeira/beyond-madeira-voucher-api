@@ -256,15 +256,14 @@ def wazzup_send():
         # Se body NÃO trouxe channelId, usa o default
         if not body.get("channelId"):
             body["channelId"] = current_app.config["WAZZUP_CHANNEL"]
-        # Auto-detectar group vs chat individual pelo formato do chatId
-        # Grupos WhatsApp têm chatId que termina em @g.us ou começa por 1203...
+        # Strip @g.us do chatId — Wazzup espera só o ID puro
         cid = str(body.get("chatId", ""))
-        if "@g.us" in cid or cid.startswith("120363"):
-            if not body.get("chatType") or body.get("chatType") == "whatsapp":
-                body["chatType"] = "whatsappgroup"
-            # Strip @g.us do chatId — Wazzup espera só o ID puro
-            if "@g.us" in cid:
-                body["chatId"] = cid.replace("@g.us", "")
+        if "@g.us" in cid:
+            body["chatId"] = cid.replace("@g.us", "")
+        # Se body NÃO trouxe chatType, default para "whatsapp"
+        # (NÃO auto-sobrescrever para grupos — deixar o caller escolher)
+        if not body.get("chatType"):
+            body["chatType"] = "whatsapp"
         log.info("wazzup_send → body: %s", json.dumps(body)[:300])
         r = requests.post(
             WAZZUP_BASE + "/message",
