@@ -11,6 +11,52 @@ from email import encoders
 from flask import current_app
 
 
+def _resolve_sender(kind):
+    """Resolve sender credentials by kind ('hello' or 'info').
+
+    Returns dict with: sender, gmail_client_id, gmail_client_secret,
+    gmail_refresh_token, smtp_user, smtp_pass.
+
+    Falls back to legacy shared GMAIL_SENDER / SMTP_USER if per-kind
+    vars are not set, so the system keeps working until both mailboxes
+    are configured in Railway.
+    """
+    cfg = current_app.config
+    suffix = (kind or "").upper()
+
+    sender = (
+        cfg.get(f"GMAIL_SENDER_{suffix}")
+        or cfg.get(f"SMTP_USER_{suffix}")
+        or cfg.get("GMAIL_SENDER")
+        or cfg.get("SMTP_USER", "")
+    )
+
+    refresh_token = (
+        cfg.get(f"GMAIL_REFRESH_TOKEN_{suffix}")
+        or cfg.get("GMAIL_REFRESH_TOKEN", "")
+    )
+
+    smtp_user = (
+        cfg.get(f"SMTP_USER_{suffix}")
+        or cfg.get(f"GMAIL_SENDER_{suffix}")
+        or cfg.get("SMTP_USER", "")
+    )
+
+    smtp_pass = (
+        cfg.get(f"SMTP_PASS_{suffix}")
+        or cfg.get("SMTP_PASS", "")
+    )
+
+    return {
+        "sender": sender,
+        "gmail_client_id": cfg.get("GMAIL_CLIENT_ID", ""),
+        "gmail_client_secret": cfg.get("GMAIL_CLIENT_SECRET", ""),
+        "gmail_refresh_token": refresh_token,
+        "smtp_user": smtp_user,
+        "smtp_pass": smtp_pass,
+    }
+
+
 def _build_message(sender, to, subject, body_text=None, html_body=None,
                    pdf_b64=None, pdf_filename="attachment.pdf"):
     """Build a MIME message with optional PDF attachment."""
@@ -44,12 +90,22 @@ def _build_message(sender, to, subject, body_text=None, html_body=None,
     return msg
 
 
-def _send_via_gmail_api(msg):
-    """Send email via Gmail API using OAuth2 refresh token."""
+def _send_via_gmail_api(msg, creds=None):
+    """Send email via Gmail API using OAuth2 refresh token.
+
+    `creds` is the dict from _resolve_sender(); if None, falls back to
+    the legacy shared config (backwards compat for any caller that
+    didn't migrate yet).
+    """
     cfg = current_app.config
-    client_id = cfg.get("GMAIL_CLIENT_ID", "")
-    client_secret = cfg.get("GMAIL_CLIENT_SECRET", "")
-    refresh_token = cfg.get("GMAIL_REFRESH_TOKEN", "")
+    if creds:
+        client_id = creds.get("gmail_client_id", "")
+        client_secret = creds.get("gmail_client_secret", "")
+        refresh_token = creds.get("gmail_refresh_token", "")
+    else:
+        client_id = cfg.get("GMAIL_CLIENT_ID", "")
+        client_secret = cfg.get("GMAIL_CLIENT_SECRET", "")
+        refresh_token = cfg.get("GMAIL_REFRESH_TOKEN", "")
 
     if not all([client_id, client_secret, refresh_token]):
         raise ValueError("Gmail API credentials not configured")
@@ -72,10 +128,15 @@ def _send_via_gmail_api(msg):
     ).execute()
 
 
-def _send_via_smtp(msg, sender):
+def _send_via_smtp(msg, creds=None):
     """Send email via SMTP (fallback). Tries SSL (465) then STARTTLS (587)."""
     cfg = current_app.config
-    smtp_pass = cfg["SMTP_PASS"]
+    if creds:
+        smtp_user = creds.get("smtp_user", "")
+        smtp_pass = creds.get("smtp_pass", "")
+    else:
+        smtp_user = cfg.get("SMTP_USER", "")
+        smtp_pass = cfg.get("SMTP_PASS", "")
     smtp_host = cfg.get("SMTP_HOST", "smtp.gmail.com")
 
     if not smtp_pass:
@@ -86,8 +147,8 @@ def _send_via_smtp(msg, sender):
     # Try SSL on 465 first (works on Railway and most cloud hosts)
     try:
         with smtplib.SMTP_SSL(smtp_host, 465, context=ctx, timeout=15) as s:
-            s.login(sender, smtp_pass)
-            s.sendmail(sender, msg["To"], msg.as_string())
+            s.login(smtp_user, smtp_pass)
+            s.sendmail(smtp_user, msg["To"], msg.as_string())
             return
     except Exception:
         pass
@@ -96,32 +157,41 @@ def _send_via_smtp(msg, sender):
     smtp_port = int(cfg.get("SMTP_PORT", 587))
     with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as s:
         s.starttls(context=ctx)
-        s.login(sender, smtp_pass)
-        s.sendmail(sender, msg["To"], msg.as_string())
+        s.login(smtp_user, smtp_pass)
+        s.sendmail(smtp_user, msg["To"], msg.as_string())
 
 
-def _send(msg, sender):
+def _send(msg, creds=None):
     """Try Gmail API first, fall back to SMTP."""
-    cfg = current_app.config
-    if cfg.get("GMAIL_CLIENT_ID") and cfg.get("GMAIL_REFRESH_TOKEN"):
-        _send_via_gmail_api(msg)
+    has_gmail = bool(
+        (creds and creds.get("gmail_refresh_token") and creds.get("gmail_client_id"))
+        or (not creds and current_app.config.get("GMAIL_CLIENT_ID") and current_app.config.get("GMAIL_REFRESH_TOKEN"))
+    )
+    if has_gmail:
+        _send_via_gmail_api(msg, creds=creds)
     else:
-        _send_via_smtp(msg, sender)
+        _send_via_smtp(msg, creds=creds)
 
 
 def send_html_email(to, subject, html_body, pdf_b64=None,
-                    pdf_filename="attachment.pdf"):
-    sender = current_app.config.get("GMAIL_SENDER",
-                                     current_app.config["SMTP_USER"])
+                    pdf_filename="attachment.pdf", sender_kind="hello"):
+    """Send an HTML email.
+
+    `sender_kind`: 'hello' (default — vouchers, confirmations, client
+    emails) or 'info' (extratos for partners). Falls back to legacy
+    shared GMAIL_SENDER if the per-kind env vars are not set yet.
+    """
+    creds = _resolve_sender(sender_kind)
+    sender = creds["sender"]
     msg = _build_message(sender, to, subject, html_body=html_body,
                          pdf_b64=pdf_b64, pdf_filename=pdf_filename)
-    _send(msg, sender)
+    _send(msg, creds=creds)
 
 
 def send_plain_email(to, subject, body_text, pdf_b64=None,
-                     pdf_filename="attachment.pdf"):
-    sender = current_app.config.get("GMAIL_SENDER",
-                                     current_app.config["SMTP_USER"])
+                     pdf_filename="attachment.pdf", sender_kind="hello"):
+    creds = _resolve_sender(sender_kind)
+    sender = creds["sender"]
     msg = _build_message(sender, to, subject, body_text=body_text,
                          pdf_b64=pdf_b64, pdf_filename=pdf_filename)
-    _send(msg, sender)
+    _send(msg, creds=creds)

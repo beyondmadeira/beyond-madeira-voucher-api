@@ -139,12 +139,14 @@ def enviar_voucher_email():
             # Simple raw HTML email — used for pickup updates, notifications
             tmpl = d.get("email_body", "")
             subject = d.get("email_subject", "Beyond Madeira")
-            send_html_email(to, subject, tmpl, pdf_b64, pdf_fname)
+            send_html_email(to, subject, tmpl, pdf_b64, pdf_fname,
+                            sender_kind="hello")
             return jsonify({"success": True, "method": "simple"})
 
         tmpl, subject = _build_voucher_html(d, tipo)
 
-        send_html_email(to, subject, tmpl, pdf_b64, pdf_fname)
+        send_html_email(to, subject, tmpl, pdf_b64, pdf_fname,
+                        sender_kind="hello")
         return jsonify({"success": True, "method": "smtp"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -209,7 +211,8 @@ def enviar_extrato_email():
 
         # Build HTML email
         html_body = _build_extrato_html_email(parceiro, mes, body_txt, total)
-        send_html_email(to, subject, html_body, pdf_b64, pdf_fname)
+        send_html_email(to, subject, html_body, pdf_b64, pdf_fname,
+                        sender_kind="info")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
