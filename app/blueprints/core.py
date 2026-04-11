@@ -174,6 +174,51 @@ def debug_push_dirty():
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
+@bp.route("/debug/email-test-send", methods=["POST", "GET"])
+@require_api_key
+def debug_email_test_send():
+    """Send a real test email using a given sender_kind and report
+    exactly what happened. Use this to diagnose SMTP/Gmail API issues
+    end-to-end without involving the frontend.
+
+    Query params: ?to=email@example.com&kind=hello
+    """
+    from flask import request as _req
+    from app.services.email_service import send_html_email, _resolve_sender
+    import traceback as _tb
+    to = _req.args.get("to") or (_req.get_json(silent=True) or {}).get("to") or ""
+    kind = _req.args.get("kind") or (_req.get_json(silent=True) or {}).get("kind") or "hello"
+    if not to:
+        return jsonify({"error": "missing 'to' query param"}), 400
+    creds = _resolve_sender(kind)
+    try:
+        send_html_email(
+            to=to,
+            subject=f"[TEST] Beyond API debug send via {kind}",
+            html_body=f"<p>Diagnostic test email.</p><p>Resolved sender: <strong>{creds.get('sender')}</strong></p><p>Path: {'Gmail API' if creds.get('gmail_refresh_token') else 'SMTP'}</p>",
+            sender_kind=kind,
+        )
+        return jsonify({
+            "success": True,
+            "kind": kind,
+            "resolved_sender": creds.get("sender"),
+            "path_used": "gmail_api" if creds.get("gmail_refresh_token") else "smtp",
+            "smtp_user_used": creds.get("smtp_user", ""),
+            "to": to,
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "kind": kind,
+            "resolved_sender": creds.get("sender"),
+            "path_used": "gmail_api" if creds.get("gmail_refresh_token") else "smtp",
+            "smtp_user_used": creds.get("smtp_user", ""),
+            "error_class": e.__class__.__name__,
+            "error": str(e),
+            "traceback": _tb.format_exc(),
+        }), 500
+
+
 @bp.route("/debug/email-config", methods=["GET"])
 @require_api_key
 def debug_email_config():
