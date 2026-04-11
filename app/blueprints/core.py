@@ -178,8 +178,13 @@ def debug_push_dirty():
 @require_api_key
 def debug_email_config():
     from flask import current_app
+    from app.services.email_service import _resolve_sender
     cfg = current_app.config
+    # Resolved senders for each kind (what the app actually picks at runtime)
+    hello_creds = _resolve_sender("hello")
+    info_creds = _resolve_sender("info")
     return jsonify({
+        # Legacy shared vars
         "SMTP_USER": cfg.get("SMTP_USER", ""),
         "SMTP_PASS_SET": bool(cfg.get("SMTP_PASS")),
         "SMTP_PASS_LEN": len(cfg.get("SMTP_PASS", "")),
@@ -187,6 +192,23 @@ def debug_email_config():
         "GMAIL_CLIENT_SECRET_SET": bool(cfg.get("GMAIL_CLIENT_SECRET")),
         "GMAIL_REFRESH_TOKEN_SET": bool(cfg.get("GMAIL_REFRESH_TOKEN")),
         "GMAIL_SENDER": cfg.get("GMAIL_SENDER", ""),
+        # New per-kind vars (existence check only — no secret values)
+        "GMAIL_SENDER_HELLO": cfg.get("GMAIL_SENDER_HELLO", ""),
+        "GMAIL_REFRESH_TOKEN_HELLO_SET": bool(cfg.get("GMAIL_REFRESH_TOKEN_HELLO")),
+        "SMTP_USER_HELLO": cfg.get("SMTP_USER_HELLO", ""),
+        "SMTP_PASS_HELLO_SET": bool(cfg.get("SMTP_PASS_HELLO")),
+        "SMTP_PASS_HELLO_LEN": len(cfg.get("SMTP_PASS_HELLO", "")),
+        "GMAIL_SENDER_INFO": cfg.get("GMAIL_SENDER_INFO", ""),
+        "GMAIL_REFRESH_TOKEN_INFO_SET": bool(cfg.get("GMAIL_REFRESH_TOKEN_INFO")),
+        "SMTP_USER_INFO": cfg.get("SMTP_USER_INFO", ""),
+        "SMTP_PASS_INFO_SET": bool(cfg.get("SMTP_PASS_INFO")),
+        # Resolved at runtime (this is what _actually_ gets used)
+        "RESOLVED_HELLO_SENDER": hello_creds.get("sender", ""),
+        "RESOLVED_HELLO_HAS_GMAIL_API": bool(hello_creds.get("gmail_refresh_token")),
+        "RESOLVED_HELLO_HAS_SMTP_PASS": bool(hello_creds.get("smtp_pass")),
+        "RESOLVED_INFO_SENDER": info_creds.get("sender", ""),
+        "RESOLVED_INFO_HAS_GMAIL_API": bool(info_creds.get("gmail_refresh_token")),
+        "RESOLVED_INFO_HAS_SMTP_PASS": bool(info_creds.get("smtp_pass")),
     })
 
 
