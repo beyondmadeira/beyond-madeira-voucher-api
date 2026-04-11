@@ -273,8 +273,7 @@ def wazzup_send():
             timeout=15,
         )
         if not r.ok:
-            log.warning("wazzup_send ← HTTP %s body: %s", r.status_code, r.text[:300])
-        if not r.ok:
+            log.warning("wazzup_send ← HTTP %s body: %s", r.status_code, r.text[:500])
             # Wazzup falhou — REVERTER o lock para permitir retry
             if booking_id and mark_wa:
                 try:
@@ -288,7 +287,17 @@ def wazzup_send():
                     log.warning("wazzup_send: Wazzup HTTP %s, lock revertido para booking %s", r.status_code, bid)
                 except Exception:
                     db.session.rollback()
-            r.raise_for_status()
+            # Devolver o erro detalhado em vez de só "400 Client Error"
+            try:
+                wazzup_err = r.json()
+            except Exception:
+                wazzup_err = {"raw": r.text[:500]}
+            return jsonify({
+                "error": "wazzup_api_error",
+                "wazzup_status": r.status_code,
+                "wazzup_response": wazzup_err,
+                "sent_body": {k: v for k, v in body.items() if k != "channelId"}
+            }), 502
         return jsonify(r.json())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
