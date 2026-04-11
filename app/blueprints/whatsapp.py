@@ -226,15 +226,24 @@ def wazzup_send():
                 result = db.session.execute(stmt)
                 db.session.commit()
                 if result.rowcount == 0:
-                    # Outro processo já marcou — NÃO enviar
-                    log.info("wazzup_send: booking %s já marcado, skip", bid)
-                    return jsonify({
-                        "success": False,
-                        "skipped": True,
-                        "reason": "already_sent",
-                        "booking_id": bid
-                    }), 409
-                log.info("wazzup_send: booking %s lock acquired (whatsapp_sent=True)", bid)
+                    # rowcount=0 pode ser:
+                    #   (a) booking não existe → ignora lock e envia normal
+                    #   (b) booking já tem whatsapp_sent=True → skip
+                    existing = db.session.get(SiteBooking, bid)
+                    if existing is None:
+                        log.info("wazzup_send: booking %s não existe, envia sem lock", bid)
+                        # Continua para enviar
+                    elif existing.whatsapp_sent:
+                        log.info("wazzup_send: booking %s já marcado, skip", bid)
+                        return jsonify({
+                            "success": False,
+                            "skipped": True,
+                            "reason": "already_sent",
+                            "booking_id": bid
+                        }), 409
+                    # else: race condition estranha — segue para enviar
+                else:
+                    log.info("wazzup_send: booking %s lock acquired (whatsapp_sent=True)", bid)
             except (ValueError, TypeError) as e:
                 log.warning("wazzup_send: booking_id inválido: %s", e)
                 # Continua sem lock — comportamento legacy
