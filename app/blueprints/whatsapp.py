@@ -177,6 +177,27 @@ def wazzup_chats():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/wazzup/channels", methods=["GET"])
+@require_api_key
+def wazzup_channels():
+    """Lista todos os canais da conta Wazzup (Cloud, Personal, etc)."""
+    try:
+        r = requests.get(
+            WAZZUP_BASE + "/channels",
+            headers=_wazzup_headers(),
+            timeout=15,
+        )
+        if not r.ok:
+            try:
+                err = r.json()
+            except Exception:
+                err = {"raw": r.text[:300]}
+            return jsonify({"wazzup_status": r.status_code, "wazzup_response": err}), 502
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @bp.route("/wazzup/messages", methods=["GET"])
 @require_api_key
 def wazzup_messages():
