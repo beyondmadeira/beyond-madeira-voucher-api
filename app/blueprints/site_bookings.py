@@ -105,6 +105,28 @@ def _parse_bokun(body):
 
     booking_channel = _extract(r"Booking\s+channel\s+(.+?)(?:\n|$)", body)
 
+    # Total / price — Bokun pode incluir como "Total EUR 48" ou "Price €48"
+    total = _extract(r"Total\s+(?:EUR|€)\s*(\d+[\d.,]*)", body)
+    if not total:
+        total = _extract(r"Price\s+(?:EUR|€)\s*(\d+[\d.,]*)", body)
+    if not total:
+        total = _extract(r"Amount\s+(?:EUR|€)\s*(\d+[\d.,]*)", body)
+    if not total:
+        # Padrão genérico: qualquer "€123" ou "EUR 123" no body
+        total = _extract(r"(?:EUR|€)\s*(\d+[\d.,]+)", body)
+
+    # Hora — pode vir no campo Date ("Mon 13.Apr '26 09:00") ou como "Time 09:00"
+    hora = _extract(r"(?:Start\s+)?[Tt]ime\s+(\d{1,2}:\d{2})", body)
+    if not hora and date_str:
+        _tm = re.search(r"(\d{1,2}:\d{2})", date_str)
+        if _tm:
+            hora = _tm.group(1)
+
+    # Supplier / parceiro — Bokun pode incluir como "Supplier xxx"
+    parceiro = _extract(r"Supplier\s+(.+?)(?:\n|$)", body)
+    if not parceiro:
+        parceiro = _extract(r"Vendor\s+(.+?)(?:\n|$)", body)
+
     return {
         "ref": ref,
         "atividade": product,
@@ -112,9 +134,12 @@ def _parse_bokun(body):
         "email": email_addr,
         "tel": phone,
         "data": date_str,
+        "hora": hora,
         "pax": pax,
         "pickup": pickup,
         "booking_channel": booking_channel,
+        "total": total,
+        "parceiro": parceiro,
     }
 
 
