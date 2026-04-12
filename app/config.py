@@ -19,9 +19,10 @@ class Config:
     # Anthropic
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # Wazzup
-    WAZZUP_API_KEY = "9b4f7530810243d387df6c6837568b43"
-    WAZZUP_CHANNEL = "c01da476-ab8e-4997-872b-599767c16fc9"
+    # Wazzup (env vars — never hardcode API keys in source)
+    WAZZUP_API_KEY = os.environ.get("WAZZUP_API_KEY", "")
+    WAZZUP_CHANNEL = os.environ.get("WAZZUP_CHANNEL", "")
+    WAZZUP_WEBHOOK_SECRET = os.environ.get("WAZZUP_WEBHOOK_SECRET", "")
 
     # SMTP (legacy fallback — usado se as vars per-kind não estiverem definidas)
     SMTP_USER = os.environ.get("SMTP_USER", "booking@beyondmadeira.com")

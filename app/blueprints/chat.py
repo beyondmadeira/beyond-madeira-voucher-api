@@ -229,15 +229,18 @@ def save_memory():
 @require_api_key
 def memory_context():
     """Return all memories formatted as context string for agents."""
-    from app.models.memory import BeyondMemory
-    rows = BeyondMemory.query.order_by(BeyondMemory.category, BeyondMemory.key).all()
-    if not rows:
-        return jsonify({"success": True, "context": ""})
-    lines = []
-    cur_cat = ""
-    for r in rows:
-        if r.category != cur_cat:
-            cur_cat = r.category
-            lines.append(f"\n[{cur_cat.upper()}]")
-        lines.append(f"- {r.key}: {r.content}")
-    return jsonify({"success": True, "context": "\n".join(lines)})
+    try:
+        from app.models.memory import BeyondMemory
+        rows = BeyondMemory.query.order_by(BeyondMemory.category, BeyondMemory.key).all()
+        if not rows:
+            return jsonify({"success": True, "context": ""})
+        lines = []
+        cur_cat = ""
+        for r in rows:
+            if r.category != cur_cat:
+                cur_cat = r.category
+                lines.append(f"\n[{cur_cat.upper()}]")
+            lines.append(f"- {r.key}: {r.content}")
+        return jsonify({"success": True, "context": "\n".join(lines)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500

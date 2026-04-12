@@ -369,7 +369,11 @@ def create_wa_confirmation():
         return jsonify({"error": str(e)}), 500
 
 
-# ── Wazzup Webhook (no auth — Wazzup doesn't send API keys) ────────
+# ── Wazzup Webhook ────────────────────────────────────────────────────
+# Wazzup doesn't send our API key, but we validate via a shared secret
+# token in the webhook URL query param: ?token=WEBHOOK_SECRET
+# Set WAZZUP_WEBHOOK_SECRET in Railway env vars and configure the same
+# token in the Wazzup webhook URL settings.
 @bp.route("/wazzup/webhook", methods=["POST"])
 def wazzup_webhook():
     """
@@ -378,6 +382,11 @@ def wazzup_webhook():
     request, auto-sends a follow-up message in the client's language.
     """
     try:
+        # Validate webhook token (shared secret)
+        webhook_secret = current_app.config.get("WAZZUP_WEBHOOK_SECRET", "")
+        token = request.args.get("token", "")
+        if webhook_secret and token != webhook_secret:
+            return jsonify({"error": "unauthorized"}), 401
         payload = request.get_json(silent=True) or {}
         messages = payload.get("messages", [])
 

@@ -426,10 +426,13 @@ def save_email_template():
 @bp.route("/api/email-templates/<int:tpl_id>", methods=["DELETE"])
 @require_api_key
 def delete_email_template(tpl_id):
-    from app.models.email_template import EmailTemplate
-    from app.extensions import db
-    row = EmailTemplate.query.get(tpl_id)
-    if row:
-        db.session.delete(row)
-        db.session.commit()
-    return jsonify({"success": True})
+    try:
+        from app.models.email_template import EmailTemplate
+        from app.extensions import db
+        row = EmailTemplate.query.get(tpl_id)
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
