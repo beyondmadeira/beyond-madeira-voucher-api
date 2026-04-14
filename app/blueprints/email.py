@@ -152,6 +152,21 @@ def _build_voucher_html(d, tipo):
             d.get("cliente", ""),
             "Great news \u2014 your car rental is confirmed. Everything is ready for your arrival. Please review the details below and keep this email handy.",
         )
+        # Extras block — só aparece se houver extras (Milton 2026-04-15).
+        # Aceita string livre ("Baby Seat - 5EUR/day, GPS") ou nada.
+        extras_raw = (d.get("extras") or "").strip()
+        if extras_raw and extras_raw.lower() not in ("none", "n/a", "-"):
+            extras_block = (
+                '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">'
+                '<tr><td style="background:#fffbeb;border-left:4px solid #d97706;'
+                'border-radius:0 8px 8px 0;padding:20px 22px;">'
+                '<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:1.5px;'
+                'color:#d97706;text-transform:uppercase;">\u2795 Extras</p>'
+                f'<p style="margin:0;font-size:14px;color:#2a2a2a;line-height:1.8;">{extras_raw}</p>'
+                "</td></tr></table>"
+            )
+        else:
+            extras_block = ""
         replacements = {
             "{{intro_block}}": rc_intro,
             "{{cliente}}": d.get("cliente", ""),
@@ -167,6 +182,7 @@ def _build_voucher_html(d, tipo):
             "{{dropoff_local}}": d.get("dropoff_local", ""),
             "{{pickup_instrucoes}}": d.get("pickup_instrucoes", ""),
             "{{parceiro_tel}}": d.get("parceiro_tel", ""),
+            "{{extras_block}}": extras_block,
         }
 
     for k, v in replacements.items():
