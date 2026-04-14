@@ -22,4 +22,13 @@ else
 fi
 
 echo "[INIT] Starting gunicorn..."
-exec gunicorn main:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+exec gunicorn main:app \
+    --bind 0.0.0.0:$PORT \
+    --workers 2 \
+    --threads 8 \
+    --worker-class gthread \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --access-logfile - \
+    --error-logfile -
