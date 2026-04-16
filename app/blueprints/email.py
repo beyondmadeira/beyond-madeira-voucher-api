@@ -123,6 +123,25 @@ def _build_voucher_html(d, tipo):
             d.get("cliente", ""),
             "Your activity is confirmed and we can't wait to show you the best of Madeira. Please find all the details below.",
         )
+        # CTAs do operador só se tiver telefone (evita Call/WA partidos)
+        _at_partner_tel = (d.get("parceiro_tel") or "").strip()
+        if _at_partner_tel:
+            partner_ctas_block = (
+                '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">'
+                '<tr><td style="padding-bottom:6px;" colspan="2">'
+                f'<p style="margin:0;font-size:11px;color:#aaa;letter-spacing:0.8px;text-transform:uppercase;">Contact {operador}</p>'
+                '</td></tr>'
+                '<tr>'
+                '<td style="padding-right:6px;width:50%;">'
+                f'<a href="tel:+{_at_partner_tel}" style="display:block;background:#0d6e7a;color:#fff;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">Call</a>'
+                '</td>'
+                '<td style="padding-left:6px;">'
+                f'<a href="https://wa.me/{_at_partner_tel}" style="display:block;background:#fff;color:#0d6e7a;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid #0d6e7a;">WhatsApp</a>'
+                '</td>'
+                '</tr></table>'
+            )
+        else:
+            partner_ctas_block = ""
         replacements = {
             "{{intro_block}}": at_intro,
             "{{cliente}}": d.get("cliente", ""),
@@ -138,8 +157,9 @@ def _build_voucher_html(d, tipo):
             "{{tips_block}}": build_tips_html(
                 get_activity_tips(atividade, d.get("categoria", ""))
             ),
-            "{{pickup_instrucoes}}": d.get("pickup_instrucoes", pickup_local),
+            "{{pickup_instrucoes}}": (d.get("pickup_instrucoes", pickup_local) or "").replace("\r\n", "\n").replace("\n", "<br>"),
             "{{parceiro_tel}}": d.get("parceiro_tel", ""),
+            "{{partner_ctas_block}}": partner_ctas_block,
         }
     else:
         tmpl = load_template("email_rc_template.html")
@@ -152,6 +172,28 @@ def _build_voucher_html(d, tipo):
             d.get("cliente", ""),
             "Great news \u2014 your car rental is confirmed. Everything is ready for your arrival. Please review the details below and keep this email handy.",
         )
+        # Constrói bloco CTAs do parceiro só se houver telefone — evita
+        # Call/WhatsApp broken para parceiros sem tel (Do It Madeira,
+        # WilderMadeira, Madeira Explorers, Warriors, Be Local, DamWalk).
+        _rc_partner_tel = (d.get("parceiro_tel") or "").strip()
+        if _rc_partner_tel:
+            _rc_empresa = d.get("empresa", "")
+            partner_ctas_block = (
+                '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">'
+                '<tr><td style="padding-bottom:6px;" colspan="2">'
+                f'<p style="margin:0;font-size:11px;color:#aaa;letter-spacing:0.8px;text-transform:uppercase;">Contact {_rc_empresa}</p>'
+                '</td></tr>'
+                '<tr>'
+                '<td style="padding-right:6px;width:50%;">'
+                f'<a href="tel:+{_rc_partner_tel}" style="display:block;background:#0d6e7a;color:#fff;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">Call</a>'
+                '</td>'
+                '<td style="padding-left:6px;">'
+                f'<a href="https://wa.me/{_rc_partner_tel}" style="display:block;background:#fff;color:#0d6e7a;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid #0d6e7a;">WhatsApp</a>'
+                '</td>'
+                '</tr></table>'
+            )
+        else:
+            partner_ctas_block = ""
         # Extras block — só aparece se houver extras (Milton 2026-04-15).
         # Aceita string livre ("Baby Seat - 5EUR/day, GPS") ou nada.
         extras_raw = (d.get("extras") or "").strip()
@@ -180,9 +222,10 @@ def _build_voucher_html(d, tipo):
             "{{dropoff_data}}": d.get("dropoff_data", ""),
             "{{dropoff_hora}}": d.get("dropoff_hora", ""),
             "{{dropoff_local}}": d.get("dropoff_local", ""),
-            "{{pickup_instrucoes}}": d.get("pickup_instrucoes", ""),
+            "{{pickup_instrucoes}}": (d.get("pickup_instrucoes", "") or "").replace("\r\n", "\n").replace("\n", "<br>"),
             "{{parceiro_tel}}": d.get("parceiro_tel", ""),
             "{{extras_block}}": extras_block,
+            "{{partner_ctas_block}}": partner_ctas_block,
         }
 
     for k, v in replacements.items():

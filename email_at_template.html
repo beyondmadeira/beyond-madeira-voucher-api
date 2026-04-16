@@ -47,10 +47,7 @@
         <tr>
           <td style="background:#ffffff;padding:40px 44px 44px;">
 
-            <p style="margin:0 0 28px;font-size:15px;color:#3a3a3a;line-height:1.7;">
-              Hi <strong>{{cliente}}</strong>,<br><br>
-              Your activity is confirmed and we can't wait to show you the best of Madeira. Please find all the details below.
-            </p>
+            {{intro_block}}
 
             <!-- ACTIVITY DETAILS -->
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #e0edf0;border-radius:10px;overflow:hidden;margin-bottom:32px;">
@@ -138,22 +135,8 @@
               </tr>
             </table>
 
-            <!-- CTAs OPERADOR -->
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
-              <tr>
-                <td style="padding-bottom:6px;" colspan="2">
-                  <p style="margin:0;font-size:11px;color:#aaa;letter-spacing:0.8px;text-transform:uppercase;">Contact {{operador}}</p>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding-right:6px;width:50%;">
-                  <a href="tel:+{{parceiro_tel}}" style="display:block;background:#0d6e7a;color:#fff;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">Call</a>
-                </td>
-                <td style="padding-left:6px;">
-                  <a href="https://wa.me/{{parceiro_tel}}" style="display:block;background:#fff;color:#0d6e7a;text-align:center;padding:13px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid #0d6e7a;">WhatsApp</a>
-                </td>
-              </tr>
-            </table>
+            <!-- CTAs OPERADOR (renderizado só se parceiro_tel existir) -->
+            {{partner_ctas_block}}
 
             <!-- CTA BEYOND MADEIRA -->
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
