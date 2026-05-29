@@ -261,12 +261,18 @@ def build_at_html(d):
         "Free cancellation up to <strong>48 hours</strong> before the activity. "
         "Late cancellations or no-shows may incur a fee.",
     )
-    d.setdefault(
-        "mensagem_confirmacao",
-        "Your reservation is confirmed &mdash; no payment required at this stage. "
-        "The total amount is to be paid in cash on the day of the activity. "
-        "You will receive further details closer to the date, including your exact pick-up time.",
-    )
+    if not d.get("mensagem_confirmacao"):
+        if status == "paid":
+            d["mensagem_confirmacao"] = (
+                "Your booking is confirmed and your payment has been received. "
+                "No payment required on the day &mdash; just show up and enjoy!"
+            )
+        else:
+            d["mensagem_confirmacao"] = (
+                "Your reservation is confirmed &mdash; no payment required at this stage. "
+                "The total amount is to be paid in cash on the day of the activity. "
+                "You will receive further details closer to the date, including your exact pick-up time."
+            )
     d.setdefault("bokun_ref", "")
 
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())

@@ -1,6 +1,7 @@
 TIPS_TEXT = {
     "warm":       "Dress very warmly \u2014 it can be very cold at high altitude.",
     "jacket":     "Bring a light jacket \u2014 temperatures change quickly in the mountains.",
+    "jacket_sea": "Bring a light jacket \u2014 temperatures at sea can drop quickly, especially on the way back.",
     "swimsuit":   "Bring swimsuit and towel.",
     "sunscreen":  "Don't forget sunscreen.",
     "water":      "Bring water.",
@@ -48,7 +49,7 @@ ACTIVITY_RULES = [
     {"kw": ["whale", "dolphin"],
      "payment": "cash_card", "pickup": "meeting_point",
      "no_payment_link": True, "email_template": "dolphins",
-     "tips": ["jacket", "swimsuit", "sunscreen", "water"],
+     "tips": ["jacket_sea", "swimsuit", "sunscreen", "water"],
      "note": "Please arrive at the marina 30 minutes before departure for check-in and payment."},
 
     {"kw": ["vip dolphin"],
