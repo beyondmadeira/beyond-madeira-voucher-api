@@ -4,6 +4,6 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "gunicorn main:app --workers 2 --threads 8 --worker-class gthread --bind 0.0.0.0:$PORT --timeout 120 --graceful-timeout 30 --access-logfile - --error-logfile -"
+    "startCommand": "sh -c 'gunicorn main:app --workers 2 --threads 8 --worker-class gthread --bind 0.0.0.0:${PORT:-8080} --timeout 120 --graceful-timeout 30 --access-logfile - --error-logfile -'"
   }
 }
