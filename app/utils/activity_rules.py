@@ -50,7 +50,7 @@ ACTIVITY_RULES = [
      "payment": "cash_card", "pickup": "meeting_point",
      "no_payment_link": True, "email_template": "dolphins",
      "tips": ["jacket_sea", "swimsuit", "sunscreen", "water"],
-     "note": "Please arrive at the marina 30 minutes before departure for check-in and payment."},
+     "note": "Please arrive at the marina 30 minutes before departure for check-in."},
 
     {"kw": ["vip dolphin"],
      "payment": "cash_card", "pickup": "meeting_point",
