@@ -65,6 +65,29 @@ def _get_body_text(payload):
 # Parsers (regex-based)
 # ---------------------------------------------------------------------------
 
+def _money(val):
+    """Parse a money string like '245,50', '1.234,56', '€ 245.50' into float."""
+    if val is None:
+        return 0.0
+    # Agarra só o primeiro número — ignora moeda e sufixos tipo "(15%)"
+    m = re.search(r"-?\d+(?:[.,]\d+)*", str(val))
+    if not m:
+        return 0.0
+    s = m.group(0)
+    if "," in s and "." in s:
+        # Both separators: the last one is the decimal mark
+        if s.rfind(",") > s.rfind("."):
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            s = s.replace(",", "")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 def _clean_html(html):
     """Strip HTML tags and normalize whitespace."""
     text = re.sub(r'<br\s*/?\s*>', '\n', html, flags=re.IGNORECASE)
@@ -152,7 +175,10 @@ def _parse_web3forms(body):
         m = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
         return m.group(1).strip() if m else default
 
-    ref = _extract(r"Ref\s*:?\s*(\S+)", body)
+    # Ref precisa de âncora de linha + dois pontos obrigatórios: sem isto,
+    # "Reference"/"Refund" noutro sítio do email produz refs-lixo iguais
+    # entre emails e as reservas seguintes são ignoradas como duplicadas.
+    ref = _extract(r"(?:^|\n)\s*Ref(?:er[eê]ncia|erence)?\s*[.:]\s*(\S+)", body)
     driver = _extract(r"Driver\s*:\s*(.+?)(?:\n|$)", body)
     age = _extract(r"Age\s*:\s*(\d+)", body)
     phone = _extract(r"Phone\s*:\s*(\+?[\d\s\-]+)", body)
@@ -296,14 +322,15 @@ def _send_whatsapp(phone, name, product_or_car, tipo, parsed=None):
 # Gmail poll logic
 # ---------------------------------------------------------------------------
 
-def _poll_gmail():
+def _poll_gmail(days=2, unread_only=True):
     """Search Gmail for unread booking emails, parse, store, and notify."""
     service = _gmail_service()
     results = []
 
+    unread = " is:unread" if unread_only else ""
     queries = [
-        ("from:no-reply@bokun.io newer_than:2d", "at"),
-        ("from:notify@web3forms.com newer_than:2d", "rc"),
+        (f"from:no-reply@bokun.io newer_than:{days}d{unread}", "at"),
+        (f"from:notify@web3forms.com newer_than:{days}d{unread}", "rc"),
     ]
 
     for query, tipo in queries:
@@ -344,6 +371,10 @@ def _poll_gmail():
                 channel = parsed.get("booking_channel", "").lower()
                 if "milton" in channel:
                     log.info("Skipping manual booking by Milton: %s", ref)
+                    service.users().messages().modify(
+                        userId="me", id=msg_id,
+                        body={"removeLabelIds": ["UNREAD"]}
+                    ).execute()
                     continue
 
                 # Skip if already imported (by ref)
@@ -468,8 +499,8 @@ def confirm_site_booking(booking_id):
                 pickup_local=parsed.get("pickup_loc", ""),
                 pickup_voo=parsed.get("pickup_flight", ""),
                 dropoff_data=parsed.get("dropoff", ""),
-                total=float(parsed.get("total", 0) or 0),
-                comissao=float(parsed.get("comissao", 0) or 0),
+                total=_money(parsed.get("total")),
+                comissao=_money(parsed.get("comissao")),
                 extras=parsed.get("extras", ""),
                 observacoes=parsed.get("observacoes", ""),
                 dirty=True,
@@ -488,6 +519,9 @@ def confirm_site_booking(booking_id):
                 atividade=parsed.get("atividade", ""),
                 pax=parsed.get("pax", ""),
                 data=parsed.get("data", ""),
+                hora=parsed.get("hora", ""),
+                parceiro=parsed.get("parceiro", ""),
+                total=_money(parsed.get("total")),
                 local_pickup=parsed.get("pickup", ""),
                 estado="Confirmada",
                 pagamento="Por Pagar",
@@ -564,9 +598,15 @@ def debug_gmail():
 @bp.route("/api/site-bookings/poll", methods=["POST"])
 @require_api_key
 def poll_site_bookings():
-    """Manually trigger a Gmail poll for new booking emails."""
+    """Manually trigger a Gmail poll for new booking emails.
+
+    Query params: ?days=N (default 2) e ?unread_only=false para recuperar
+    emails antigos já marcados como lidos (dedup por ref evita duplicados).
+    """
     try:
-        results = _poll_gmail()
+        days = min(max(int(request.args.get("days", 2)), 1), 60)
+        unread_only = request.args.get("unread_only", "true").lower() != "false"
+        results = _poll_gmail(days=days, unread_only=unread_only)
         return jsonify({
             "success": True,
             "imported": len(results),
@@ -619,8 +659,14 @@ def reparse_site_bookings():
                 row.email = parsed["email"]
             if parsed.get("tel"):
                 row.tel = parsed["tel"]
-            if parsed.get("ref") and not row.ref:
-                row.ref = parsed["ref"]
+            new_ref = parsed.get("ref") or ""
+            if new_ref and new_ref != row.ref:
+                # Corrige refs-lixo antigos, sem violar a constraint unique
+                clash = SiteBooking.query.filter(
+                    SiteBooking.ref == new_ref, SiteBooking.id != row.id
+                ).first()
+                if not clash:
+                    row.ref = new_ref
             fixed += 1
         db.session.commit()
         return jsonify({"success": True, "fixed": fixed, "total": len(rows)})
