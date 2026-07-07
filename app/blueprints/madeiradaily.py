@@ -34,6 +34,7 @@ SECTIONS = [
     {"slug": "manual-normas", "title": "Manual de Normas", "icon": "📕", "file": "01-manual-normas.md"},
     {"slug": "banco-ideias", "title": "Banco de Ideias", "icon": "💡", "file": "04-banco-ideias.md"},
     {"slug": "inspiracao", "title": "Inspiração & Tendências", "icon": "🎬", "file": "04b-inspiracao.md"},
+    {"slug": "top100", "title": "Top 100 por Formato", "icon": "🏆", "file": "04c-top100.md"},
     {"slug": "calendario", "title": "Calendário Editorial", "icon": "🗓️", "file": "05-calendario.md"},
     {"slug": "copy-hooks", "title": "Copy & Hooks", "icon": "✍️", "file": "06-copy-hooks.md"},
     {"slug": "kpis", "title": "KPIs & Relatórios", "icon": "📈", "file": "07-kpis.md"},
