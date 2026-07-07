@@ -47,6 +47,7 @@ SECTIONS = [
 # Páginas roteáveis mas fora da sidebar (bibliotecas ligadas a partir de "Top 100")
 EXTRA_PAGES = [
     {"slug": "top-instagram", "title": "Top Instagram — Investigação", "icon": "🎞️", "file": "04e-top-instagram.md"},
+    {"slug": "top-tiktok", "title": "Top TikToks — Investigação", "icon": "🎵", "file": "04f-top-tiktok.md"},
 ]
 
 _BY_SLUG = {s["slug"]: s for s in SECTIONS + EXTRA_PAGES}
