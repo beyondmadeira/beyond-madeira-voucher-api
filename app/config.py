@@ -14,6 +14,10 @@ class Config:
 
     # Madeira Daily hub — password de acesso (vazio = acesso aberto)
     MADEIRADAILY_PASSWORD = os.environ.get("MADEIRADAILY_PASSWORD", "madeira2026")
+    # Chave partilhada com o proxy do Beyond Hub: pedidos com o header
+    # X-Madeiradaily-Proxy-Auth correcto saltam o login (sessão Hub já
+    # autenticada). Vazio = desligado.
+    MADEIRADAILY_PROXY_KEY = os.environ.get("MADEIRADAILY_PROXY_KEY", "")
 
     # Airtable
     AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")

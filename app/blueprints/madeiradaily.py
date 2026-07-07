@@ -5,6 +5,7 @@ sidebar própria, conteúdo em markdown (content/madeiradaily/),
 proteção por password simples (MADEIRADAILY_PASSWORD).
 """
 
+import hmac
 import os
 import re
 
@@ -81,6 +82,13 @@ def _render_markdown(text):
 @bp.before_request
 def _require_login():
     if request.endpoint == "madeiradaily.login":
+        return None
+    # Proxy do Beyond Hub: sessão Hub já validada lá; a chave partilhada
+    # chega no header e dispensa a password daqui.
+    proxy_key = current_app.config.get("MADEIRADAILY_PROXY_KEY", "")
+    if proxy_key and hmac.compare_digest(
+        request.headers.get("X-Madeiradaily-Proxy-Auth", ""), proxy_key
+    ):
         return None
     password = current_app.config.get("MADEIRADAILY_PASSWORD", "")
     if password and not session.get("madeiradaily_auth"):
