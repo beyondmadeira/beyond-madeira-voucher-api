@@ -60,6 +60,6 @@ Cenário-chão (sem nenhum viral outlier): 60–80k no mês 12 — ainda assim l
 
 ## 5. Análises
 
-- **SWOT, funil completo, psicologia viral (porquê partilham/comentam/guardam/seguem), motor de crescimento 0→1M e visão a 5 anos:** ver a página **Blueprint Completo** na sidebar — é o documento integral de 13.000 palavras.
-- **Análise competitiva com números reais e verificados:** ver a página **Análise de Mercado** (dados investigados com fontes).
+- **SWOT, funil completo, psicologia viral (porquê partilham/comentam/guardam/seguem), motor de crescimento 0→1M e visão a 5 anos:** ver o **[Blueprint Completo](/madeiradaily/blueprint)** — o documento integral de 13.000 palavras.
+- **Análise competitiva com números reais e verificados:** ver a **[Análise de Mercado](/madeiradaily/analise-mercado)** (dados investigados com fontes).
 - **Framework de decisão de conteúdo (REEF):** antes de publicar — é Remarkável? Merece o slot diário? Tem Evidência (lugar, número, hora)? Encaixa no sistema (bucket, marca, watermark, keywords)?

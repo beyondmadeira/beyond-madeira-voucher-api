@@ -90,17 +90,17 @@
 
 <nav class="sidebar">
   <div class="group">Direção</div>
-  {% for s in sections[:4] %}
+  {% for s in sections[:2] %}
   <a class="item {{ 'active' if active and active.slug == s.slug }}" href="{{ url_for('madeiradaily.page', slug=s.slug) }}">
     <span>{{ s.icon }}</span> {{ s.title }}</a>
   {% endfor %}
   <div class="group">Operação</div>
-  {% for s in sections[4:12] %}
+  {% for s in sections[2:8] %}
   <a class="item {{ 'active' if active and active.slug == s.slug }}" href="{{ url_for('madeiradaily.page', slug=s.slug) }}">
     <span>{{ s.icon }}</span> {{ s.title }}</a>
   {% endfor %}
   <div class="group">Negócio</div>
-  {% for s in sections[12:] %}
+  {% for s in sections[8:] %}
   <a class="item {{ 'active' if active and active.slug == s.slug }}" href="{{ url_for('madeiradaily.page', slug=s.slug) }}">
     <span>{{ s.icon }}</span> {{ s.title }}</a>
   {% endfor %}

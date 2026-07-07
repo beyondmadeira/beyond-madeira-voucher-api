@@ -27,26 +27,30 @@ CONTENT_DIR = os.path.abspath(
 )
 
 SECTIONS = [
+    # Direção
     {"slug": "painel", "title": "Painel Geral", "icon": "📍", "file": "00-painel-geral.md"},
     {"slug": "estrategia", "title": "Estratégia", "icon": "🧠", "file": "02-estrategia.md"},
-    {"slug": "blueprint", "title": "Blueprint Completo", "icon": "📘", "file": "02b-blueprint.md"},
-    {"slug": "analise-mercado", "title": "Análise de Mercado", "icon": "📊", "file": "03-analise-mercado.md"},
-    {"slug": "manual-normas", "title": "Manual de Normas", "icon": "📕", "file": "01-manual-normas.md"},
+    # Operação (ordenado por frequência de uso diário)
     {"slug": "banco-ideias", "title": "Banco de Ideias", "icon": "💡", "file": "04-banco-ideias.md"},
-    {"slug": "inspiracao", "title": "Inspiração & Tendências", "icon": "🎬", "file": "04b-inspiracao.md"},
-    {"slug": "top100", "title": "Top 100 por Formato", "icon": "🏆", "file": "04c-top100.md"},
-    {"slug": "top100-artigos", "title": "Top 100 Artigos", "icon": "📰", "file": "04d-top100-artigos.md"},
-    {"slug": "calendario", "title": "Calendário Editorial", "icon": "🗓️", "file": "05-calendario.md"},
     {"slug": "guioes", "title": "Guiões de Lançamento", "icon": "🎬", "file": "05b-guioes-lancamento.md"},
+    {"slug": "calendario", "title": "Calendário Editorial", "icon": "🗓️", "file": "05-calendario.md"},
     {"slug": "copy-hooks", "title": "Copy & Hooks", "icon": "✍️", "file": "06-copy-hooks.md"},
+    {"slug": "manual-normas", "title": "Manual de Normas", "icon": "📕", "file": "01-manual-normas.md"},
+    {"slug": "inspiracao", "title": "Inspiração & Top 100", "icon": "🏆", "file": "04b-inspiracao.md"},
+    # Negócio
     {"slug": "kpis", "title": "KPIs & Relatórios", "icon": "📈", "file": "07-kpis.md"},
     {"slug": "parcerias", "title": "Parcerias & Monetização", "icon": "🤝", "file": "08-parcerias.md"},
     {"slug": "legal", "title": "Legal & Compliance", "icon": "⚖️", "file": "09-legal.md"},
     {"slug": "beyond-madeira", "title": "Ligação Beyond Madeira", "icon": "🔗", "file": "10-beyond-madeira.md"},
 ]
 
-# Páginas roteáveis mas fora da sidebar (bibliotecas ligadas a partir de "Top 100")
+# Páginas roteáveis fora da sidebar — bibliotecas e documentos de consulta,
+# ligados a partir de Estratégia e Inspiração & Top 100
 EXTRA_PAGES = [
+    {"slug": "blueprint", "title": "Blueprint Completo", "icon": "📘", "file": "02b-blueprint.md"},
+    {"slug": "analise-mercado", "title": "Análise de Mercado", "icon": "📊", "file": "03-analise-mercado.md"},
+    {"slug": "top100", "title": "Top 100 por Formato — Plano", "icon": "🏆", "file": "04c-top100.md"},
+    {"slug": "top100-artigos", "title": "Top 100 Artigos", "icon": "📰", "file": "04d-top100-artigos.md"},
     {"slug": "top-instagram", "title": "Top Instagram — Investigação", "icon": "🎞️", "file": "04e-top-instagram.md"},
     {"slug": "top-tiktok", "title": "Top TikToks — Investigação", "icon": "🎵", "file": "04f-top-tiktok.md"},
     {"slug": "top-youtube", "title": "Top YouTube — Investigação", "icon": "📺", "file": "04g-top-youtube.md"},
