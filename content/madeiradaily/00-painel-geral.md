@@ -14,6 +14,16 @@
 
 **"Isto é a melhor coisa que esta pessoa vai ver hoje no feed?"** — se a resposta não for sim, não se publica. O Madeira Daily não vende nada; conquista atenção e confiança. A conversão é problema da Beyond Madeira, mais tarde, e por outro canal.
 
+## O trono da Madeira (o alvo, com números reais)
+
+| Marco | O que é preciso bater | Alvo temporal |
+|---|---|---|
+| **Nº1 independente da Madeira** | @madeira_islands — **172K** ([verificado](/madeiradaily/analise-mercado)) | Mês 10–14 |
+| **Nº1 absoluto da Madeira** | @visitmadeira (oficial) — **519K** | Mês 18–24 |
+| Teto do nicho (referência) | Independentes batem DMOs noutros mercados: @norwaytravelers 1M > @visitnorway 980K; @swissxplorers_ 1,4M | 1M em 24–36 meses |
+
+*A "página com mais views da Madeira" ganha-se com os frames provados (aeroporto, Hawaii of Europe, túnel, Areeiro, Porto Moniz, Fanal — ver [Top TikToks](/madeiradaily/top-tiktok)) executados com consistência diária. O caminho está nos [Guiões de Lançamento](/madeiradaily/guioes).*
+
 ## Metas em vigor
 
 | Horizonte | Seguidores IG | Métricas de saúde | Receita |

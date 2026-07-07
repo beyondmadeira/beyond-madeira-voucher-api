@@ -37,6 +37,7 @@ SECTIONS = [
     {"slug": "top100", "title": "Top 100 por Formato", "icon": "🏆", "file": "04c-top100.md"},
     {"slug": "top100-artigos", "title": "Top 100 Artigos", "icon": "📰", "file": "04d-top100-artigos.md"},
     {"slug": "calendario", "title": "Calendário Editorial", "icon": "🗓️", "file": "05-calendario.md"},
+    {"slug": "guioes", "title": "Guiões de Lançamento", "icon": "🎬", "file": "05b-guioes-lancamento.md"},
     {"slug": "copy-hooks", "title": "Copy & Hooks", "icon": "✍️", "file": "06-copy-hooks.md"},
     {"slug": "kpis", "title": "KPIs & Relatórios", "icon": "📈", "file": "07-kpis.md"},
     {"slug": "parcerias", "title": "Parcerias & Monetização", "icon": "🤝", "file": "08-parcerias.md"},
