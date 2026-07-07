@@ -4,6 +4,8 @@ A bíblia visual e editorial do Madeira Daily. Tudo o que sai da página obedece
 
 ## 1. Logótipo
 
+> ⛔ **Direção REJEITADA pelo fundador (jul/2026):** contorno da ilha como logótipo + wordmark em minúsculas ("madeira daily." com ponto colorido). Motivos: ilha desenhada = clip-art de amador (proibição nº 1 deste manual); minúsculas + ponto = estética de startup genérica, não de media brand. Qualquer material com essa direção deve ser descartado.
+
 **Marca principal — masthead de jornal:**
 - "MADEIRA" dominante, caixa alta, tracking apertado.
 - "DAILY" pequeno, letterspaced, por baixo (lógica de cabeçalho de jornal: o lugar é a notícia, "daily" é a promessa).
