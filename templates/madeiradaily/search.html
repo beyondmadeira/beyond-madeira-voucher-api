@@ -1,0 +1,17 @@
+{% extends "madeiradaily/layout.html" %}
+{% block title %}Pesquisa — Madeira Daily{% endblock %}
+{% block content %}
+<h1>Pesquisa</h1>
+{% if query %}
+  <p><strong>{{ results|length }}</strong> resultado(s) para “{{ query }}”.</p>
+  {% for r in results %}
+    <blockquote>
+      <a href="{{ url_for('madeiradaily.page', slug=r.section.slug) }}">{{ r.section.icon }} <strong>{{ r.section.title }}</strong></a><br>
+      …{{ r.snippet }}…
+    </blockquote>
+  {% endfor %}
+  {% if not results %}<p>Sem resultados. Tenta outra palavra.</p>{% endif %}
+{% else %}
+  <p>Escreve um termo na caixa de pesquisa no topo.</p>
+{% endif %}
+{% endblock %}
