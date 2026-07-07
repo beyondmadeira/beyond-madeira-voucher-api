@@ -39,6 +39,8 @@ Regra de proporção: 60% neutro claro / 25% basalt / 10% verde ou teal / 5% dou
 
 **Texto sobre vídeo — um estilo, para sempre:** branco, sombra subtil, mesma fonte, mesma posição (terço inferior, nunca sobre o watermark). Zero variações.
 
+> **Drafts renderizados:** existem protótipos HTML dos 4 templates principais em `design/madeiradaily/` no repositório (logo/masthead, capa de carrossel, story meteo, title card Hidden Madeira) — servem de direção para o designer executar em Canva/Figma com as fontes finais do manual.
+
 ## 4. Templates obrigatórios
 
 1. **Capa de carrossel:** headline de revista em display caps sobre foto (nunca título genérico); faixa fina Laurisilva Green com a rubrica ("DAILY PICKS").
