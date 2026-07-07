@@ -44,7 +44,12 @@ SECTIONS = [
     {"slug": "beyond-madeira", "title": "Ligação Beyond Madeira", "icon": "🔗", "file": "10-beyond-madeira.md"},
 ]
 
-_BY_SLUG = {s["slug"]: s for s in SECTIONS}
+# Páginas roteáveis mas fora da sidebar (bibliotecas ligadas a partir de "Top 100")
+EXTRA_PAGES = [
+    {"slug": "top-instagram", "title": "Top Instagram — Investigação", "icon": "🎞️", "file": "04e-top-instagram.md"},
+]
+
+_BY_SLUG = {s["slug"]: s for s in SECTIONS + EXTRA_PAGES}
 
 
 def _read_section(section):
@@ -103,7 +108,7 @@ def search():
     results = []
     if len(query) >= 2:
         pattern = re.compile(re.escape(query), re.IGNORECASE)
-        for section in SECTIONS:
+        for section in SECTIONS + EXTRA_PAGES:
             text = _read_section(section)
             if not text:
                 continue
