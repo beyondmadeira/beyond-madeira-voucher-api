@@ -60,6 +60,15 @@ def create_app(config_class=Config):
     application.register_blueprint(site_bookings_bp)
     application.register_blueprint(madeiradaily_bp)
 
+    # Domínio dedicado do Madeira Daily (ex.: daily.beyondmadeira.com) → abre o hub
+    @application.route("/")
+    def _root():
+        from flask import redirect, request
+        host = (request.host or "").lower()
+        if host.startswith("daily.") or host.startswith("madeiradaily."):
+            return redirect("/madeiradaily/")
+        return {"service": "beyond-madeira-crm-api", "status": "ok"}, 200
+
     # Register CLI commands
     from app.services.airtable_sync import register_commands
     register_commands(application)
