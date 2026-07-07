@@ -9,6 +9,12 @@ class Config:
 
     VOUCHER_API_KEY = os.environ.get("VOUCHER_API_KEY", "beyond-madeira-voucher-2026")
 
+    # Sessões (login do hub Madeira Daily)
+    SECRET_KEY = os.environ.get("SECRET_KEY", "beyond-madeira-hub-secret")
+
+    # Madeira Daily hub — password de acesso (vazio = acesso aberto)
+    MADEIRADAILY_PASSWORD = os.environ.get("MADEIRADAILY_PASSWORD", "madeira2026")
+
     # Airtable
     AIRTABLE_TOKEN = os.environ.get("AIRTABLE_TOKEN", "")
     BASE_RESERVAS = "appR8ZKP5ygR8o8Q0"

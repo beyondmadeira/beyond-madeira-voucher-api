@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Madeira Daily — Acesso</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+       background:#101418;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{background:#181e24;border:1px solid #2c343c;border-radius:14px;padding:40px 36px;width:320px;text-align:center}
+  .l1{font-weight:800;letter-spacing:.06em;font-size:26px}
+  .l2{font-weight:500;letter-spacing:.5em;font-size:11px;color:#E0A63C;margin-top:4px;margin-bottom:26px}
+  input{width:100%;padding:11px 12px;border-radius:9px;border:1px solid #2c343c;background:#101418;
+        color:#fff;font-size:14px;outline:none;margin-bottom:12px}
+  input:focus{border-color:#2a7a50}
+  button{width:100%;padding:11px;border:none;border-radius:9px;background:#1E5B3A;color:#fff;
+        font-size:14px;font-weight:600;cursor:pointer}
+  button:hover{background:#2a7a50}
+  .err{color:#f87171;font-size:13px;margin-bottom:10px}
+  .foot{margin-top:20px;font-size:11px;color:#4e5964}
+  .foot a{color:#6b7885}
+</style>
+</head>
+<body>
+  <form class="card" method="post">
+    <div class="l1">MADEIRA</div>
+    <div class="l2">DAILY</div>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+    <input type="password" name="password" placeholder="Password" autofocus>
+    <button type="submit">Entrar</button>
+    <div class="foot"><a href="https://hub.beyondmadeira.com">← Beyond Madeira Hub</a></div>
+  </form>
+</body>
+</html>
