@@ -47,6 +47,7 @@ SECTIONS = [
 # Páginas roteáveis fora da sidebar — bibliotecas e documentos de consulta,
 # ligados a partir de Estratégia e Inspiração & Top 100
 EXTRA_PAGES = [
+    {"slug": "kit-arranque", "title": "Kit de Arranque", "icon": "🚀", "file": "05c-kit-arranque.md"},
     {"slug": "blueprint", "title": "Blueprint Completo", "icon": "📘", "file": "02b-blueprint.md"},
     {"slug": "analise-mercado", "title": "Análise de Mercado", "icon": "📊", "file": "03-analise-mercado.md"},
     {"slug": "top100", "title": "Top 100 por Formato — Plano", "icon": "🏆", "file": "04c-top100.md"},

@@ -49,11 +49,13 @@
 
 ## Próximos 7 dias (por ordem)
 
+**→ Está tudo detalhado no [Kit de Arranque](/madeiradaily/kit-arranque):** setup das contas (1h), call sheets dos 2 dias de filmagem à hora, calendário dia-a-dia das primeiras 4 semanas, autorizações a pedir já, e as 10 DMs de collab prontas a enviar.
+
 1. Registar @madeiradaily em todas as plataformas + domínios.
 2. Aprovar o Manual de Normas e construir os templates.
-3. Escolher as primeiras 30 ideias no [Banco de Ideias](/madeiradaily/banco-ideias) (filtro: dificuldade 1, exequíveis num dia de filmagem).
-4. Dois dias de filmagem (costa sul + Pico do Areeiro ao nascer do sol).
-5. Editar e acumular o banco de 20 posts.
+3. Pedir as autorizações que demoram (poncha, Mercado, e-AAN) — lista no Kit.
+4. Dois dias de filmagem (call sheets no Kit: Dia Norte + Dia Areeiro/Sul).
+5. Editar e acumular o banco de 20 posts → publicar a grelha de 9.
 
 ## As 10 regras da casa
 
