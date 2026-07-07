@@ -50,6 +50,7 @@ EXTRA_PAGES = [
     {"slug": "top-instagram", "title": "Top Instagram — Investigação", "icon": "🎞️", "file": "04e-top-instagram.md"},
     {"slug": "top-tiktok", "title": "Top TikToks — Investigação", "icon": "🎵", "file": "04f-top-tiktok.md"},
     {"slug": "top-youtube", "title": "Top YouTube — Investigação", "icon": "📺", "file": "04g-top-youtube.md"},
+    {"slug": "influencers", "title": "Influencers & Criadores Madeira", "icon": "🌍", "file": "04h-influencers.md"},
 ]
 
 _BY_SLUG = {s["slug"]: s for s in SECTIONS + EXTRA_PAGES}

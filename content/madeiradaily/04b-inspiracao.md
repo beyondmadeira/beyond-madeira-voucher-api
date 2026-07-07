@@ -71,6 +71,10 @@ Queries com prova de procura para carrosséis/guia: *Madeira hidden gems* (6 blo
 9. **Turismo vs. preservação é filão editorial**: o ângulo "visita bem feita, evita multas, respeita a Laurissilva" é útil E partilhável — e alinha com a nossa política de partilha responsável.
 10. **4 nichos com procura e pouca concorrência**: inverno · sem carro · custos reais · nómadas digitais.
 
+## 5b. Bibliotecas detalhadas
+
+Investigações completas com fontes: [Top 100 Artigos](/madeiradaily/top100-artigos) · [Top Instagram](/madeiradaily/top-instagram) · [Top TikToks](/madeiradaily/top-tiktok) · [Top YouTube](/madeiradaily/top-youtube) · [Influencers & Criadores](/madeiradaily/influencers) · [Plano de recolha Top 100](/madeiradaily/top100)
+
 ## 6. Referências permanentes (estudar 1×/mês)
 
 - **Secret London / Secret NYC** — utilidade + eventos + news soft (o modelo da rubrica Daily Update/Picks)
