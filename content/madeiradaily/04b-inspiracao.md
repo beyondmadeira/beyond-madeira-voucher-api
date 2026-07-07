@@ -73,7 +73,7 @@ Queries com prova de procura para carrosséis/guia: *Madeira hidden gems* (6 blo
 
 ## 5b. Bibliotecas detalhadas
 
-Investigações completas com fontes: [Top 100 Artigos](/madeiradaily/top100-artigos) · [Top Instagram](/madeiradaily/top-instagram) · [Top TikToks](/madeiradaily/top-tiktok) · [Top YouTube](/madeiradaily/top-youtube) · [Influencers & Criadores](/madeiradaily/influencers) · [Plano de recolha Top 100](/madeiradaily/top100)
+Investigações completas com fontes: [Top 100 Artigos](/madeiradaily/top100-artigos) · [Top Instagram](/madeiradaily/top-instagram) · [Top TikToks](/madeiradaily/top-tiktok) · [Top YouTube](/madeiradaily/top-youtube) · [Influencers & Criadores](/madeiradaily/influencers) · [Formatos Internacionais](/madeiradaily/formatos) · [Plano de recolha Top 100](/madeiradaily/top100)
 
 ## 6. Referências permanentes (estudar 1×/mês)
 
