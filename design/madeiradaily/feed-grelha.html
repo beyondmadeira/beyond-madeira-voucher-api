@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  body{margin:0;width:1080px;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#101418}
+  /* header do perfil */
+  .prof{display:flex;gap:56px;align-items:center;padding:56px 64px 8px}
+  .av{width:190px;height:190px;border-radius:50%;background:#101418;border:5px solid #1E5B3A;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+  .av .md{color:#F4F2ED;font-size:64px;font-weight:800}
+  .av .dot{width:30px;height:4px;background:#E0A63C;border-radius:2px;margin-top:8px}
+  .pinfo .handle{font-size:34px;font-weight:400}
+  .stats{display:flex;gap:44px;margin-top:18px;font-size:26px}
+  .stats b{font-size:30px}
+  .bio{padding:10px 64px 20px;font-size:26px;line-height:1.45}
+  .bio .n{font-weight:700}
+  .bio .gold{color:#B8860B}
+  .hl{display:flex;gap:34px;padding:8px 64px 30px}
+  .h{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:18px;color:#3b3a35}
+  .h .c{width:96px;height:96px;border-radius:50%;border:2px solid #d8d2c4;background:#F4F2ED;display:flex;align-items:center;justify-content:center;font-size:34px}
+  /* grelha */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-top:1px solid #eee;padding-top:4px}
+  .tile{position:relative;aspect-ratio:3/4;overflow:hidden;display:flex;align-items:flex-end;color:#F4F2ED}
+  .tile .lbl{position:relative;z-index:2;padding:16px 18px;font-size:21px;font-weight:700;line-height:1.2;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+  .tile .lbl small{display:block;font-weight:400;font-size:15px;opacity:.85;margin-top:4px}
+  .tile .ic{position:absolute;top:14px;right:16px;z-index:2;font-size:26px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+  .tile .wm{position:absolute;bottom:12px;right:16px;z-index:2;font-size:12px;letter-spacing:2px;opacity:.55;font-weight:700}
+  /* fundos placeholder por post */
+  .t1{background:linear-gradient(180deg,#e8a24b 0%,#155E75 55%,#0e2b38 100%)}
+  .t2{background:linear-gradient(200deg,#7ab3c9 0%,#155E75 60%,#101418 100%)}
+  .t3{background:linear-gradient(180deg,#9fb7a8 0%,#1E5B3A 60%,#0d2a1b 100%)}
+  .t4{background:radial-gradient(circle at 50% 60%, #1E5B3A 0%, #101418 65%)}
+  .t6{background:linear-gradient(180deg,#155E75 0%,#0e2b38 100%)}
+  .t7{background:linear-gradient(160deg,#e0d9c8 0%,#1E5B3A 90%)}
+  .t8{background:linear-gradient(180deg,#3b2f28 0%,#101418 100%)}
+  .t9{background:linear-gradient(90deg,#8a8577 0%,#8a8577 49%,#155E75 51%,#1E5B3A 100%)}
+  /* capa V2 no centro */
+  .t5{background:linear-gradient(160deg,#155E75 0%,#1E5B3A 60%,#0d2a1b 100%);display:block}
+  .t5 .panel{position:absolute;bottom:0;left:0;right:0;background:rgba(16,20,24,.94);padding:14px 16px 12px}
+  .t5 .big{display:flex;align-items:baseline;gap:8px}
+  .t5 .num{color:#E0A63C;font-size:52px;font-weight:800;line-height:.9}
+  .t5 .rest{font-size:19px;font-weight:800;line-height:1.05}
+  .t5 .rest small{display:block;color:#c9c4b8;font-weight:400;font-size:12px;margin-top:3px}
+  .t5 .ano{position:absolute;top:12px;right:14px;background:#E0A63C;color:#101418;font-size:13px;font-weight:800;padding:5px 9px;border-radius:4px}
+  .t5 .rub{position:absolute;top:12px;left:14px;background:rgba(16,20,24,.75);font-size:11px;font-weight:700;letter-spacing:2px;padding:5px 9px;border-radius:4px}
+  .cap{padding:22px 64px 40px;color:#8a8577;font-size:17px;letter-spacing:2px;text-align:center}
+</style></head><body>
+  <div class="prof">
+    <div class="av"><div class="md">MD</div><div class="dot"></div></div>
+    <div class="pinfo">
+      <div class="handle">madeiradaily</div>
+      <div class="stats"><span><b>9</b> posts</span><span><b>—</b> followers</span><span><b>—</b> following</span></div>
+    </div>
+  </div>
+  <div class="bio">
+    <span class="n">Madeira Daily | Hidden Gems, Hikes &amp; News</span><br>
+    Your daily dose of the real Madeira 🌊<br>
+    Hidden spots · hikes · island news<br>
+    <span class="gold">📍 posted from the island</span>
+  </div>
+  <div class="hl">
+    <div class="h"><div class="c">🌤️</div>WEATHER</div>
+    <div class="h"><div class="c">🥾</div>HIKES</div>
+    <div class="h"><div class="c">🗺️</div>ITINERARIES</div>
+    <div class="h"><div class="c">🍴</div>FOOD</div>
+    <div class="h"><div class="c">🏖️</div>BEACHES</div>
+    <div class="h"><div class="c">📸</div>YOUR SHOTS</div>
+  </div>
+  <div class="grid">
+    <div class="tile t1"><span class="ic">▶</span><div class="lbl">G1 · Areeiro acima das nuvens<small>reel loop 10s · o post de assinatura</small></div><span class="wm">MD</span></div>
+    <div class="tile t2"><span class="ic">▶</span><div class="lbl">G2 · Aterragem POV seat 23A<small>reel 15s · o frame de 35M+ views</small></div><span class="wm">MD</span></div>
+    <div class="tile t3"><span class="ic">▶</span><div class="lbl">G3 · Fanal no nevoeiro<small>reel loop 8s</small></div><span class="wm">MD</span></div>
+    <div class="tile t4"><span class="ic">▶</span><div class="lbl">G4 · O túnel viral<small>reveal 10s · escuro→oceano</small></div><span class="wm">MD</span></div>
+    <div class="tile t5"><span class="rub">DAILY PICKS</span><span class="ano">2026</span><div class="panel"><div class="big"><div class="num">7</div><div class="rest">DAYS IN MADEIRA<small>the local route — capa V2</small></div></div></div></div>
+    <div class="tile t6"><span class="ic">▶</span><div class="lbl">G5 · Porto Moniz em fúria<small>loop 8s · som real</small></div><span class="wm">MD</span></div>
+    <div class="tile t7"><span class="ic">▶</span><div class="lbl">G7 · Miradouro sem autocarros<small>rubrica Hidden Madeira</small></div><span class="wm">MD</span></div>
+    <div class="tile t8"><span class="ic">▶</span><div class="lbl">G13 · Poncha a sério<small>reel 20s · mãos + som do bar</small></div><span class="wm">MD</span></div>
+    <div class="tile t9"><span class="ic">⧉</span><div class="lbl">G17 · Funchal 1950 vs. hoje<small>split · diáspora · EN/PT</small></div><span class="wm">MD</span></div>
+  </div>
+  <div class="cap">MOCKUP DA GRELHA DE LANÇAMENTO · OS FUNDOS SÃO PLACEHOLDERS DAS FOTOGRAFIAS REAIS</div>
+</body></html>
