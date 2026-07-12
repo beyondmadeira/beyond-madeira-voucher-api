@@ -1,0 +1,29 @@
+# ViralPulse — dois serviços a partir da mesma imagem:
+#   worker    → o loop 24/7 de automação
+#   dashboard → o painel web de controlo
+#
+# Uso:  docker compose up -d --build
+
+services:
+  worker:
+    build: .
+    command: python -m viralpulse.main run
+    env_file: .env
+    volumes:
+      - ./config.yaml:/app/viralpulse/config.yaml:ro
+      - viralpulse_data:/app/viralpulse
+    restart: unless-stopped
+
+  dashboard:
+    build: .
+    command: uvicorn viralpulse.dashboard:app --host 0.0.0.0 --port 8090
+    env_file: .env
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./config.yaml:/app/viralpulse/config.yaml:ro
+      - viralpulse_data:/app/viralpulse
+    restart: unless-stopped
+
+volumes:
+  viralpulse_data:

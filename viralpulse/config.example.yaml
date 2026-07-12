@@ -1,0 +1,49 @@
+# ViralPulse — configuração editável (fontes, hashtags, limites)
+# Copia para config.yaml. Este ficheiro NÃO contém segredos (esses vão no .env).
+
+brand:
+  name: "Madeira Daily"
+  # Texto de crédito aplicado no vídeo. {creator} é substituído pelo @ do autor original.
+  credit_template: "Créditos: @{creator} · Madeira Daily"
+  # Watermark discreta da própria página (canto superior).
+  watermark: "📢 Madeira Daily"
+
+# Descoberta: onde procurar conteúdo viral (via APIs OFICIAIS, não scraping).
+discovery:
+  instagram:
+    enabled: true
+    hashtags: ["madeira", "madeiraisland", "visitmadeira", "funchal"]
+    # Só considera media com pelo menos este engagement estimado.
+    min_engagement: 500
+  tiktok:
+    enabled: true
+    hashtags: ["madeira", "madeiraisland", "portugal"]
+    min_engagement: 1000
+  # Nº máximo de candidatos novos a recolher por ciclo.
+  max_candidates_per_cycle: 10
+
+# Fluxo de permissão: modelos da mensagem enviada ao criador original.
+permission:
+  channel: "instagram_dm"   # instagram_dm | email | manual
+  message_template: >
+    Olá @{creator}! Adorámos este teu momento sobre a Madeira 🌿
+    Podemos partilhá-lo na página @madeiradaily, com crédito visível para ti?
+    Se sim, responde apenas "sim" — obrigado!
+  # Dias a aguardar por resposta antes de descartar o candidato.
+  expiry_days: 7
+
+# Edição (FFmpeg): NÃO removemos watermark do autor. Só acrescentamos crédito.
+editor:
+  output_resolution: "1080x1920"   # formato vertical p/ Reels/TikTok
+  credit_fontsize: 42
+  news_overlay: true               # banner de contexto no topo (modo "news")
+
+# Publicação: limites e agendamento.
+publishing:
+  targets: ["instagram", "tiktok"]
+  default_hashtags: ["#madeira", "#madeiradaily", "#reels", "#viral"]
+  daily_limit: 6                   # máximo de posts publicados por dia
+  # Intervalo do ciclo de automação, em minutos.
+  cycle_minutes: 45
+  # Janela horária permitida para publicar (formato 24h).
+  active_hours: [9, 22]

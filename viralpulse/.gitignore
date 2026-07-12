@@ -1,0 +1,21 @@
+# Segredos e config local
+.env
+config.yaml
+
+# Base de dados local
+*.db
+*.sqlite3
+
+# Working dirs de media (conteúdo não vai para o git)
+downloads/
+processed/
+posted/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
