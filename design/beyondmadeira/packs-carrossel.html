@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  :root{
+    --teal:#0a8f82;--teal-dark:#0a5c66;--teal-light:#edf7f6;
+    --amber:#b5720e;--amber-light:#fef6e8;--amber-border:#f0ce8a;
+    --text:#171613;--text2:#635e58;--text3:#a8a39c;
+    --border:#e6e2dc;--white:#fff;--bg:#f7f6f2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;width:1080px;font-family:Arial,Helvetica,sans-serif;color:var(--text);
+       background:linear-gradient(180deg,#0a3d38 0%,#0a2420 55%,#0d1210 100%);padding:0 0 70px}
+  .top{padding:56px 64px 32px;text-align:center}
+  .rubrica{display:inline-block;background:rgba(244,242,237,.1);color:#cfe9e5;font-size:22px;font-weight:700;
+           letter-spacing:5px;padding:12px 26px;border-radius:6px}
+  .headline{color:#F4F2ED;font-size:52px;font-weight:800;margin-top:22px;letter-spacing:-1px}
+  .headline em{font-style:normal;color:var(--amber-border)}
+  .sub{color:#a9c9c4;font-size:24px;margin-top:10px;letter-spacing:.5px}
+
+  /* ---- card anatomy shared by hero + grid ---- */
+  .card{position:relative;border-radius:24px;overflow:visible;margin:0 64px 40px}
+  .photo{position:relative;border-radius:24px;overflow:hidden;background:linear-gradient(160deg,#1c5f56 0%,#0d6e7a 55%,#0a2420 100%);
+         display:flex;align-items:center;justify-content:center}
+  .photo .note{color:rgba(244,242,237,.4);font-size:20px;letter-spacing:2px;text-align:center;padding:0 40px}
+  .tag{position:absolute;top:28px;left:28px;z-index:3;background:var(--teal);color:#fff;font-size:22px;font-weight:700;
+       padding:10px 20px;border-radius:8px;letter-spacing:.5px}
+  .badge{position:absolute;top:24px;right:24px;z-index:3;width:132px;height:132px;border-radius:50%;
+         background:radial-gradient(circle at 35% 30%,#d99a2b,var(--amber) 70%);
+         color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;
+         text-align:center;box-shadow:0 10px 24px rgba(0,0,0,.35);line-height:1}
+  .badge .up{font-size:15px;font-weight:700;letter-spacing:1px}
+  .badge .pct{font-size:40px;font-weight:800;margin:2px 0}
+  .badge .off{font-size:15px;font-weight:700;letter-spacing:2px}
+
+  .panel{position:relative;z-index:2;background:var(--white);border-radius:0 20px 20px 20px;
+         margin:-44px 28px 0;padding:26px 30px 24px;box-shadow:0 18px 34px rgba(0,0,0,.28)}
+  .flap{position:absolute;left:-1px;bottom:-1px;width:0;height:0;
+        border-style:solid;border-width:0 0 34px 34px;border-color:transparent transparent var(--teal) transparent;
+        border-bottom-left-radius:20px}
+  .row1{display:flex;justify-content:space-between;align-items:baseline}
+  .loc{color:var(--teal-dark);font-weight:700;font-size:19px;letter-spacing:1px;text-transform:uppercase}
+  .price{color:var(--text2);font-size:19px}
+  .price b{color:var(--text);font-size:22px}
+  .title{font-weight:800;font-size:30px;line-height:1.2;margin-top:8px;color:var(--text)}
+  .desc{color:var(--text2);font-size:17px;margin-top:10px;line-height:1.4}
+
+  /* hero variant */
+  .hero .photo{height:600px}
+  .hero .badge{width:150px;height:150px}
+  .hero .title{font-size:36px}
+
+  /* grid */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin:0 64px}
+  .grid .card{margin:0}
+  .grid .photo{height:340px}
+  .grid .tag{font-size:17px;padding:7px 14px;top:20px;left:20px}
+  .grid .badge{width:96px;height:96px;top:18px;right:18px}
+  .grid .badge .pct{font-size:28px}
+  .grid .badge .up,.grid .badge .off{font-size:11px}
+  .grid .panel{margin:-34px 18px 0;padding:18px 20px 18px;border-radius:0 14px 14px 14px}
+  .grid .loc{font-size:14px}
+  .grid .price{font-size:14px}
+  .grid .price b{font-size:16px}
+  .grid .title{font-size:20px;margin-top:6px}
+  .grid .flap{border-width:0 0 24px 24px;border-bottom-left-radius:14px}
+
+  .footer{margin:56px 64px 0;text-align:center;color:#6b8580;font-size:16px;letter-spacing:2px}
+</style></head><body>
+
+  <div class="top">
+    <div class="rubrica">BEYOND MADEIRA</div>
+    <div class="headline">Packs <em>Beyond</em></div>
+    <div class="sub">Combina experiências. Poupa em cada pack.</div>
+  </div>
+
+  <!-- HERO CARD -->
+  <div class="card hero">
+    <div class="photo">
+      <div class="note">[ FOTO REAL — nascer do sol acima das nuvens, Pico do Areeiro ]</div>
+    </div>
+    <div class="tag">Pack Beyond</div>
+    <div class="badge"><span class="up">ATÉ</span><span class="pct">15%</span><span class="off">OFF</span></div>
+    <div class="panel">
+      <div class="flap"></div>
+      <div class="row1">
+        <span class="loc">Madeira</span>
+        <span class="price">desde <b>89€</b></span>
+      </div>
+      <div class="title">Pack Vulcões &amp; Levadas</div>
+      <div class="desc">Nascer do sol no Pico do Areeiro + Levada do Caldeirão Verde + Jipe Costa Oeste</div>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="grid">
+
+    <div class="card">
+      <div class="photo"><div class="note">[ FOTO — golfinhos ao largo da Madeira ]</div></div>
+      <div class="tag">Pack Beyond</div>
+      <div class="badge"><span class="up">ATÉ</span><span class="pct">10%</span><span class="off">OFF</span></div>
+      <div class="panel">
+        <div class="flap"></div>
+        <div class="row1"><span class="loc">Madeira</span><span class="price">desde <b>65€</b></span></div>
+        <div class="title">Pack Oceano Atlântico</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="photo"><div class="note">[ FOTO — canyoning em cascata ]</div></div>
+      <div class="tag">Pack Beyond</div>
+      <div class="badge"><span class="up">ATÉ</span><span class="pct">10%</span><span class="off">OFF</span></div>
+      <div class="panel">
+        <div class="flap"></div>
+        <div class="row1"><span class="loc">Madeira</span><span class="price">desde <b>120€</b></span></div>
+        <div class="title">Pack Adrenalina</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="photo"><div class="note">[ FOTO — trilho verde entre montanhas ]</div></div>
+      <div class="tag">Pack Beyond</div>
+      <div class="badge"><span class="up">ATÉ</span><span class="pct">10%</span><span class="off">OFF</span></div>
+      <div class="panel">
+        <div class="flap"></div>
+        <div class="row1"><span class="loc">Madeira</span><span class="price">desde <b>55€</b></span></div>
+        <div class="title">Pack Trilhos Selvagens</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="photo"><div class="note">[ FOTO — colagem da ilha, várias atividades ]</div></div>
+      <div class="tag">Pack Beyond</div>
+      <div class="badge"><span class="up">ATÉ</span><span class="pct">15%</span><span class="off">OFF</span></div>
+      <div class="panel">
+        <div class="flap"></div>
+        <div class="row1"><span class="loc">Madeira</span><span class="price">desde <b>340€</b></span></div>
+        <div class="title">Pack Completo Ilha</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">MOCKUP CONCEITO · CARROSSEL DE PACKS BEYOND MADEIRA · FOTOS SÃO PLACEHOLDERS<br>
+  Descontos alinhados com a regra real do backend: 10% (5+ atividades) · 15% (10+ atividades) — /gerar-voucher-multi</div>
+
+</body></html>
