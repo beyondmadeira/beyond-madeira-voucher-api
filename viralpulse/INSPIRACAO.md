@@ -17,6 +17,18 @@ ver e alinharmos o entendimento do conceito.
   - Frequência e consistência das publicações.
   - Tom editorial e uso de hashtags.
 
+### 2. @memezar
+- **Link:** https://www.instagram.com/memezar?igsh=MTFqNnE1aGVodnFyNg==
+- **Guardado em:** 2026-07-13
+- **Porquê olhar:** uma das maiores páginas de curadoria viral do mundo —
+  referência de escala. Mostra como uma página de agregação cresce e monetiza
+  publicando conteúdo de terceiros de forma consistente.
+- **O que reparar (para o Jorge):**
+  - Volume e ritmo de publicação (várias vezes ao dia, muito consistente).
+  - Como creditam a fonte original (normalmente @ do criador na legenda/canto).
+  - Mistura de formatos (vídeo, carrossel, imagem) e como isso alimenta o feed.
+  - Como a escala vem da consistência, não de um post "perfeito".
+
 > Nota: isto é referência de **inspiração**, não de cópia. O ViralPulse
 > replica o *modelo* (descoberta + crédito + publicação consistente) pela via
 > legítima — APIs oficiais e republicação só com permissão do criador.
