@@ -33,6 +33,7 @@ Banco de referências TikTok a analisar e ideias de vídeo concretas.
 | 3 | https://vm.tiktok.com/ZGd9sb8S8/ | **Base para vídeo "itinerário 5 dias"** (ver ideia #1) |
 | 4 | https://vm.tiktok.com/ZGd9sQSW8/ | Referência a analisar |
 | 5 | https://vm.tiktok.com/ZGd9sxNg3/ | **Vídeo incrível, ~1.5M views** — base para montagem "uau" (ver ideia #2) |
+| 6 | https://vm.tiktok.com/ZGd9svfRo/ | **Ideia gostada** — mesmo conceito mas com **outra música**, para o Pico do Areeiro (ver ideia #3) |
 
 > Guardadas em 2026-07-13.
 
@@ -52,6 +53,16 @@ Banco de referências TikTok a analisar e ideias de vídeo concretas.
 - **Abertura:** **nascer do sol no Pico do Areeiro** (gancho forte nos primeiros
   segundos), seguido de vídeos "mesmo uau" em cadeia para segurar a atenção.
 - **Notas:** o primeiro segundo decide tudo — abrir com o momento mais épico.
+
+---
+
+### Ideia #3 — Conceito do TikTok #6, com outra música (Pico do Areeiro)
+- **Formato:** o mesmo conceito/edição do TikTok #6 (`ZGd9svfRo`), aplicado ao
+  **Pico do Areeiro**.
+- **Referência:** TikTok #6.
+- **Diferença-chave:** **trocar a música** — usar outra faixa em vez da original.
+- **Notas:** manter a estrutura/ritmo que funciona no original, só adaptar o
+  local (Pico do Areeiro) e o som. Escolher música em trend/livre de direitos.
 
 ---
 
