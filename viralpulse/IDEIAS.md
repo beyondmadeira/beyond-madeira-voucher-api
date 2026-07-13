@@ -34,6 +34,7 @@ Banco de referências TikTok a analisar e ideias de vídeo concretas.
 | 4 | https://vm.tiktok.com/ZGd9sQSW8/ | Referência a analisar |
 | 5 | https://vm.tiktok.com/ZGd9sxNg3/ | **Vídeo incrível, ~1.5M views** — base para montagem "uau" (ver ideia #2) |
 | 6 | https://vm.tiktok.com/ZGd9svfRo/ | **Ideia gostada** — mesmo conceito mas com **outra música**, para o Pico do Areeiro (ver ideia #3) |
+| 7 | https://vm.tiktok.com/ZGd9sQoPV/ | **Vídeos de drone** com **título à frente** (texto sobreposto) — ver ideia #4 |
 
 > Guardadas em 2026-07-13.
 
@@ -63,6 +64,14 @@ Banco de referências TikTok a analisar e ideias de vídeo concretas.
 - **Diferença-chave:** **trocar a música** — usar outra faixa em vez da original.
 - **Notas:** manter a estrutura/ritmo que funciona no original, só adaptar o
   local (Pico do Areeiro) e o som. Escolher música em trend/livre de direitos.
+
+### Ideia #4 — Vídeos de drone com título à frente
+- **Formato:** imagens de **drone** da Madeira com um **título/texto sobreposto**
+  em destaque à frente do vídeo.
+- **Referência:** TikTok #7 (`ZGd9sQoPV`).
+- **Notas:** título grande e legível logo no início (gancho); usar as cores da
+  marca (True Pink / Chill White — ver `MARCA.md`) no texto sobreposto para
+  identidade consistente. Ótimo para mostrar os spots mais espetaculares do ar.
 
 ---
 
