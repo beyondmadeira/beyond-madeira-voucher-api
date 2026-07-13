@@ -7,6 +7,11 @@ brand:
   credit_template: "Créditos: @{creator} · Madeira Daily"
   # Watermark discreta da própria página (canto superior).
   watermark: "📢 Madeira Daily"
+  # Paleta oficial da marca (ver MARCA.md). Aplicada nos overlays do editor.
+  colors:
+    primary: "#FD1843"   # True Pink — destaque
+    light: "#FFF9FA"     # Chill White — texto/base clara
+    dark: "#0A0A0A"      # preto — caixas de contraste
 
 # Descoberta: onde procurar conteúdo viral (via APIs OFICIAIS, não scraping).
 discovery:

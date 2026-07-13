@@ -25,6 +25,15 @@ DOWNLOAD_DIR = BASE_DIR / "downloads"
 PROCESSED_DIR = BASE_DIR / "processed"
 
 
+def _ffmpeg_color(hex_or_name: str, fallback: str = "white") -> str:
+    """Converte '#RRGGBB' para o formato FFmpeg '0xRRGGBB'. Aceita nomes."""
+    if not hex_or_name:
+        return fallback
+    if hex_or_name.startswith("#"):
+        return "0x" + hex_or_name[1:]
+    return hex_or_name
+
+
 def _escape_drawtext(text: str) -> str:
     """Escapa caracteres especiais do filtro drawtext do FFmpeg."""
     return (
@@ -91,25 +100,33 @@ class EditorAgent(BaseAgent):
         credit = brand.get("credit_template", "Créditos: @{creator}").format(creator=creator or "criador")
         watermark = brand.get("watermark", "")
 
+        # Cores da marca (ver MARCA.md). Fallbacks seguros se não definidas.
+        colors = brand.get("colors", {})
+        primary = _ffmpeg_color(colors.get("primary", ""), "0xFD1843")   # True Pink
+        light = _ffmpeg_color(colors.get("light", ""), "0xFFF9FA")       # Chill White
+        dark = _ffmpeg_color(colors.get("dark", ""), "0x0A0A0A")         # preto
+
         out = PROCESSED_DIR / f"viral_{int(time.time())}.mp4"
 
-        # scale+pad → vertical sem distorção
+        # scale+pad → vertical sem distorção (barras na cor escura da marca)
         vf = [
             f"scale={width}:{height}:force_original_aspect_ratio=decrease",
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black",
-            # crédito visível (rodapé)
-            f"drawtext=text='{_escape_drawtext(credit)}':fontcolor=white:fontsize={ed.get('credit_fontsize', 42)}"
-            f":x=(w-tw)/2:y=h-th-60:box=1:boxcolor=black@0.6:boxborderw=12",
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:{dark}",
+            # crédito visível (rodapé): texto Chill White sobre caixa escura
+            f"drawtext=text='{_escape_drawtext(credit)}':fontcolor={light}:fontsize={ed.get('credit_fontsize', 42)}"
+            f":x=(w-tw)/2:y=h-th-60:box=1:boxcolor={dark}@0.6:boxborderw=12",
         ]
         if watermark:
+            # watermark na cor primária da marca (True Pink)
             vf.append(
-                f"drawtext=text='{_escape_drawtext(watermark)}':fontcolor=yellow:fontsize=30"
-                f":x=w-tw-30:y=40:box=1:boxcolor=black@0.5:boxborderw=10"
+                f"drawtext=text='{_escape_drawtext(watermark)}':fontcolor={primary}:fontsize=30"
+                f":x=w-tw-30:y=40:box=1:boxcolor={dark}@0.5:boxborderw=10"
             )
         if ed.get("news_overlay"):
+            # banner "news" na cor primária, texto Chill White
             vf.append(
-                "drawbox=x=0:y=0:w=iw:h=90:color=black@0.55:t=fill,"
-                f"drawtext=text='{_escape_drawtext(brand.get('name', ''))}':fontcolor=white:fontsize=34"
+                f"drawbox=x=0:y=0:w=iw:h=90:color={primary}@0.9:t=fill,"
+                f"drawtext=text='{_escape_drawtext(brand.get('name', ''))}':fontcolor={light}:fontsize=34"
                 ":x=30:y=28"
             )
 
