@@ -5,8 +5,25 @@ from app.models.financeiro import (
     RegistoDiario, DespesaFixa, DespesaVariavel,
     Objetivo, ResumoMensal, CaixaMensal,
 )
+from app.models.reservas import Parceiro
 
 bp = Blueprint("financeiro", __name__)
+
+
+def _parceiro_names():
+    """Nomes de parceiros/fornecedores já registados no sistema (não são despesas próprias)."""
+    return [
+        p.nome.strip().lower()
+        for p in Parceiro.query.filter(Parceiro.nome.isnot(None)).all()
+        if p.nome and len(p.nome.strip()) >= 4
+    ]
+
+
+def _is_parceiro_despesa(nome, parceiro_names):
+    if not nome:
+        return False
+    n = nome.lower()
+    return any(pn in n for pn in parceiro_names)
 
 
 # ── Registos Diários ──────────────────────────────────────────────────────
@@ -97,7 +114,23 @@ def _handle_despesa(Model, record_id):
     try:
         if request.method == "GET":
             records = Model.query.all()
-            return jsonify({"success": True, "records": [r.to_api() for r in records]})
+            incluir_parceiros = request.args.get("incluir_parceiros", "").lower() in ("1", "true", "yes")
+            if incluir_parceiros:
+                return jsonify({"success": True, "records": [r.to_api() for r in records]})
+
+            parceiro_names = _parceiro_names()
+            proprios, excluidos = [], []
+            for r in records:
+                api = r.to_api()
+                if _is_parceiro_despesa(api.get("nome"), parceiro_names):
+                    excluidos.append(api)
+                else:
+                    proprios.append(api)
+            return jsonify({
+                "success": True,
+                "records": proprios,
+                "parceiros_excluidos": len(excluidos),
+            })
 
         elif request.method == "POST":
             body = request.get_json() or {}
