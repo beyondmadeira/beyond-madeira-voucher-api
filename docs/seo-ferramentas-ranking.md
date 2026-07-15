@@ -3,6 +3,8 @@
 > Investigação para a **Beyond Madeira** (turismo/atividades/vouchers na Madeira).
 > Público multilingue: **PT / EN / DE**. Forte componente de **SEO local** (Google Maps / Google Business Profile).
 > Data: julho de 2026. Preços aproximados, em USD/mês, faturação mensal (anual costuma ser ~20% mais barato).
+>
+> 📄 Ver também: [`seo-concorrentes-e-stack.md`](./seo-concorrentes-e-stack.md) — como espreitar o stack dos concorrentes e o que os sites vencedores usam por dentro (CMS, plugins, schema, motor de reservas).
 
 ---
 
