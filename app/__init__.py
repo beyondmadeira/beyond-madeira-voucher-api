@@ -32,6 +32,10 @@ def create_app(config_class=Config):
         ],
     )
 
+    # Aviso de segurança: chaves por omissão em produção deixam o /api/chat
+    # (que gasta dinheiro na API Claude) aberto a quem leia o repositório.
+    _warn_insecure_defaults(application)
+
     # Import models so Alembic sees them
     from app import models  # noqa: F401
 
@@ -78,6 +82,22 @@ def create_app(config_class=Config):
         _start_scheduler(application)
 
     return application
+
+
+def _warn_insecure_defaults(application):
+    """Grita nos logs se chaves sensíveis ainda têm o valor por omissão."""
+    insecure = {
+        "VOUCHER_API_KEY": "beyond-madeira-voucher-2026",
+        "SECRET_KEY": "beyond-madeira-hub-secret",
+        "MADEIRADAILY_PASSWORD": "madeira2026",
+    }
+    for key, default in insecure.items():
+        if application.config.get(key) == default:
+            print(
+                f"[SECURITY] {key} está com o valor por omissão do código! "
+                f"Define {key} nas env vars do Railway — caso contrário o "
+                f"/api/chat (que gasta na API Claude) fica exposto."
+            )
 
 
 def _start_scheduler(application):

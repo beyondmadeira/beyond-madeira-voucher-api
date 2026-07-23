@@ -28,6 +28,12 @@ class Config:
 
     # Anthropic
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+    # Teto de max_tokens no /api/chat (proteção de custo). Default generoso.
+    CHAT_MAX_TOKENS_CEILING = int(os.environ.get("CHAT_MAX_TOKENS_CEILING", "8192"))
+    # Whitelist opcional de modelos no /api/chat (lista separada por vírgulas).
+    # Vazio = aceita qualquer modelo. Ex.: para bloquear Opus, definir só os
+    # modelos permitidos: "claude-sonnet-4-20250514,claude-haiku-4-5-20251001".
+    CHAT_ALLOWED_MODELS = os.environ.get("CHAT_ALLOWED_MODELS", "")
 
     # Wazzup (env vars — never hardcode API keys in source)
     WAZZUP_API_KEY = os.environ.get("WAZZUP_API_KEY", "")

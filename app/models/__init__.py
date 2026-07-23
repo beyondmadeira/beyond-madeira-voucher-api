@@ -11,3 +11,4 @@ from app.models.meeting_point import MeetingPoint  # noqa
 from app.models.memory import BeyondMemory  # noqa
 from app.models.site_booking import SiteBooking  # noqa
 from app.models.wa_confirmation import WaConfirmation  # noqa
+from app.models.usage_log import ApiUsageLog  # noqa

@@ -86,7 +86,13 @@ Return ONLY the JSON object, no explanation, no markdown, no extra text."""
         json={
             "model": "claude-haiku-4-5-20251001",
             "max_tokens": 1024,
-            "system": system_prompt,
+            # System prompt marcado como cacheável — é idêntico em todas as
+            # parses do mesmo tipo, logo o prefixo passa a custar ~10%.
+            "system": [{
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }],
             "messages": [{"role": "user", "content": text}],
         },
         timeout=20,
@@ -96,6 +102,12 @@ Return ONLY the JSON object, no explanation, no markdown, no extra text."""
         return jsonify({"error": "Claude API error", "detail": resp.text}), 500
 
     raw = resp.json()
+    try:
+        from app.utils.anthropic_usage import log_usage
+        log_usage("/ai/parse-reserva", raw.get("model", "claude-haiku-4-5-20251001"),
+                  raw.get("usage"), body.get("user_name", ""))
+    except Exception:
+        pass
     content = raw.get("content", [{}])[0].get("text", "")
     content = content.strip()
     if content.startswith("```"):
