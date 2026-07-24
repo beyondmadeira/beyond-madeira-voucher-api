@@ -379,11 +379,14 @@ def extrato_parceiros(**kwargs):
         if request.method == "GET":
             mes = request.args.get("mes", "")
             ano = request.args.get("ano", "")
+            parceiro = request.args.get("parceiro", "")
             query = ComissaoParceiro.query
             if mes:
                 query = query.filter(ComissaoParceiro.mes == mes)
             elif ano:
                 query = query.filter(ComissaoParceiro.mes.contains(ano))
+            if parceiro:
+                query = query.filter(ComissaoParceiro.parceiro == parceiro)
             records = query.all()
             return jsonify({"success": True, "records": [r.to_api() for r in records]})
 
@@ -567,5 +570,65 @@ def extrato_parceiros(**kwargs):
 
         else:
             return jsonify({"success": True, "records": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Resumo Mensal (vista admin: total do mês/ano + falta receber) ─────────
+
+@bp.route("/airtable/extrato-parceiros/resumo-mensal", methods=["GET"])
+@require_api_key
+def resumo_mensal_comissoes():
+    """Visão agregada para admin: total por mês, total anual e quanto
+    falta receber por mês (soma do 'total' onde recebido=False).
+    Não expõe registos por parceiro — só os agregados por mês.
+    """
+    try:
+        ano = request.args.get("ano", "")
+        query = ComissaoParceiro.query
+        if ano:
+            query = query.filter(ComissaoParceiro.mes.contains(ano))
+        records = query.all()
+
+        por_mes = {}
+        for rec in records:
+            mes_label = rec.mes or ""
+            if not mes_label:
+                continue
+            if mes_label not in por_mes:
+                mes_num, ano_num = _parse_mes_ano(mes_label, None)
+                por_mes[mes_label] = {
+                    "mes": mes_label,
+                    "mes_num": mes_num,
+                    "ano": ano_num,
+                    "total_mes": 0.0,
+                    "recebido": 0.0,
+                    "falta_receber": 0.0,
+                    "n_parceiros": 0,
+                }
+            bucket = por_mes[mes_label]
+            valor_total = float(rec.total or 0)
+            bucket["total_mes"] += valor_total
+            bucket["n_parceiros"] += 1
+            if rec.recebido:
+                bucket["recebido"] += valor_total
+            else:
+                bucket["falta_receber"] += valor_total
+
+        meses = sorted(por_mes.values(), key=lambda m: (m["ano"], m["mes_num"]))
+        for m in meses:
+            m["total_mes"] = round(m["total_mes"], 2)
+            m["recebido"] = round(m["recebido"], 2)
+            m["falta_receber"] = round(m["falta_receber"], 2)
+
+        total_anual = round(sum(m["total_mes"] for m in meses), 2)
+        falta_receber_anual = round(sum(m["falta_receber"] for m in meses), 2)
+
+        return jsonify({
+            "success": True,
+            "meses": meses,
+            "total_anual": total_anual,
+            "falta_receber_anual": falta_receber_anual,
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
