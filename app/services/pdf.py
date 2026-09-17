@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from app.utils.formatting import (
     logo_b64, fill, fmt_date, fmt_time, eur_val, get_text_f, norm_act, load_template,
+    strip_unfilled,
 )
 from app.utils.operator_contacts import OPERATOR_CONTACTS
 from app.utils.activity_rules import (
@@ -73,7 +74,7 @@ def build_rc_html(d):
         d["contacts_row_html"] = f'<div class="contacts-row">{beyond_card}</div>'
 
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
-    return fill(tmpl, d)
+    return strip_unfilled(fill(tmpl, d))
 
 
 def build_at_html(d):
@@ -111,7 +112,18 @@ def build_at_html(d):
         )
     d["special_requests_html"] = tips_html
 
-    status = d.get("status", "confirmed").lower()
+    # Um payload sem `status` NAO autoriza dizer ao cliente que paga em
+    # dinheiro ao guia. O default era "confirmed" + "cash", e o Hub nunca
+    # mandava `status`: o voucher web da mesma reserva dizia "Payment
+    # Confirmed" e este PDF, no mesmo email, dizia "Payment: Cash Only".
+    # A jusante o operador le o PDF, assume que recebeu, e factura-nos o
+    # valor cheio (Safari Madeira, 4 Set 2026, +595,94 EUR).
+    #
+    # Tres estados, nao dois. Quem sabe, diz; quem nao sabe, cala-se — nem
+    # afirma que esta pago (um falso "pago" custa o tour) nem manda pagar.
+    # "confirmed" continua a valer exactamente o que valia, mas passa a ter
+    # de ser escrito por quem chama.
+    status = (d.get("status") or "").strip().lower() or "indeterminado"
     pagamento = d.get("pagamento", "cash").lower()
 
     if status == "paid":
@@ -124,6 +136,11 @@ def build_at_html(d):
         d["status_class"] = "awaiting"
         d["price_class"] = "awaiting"
         d["price_note"] = "Payment required"
+    elif status == "indeterminado":
+        d["status_label"] = "Confirmed"
+        d["status_class"] = ""
+        d["price_class"] = "awaiting"
+        d["price_note"] = "Being confirmed"
     else:
         d["status_label"] = "Confirmed"
         d["status_class"] = ""
@@ -162,9 +179,19 @@ def build_at_html(d):
             f'<div class="pa-body paid">Your payment of <strong>{total}&euro;</strong> has been received. '
             f"No further payment required &mdash; just show up and enjoy!</div></div></div>"
         )
+    elif status == "indeterminado":
+        # Mesmo texto do voucher web (_map_at no Hub): nao afirma nada, e
+        # manda o cliente perguntar-nos antes de pagar ao guia.
+        d["payment_alert_html"] = (
+            '<div class="pay-alert awaiting"><div class="pa-dot awaiting">?</div><div>'
+            '<div class="pa-title awaiting">Payment Being Confirmed</div>'
+            '<div class="pa-body awaiting">This booking may already be paid. '
+            'Please check with Beyond Madeira before you pay the guide.</div></div></div>'
+        )
     else:
         d["payment_alert_html"] = ""
 
+    # So um "confirmed" explicito autoriza a linha "paga no dia".
     if status == "confirmed":
         pm_map = {
             "cash": ("Payment: Cash Only", "To be paid in cash on the day of the activity."),
@@ -267,16 +294,25 @@ def build_at_html(d):
                 "Your booking is confirmed and your payment has been received. "
                 "No payment required on the day &mdash; just show up and enjoy!"
             )
-        else:
+        elif status == "confirmed":
             d["mensagem_confirmacao"] = (
                 "Your reservation is confirmed &mdash; no payment required at this stage. "
                 "The total amount is to be paid in cash on the day of the activity. "
                 "You will receive further details closer to the date, including your exact pick-up time."
             )
+        else:
+            # awaiting / indeterminado: confirmada, mas sem afirmar nada
+            # sobre dinheiro. Era aqui que a frase de "pagar em dinheiro"
+            # voltava a entrar mesmo depois de o cartao do preco a tirar.
+            d["mensagem_confirmacao"] = (
+                "Your reservation is confirmed. You will receive further details closer "
+                "to the date, including your exact pick-up time. If you have any question "
+                "about payment, contact Beyond Madeira before the day of the activity."
+            )
     d.setdefault("bokun_ref", "")
 
     tmpl = tmpl.replace("{{LOGO_SRC}}", logo_b64())
-    return fill(tmpl, d)
+    return strip_unfilled(fill(tmpl, d))
 
 
 def calc_totais(rows):
