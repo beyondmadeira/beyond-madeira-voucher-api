@@ -15,6 +15,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Gate: um build com os testes a falhar não chega a produção.
+# 17 Set 2026 — sem `status` no payload, este serviço dizia "Payment: Cash
+# Only" a clientes que já tinham pago (reserva 133, 500 EUR). O operador lê o
+# PDF, assume que recebeu, e factura-nos o valor cheio.
+RUN pip install --no-cache-dir pytest \
+    && python -m pytest tests/ -q -p no:cacheprovider \
+    && pip uninstall -y pytest
+
 ENV PORT=8080
 ENV FLASK_APP=main.py
 CMD ["bash", "start.sh"]
