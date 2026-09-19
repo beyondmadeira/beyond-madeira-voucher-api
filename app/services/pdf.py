@@ -416,3 +416,31 @@ def build_extrato_html(parceiro, rows, ref, mes_nome, ano, tots, rows_by_month=N
 def generate_pdf(html_string):
     from weasyprint import HTML
     return HTML(string=html_string).write_pdf()
+
+
+# Limite do HTML aceite por /html-para-pdf. Um voucher com logos embutidos
+# anda nos 100-300 KB; 5 MB é folga larga e trava abusos.
+HTML_MAX_BYTES = 5 * 1024 * 1024
+
+
+def _fetcher_sem_rede():
+    """Só aceita `data:`. Nada de rede.
+
+    O HTML vem de quem chama. Se o WeasyPrint seguisse URLs, este serviço
+    podia ser usado para ler endereços internos do Railway (SSRF). Quem chama
+    embute as imagens antes de enviar; tudo o resto — como o @import das
+    Google Fonts — é recusado e o texto cai nas fontes instaladas no
+    contentor (Montserrat, DejaVu).
+    """
+    from weasyprint.urls import URLFetcher
+    return URLFetcher(allowed_protocols={"data"}, allow_redirects=False, timeout=1)
+
+
+def html_para_pdf(html_string):
+    """Converte o HTML já renderizado (o mesmo do voucher web) em PDF."""
+    if not isinstance(html_string, str) or not html_string.strip():
+        raise ValueError("html vazio")
+    if len(html_string.encode("utf-8")) > HTML_MAX_BYTES:
+        raise ValueError("html demasiado grande")
+    from weasyprint import HTML
+    return HTML(string=html_string, url_fetcher=_fetcher_sem_rede()).write_pdf()
