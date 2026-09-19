@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     shared-mime-info \
     fonts-liberation \
+    fonts-montserrat \
+    fonts-dejavu-core \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 

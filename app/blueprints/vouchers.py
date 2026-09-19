@@ -1,7 +1,8 @@
 import base64
 from flask import Blueprint, request, jsonify
 from app.utils.auth import require_api_key
-from app.services.pdf import build_rc_html, build_at_html, generate_pdf
+from app.services.pdf import build_rc_html, build_at_html, generate_pdf, html_para_pdf
+import re
 
 bp = Blueprint("vouchers", __name__)
 
@@ -43,6 +44,37 @@ def gerar_voucher_atividade():
         return jsonify({"success": True, "filename": fname, "pdf_base64": b64})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# Um voucher, não dois. Até aqui o PDF era desenhado outra vez neste serviço,
+# a partir de meia dúzia de campos escolhidos à mão pelo Hub — e cada campo
+# esquecido era um bug no voucher do cliente: "Payment: Cash Only" a quem já
+# pagou, `{{tipo_tour}}` cru, o logo do parceiro em falta (17-19 Set 2026).
+# Agora o Hub envia o HTML exacto da pré-visualização e aqui só se converte.
+_NOME_SEGURO = re.compile(r"[^\w.\-]+")
+
+
+@bp.route("/html-para-pdf", methods=["POST"])
+@require_api_key
+def html_para_pdf_route():
+    d = request.get_json(silent=True) or {}
+    html = d.get("html")
+    if not isinstance(html, str) or not html.strip():
+        return jsonify({"error": "html required"}), 400
+    fname = _NOME_SEGURO.sub("_", str(d.get("filename") or "voucher.pdf"))[:120]
+    if not fname.lower().endswith(".pdf"):
+        fname += ".pdf"
+    try:
+        pdf = html_para_pdf(html)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"pdf falhou: {e}"}), 500
+    return jsonify({
+        "success": True,
+        "filename": fname,
+        "pdf_base64": base64.b64encode(pdf).decode(),
+    })
 
 
 @bp.route("/gerar-voucher-multi", methods=["POST"])
