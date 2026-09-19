@@ -22,6 +22,19 @@ def fill(tmpl, data):
     return tmpl
 
 
+# Os templates sao substituicao de texto, nao Jinja: uma chave que o payload
+# nao traga fica no HTML tal e qual e sai impressa no PDF do cliente. Foi o
+# que aconteceu ao `{{tipo_tour}}`, que o Hub nunca enviava — o cliente leu
+# "TOUR TYPE: {{tipo_tour}}" no voucher da reserva 133 (17 Set 2026).
+_CHAVETA_POR_PREENCHER = re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\}")
+
+
+def strip_unfilled(html):
+    """Apaga chavetas que ficaram por substituir. Melhor um campo vazio do
+    que o nome da variavel na cara do cliente."""
+    return _CHAVETA_POR_PREENCHER.sub("", html or "")
+
+
 def fmt_date(s):
     try:
         return datetime.fromisoformat(s.replace("Z", "+00:00")).strftime("%-d %b %Y")
